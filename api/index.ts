@@ -119,54 +119,30 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 // Auth Routes
-app.get("/api/users", (req, res) => {
-  const users = db.prepare("SELECT id, username, name, profilePic FROM users").all();
-  res.json(users);
-});
-
-app.post("/api/users/switch", (req, res) => {
-  const { id } = req.body;
-  const user: any = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
-  res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-  res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic });
-});
-
-app.post("/api/users/create", (req, res) => {
-  const { name } = req.body;
-  const username = `user_${Date.now()}`;
-  const password = "default_password"; // Not really used if we switch via ID
+app.post("/api/register", (req, res) => {
+  const { username, password, name } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   try {
     const stmt = db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)");
     const info = stmt.run(username, hashedPassword, name || username);
-    const newUser: any = db.prepare("SELECT id, username, name, profilePic FROM users WHERE id = ?").get(info.lastInsertRowid);
-    
-    // Automatically log in as the new user
-    const token = jwt.sign({ id: newUser.id, username: newUser.username }, JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    
-    res.json(newUser);
+    res.json({ id: info.lastInsertRowid });
   } catch (err: any) {
-    res.status(400).json({ error: "Failed to create user" });
+    res.status(400).json({ error: "Username already exists" });
   }
 });
 
-app.post("/api/users/delete", authenticate, (req: any, res) => {
-  const { id } = req.body;
-  db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(id);
-  if (req.user.id === id) {
-    res.clearCookie("token");
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  const user: any = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ error: "Invalid credentials" });
   }
-  res.json({ success: true });
+
+  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+  res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+  res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -177,23 +153,6 @@ app.post("/api/logout", (req, res) => {
 app.get("/api/me", authenticate, (req: any, res) => {
   const user: any = db.prepare("SELECT id, username, name, profilePic FROM users WHERE id = ?").get(req.user.id);
   res.json(user);
-});
-
-app.post("/api/users/delete", authenticate, (req: any, res) => {
-  const { id } = req.body;
-  
-  // Don't allow deleting yourself if you are the only one? Or just allow it.
-  // Actually, let's just allow it.
-  
-  db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(id);
-  
-  if (req.user.id === id) {
-    res.clearCookie("token");
-  }
-  
-  res.json({ success: true });
 });
 
 // User Profile Routes

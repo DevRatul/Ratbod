@@ -20,6 +20,7 @@ import {
   Moon,
   ArrowRightLeft,
   LogOut,
+  LogIn,
   Camera,
   History,
   UserCircle
@@ -59,11 +60,10 @@ interface User {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authError, setAuthError] = useState('');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [newProfileName, setNewProfileName] = useState('');
-  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   
   const [darkMode, setDarkMode] = useState(false);
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
@@ -82,56 +82,27 @@ export default function App() {
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.getMe().then(u => {
-      setUser(u);
-      if (!u) setIsAuthModalOpen(true);
-    });
-    api.getUsers().then(setAllUsers);
+    api.getMe().then(setUser);
   }, []);
 
-  const handleSwitchUser = async (userId: number) => {
-    try {
-      const switchedUser = await api.switchUser(userId);
-      setUser(switchedUser);
-      setIsAuthModalOpen(false);
-      // Refresh history and goals for the new user
-      setHistoryRefreshTrigger(prev => prev + 1);
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const handleDeleteUser = async (e: React.MouseEvent, userId: number) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this profile and all its data?')) return;
-    
-    try {
-      await api.deleteUser(userId);
-      const updatedUsers = await api.getUsers();
-      setAllUsers(updatedUsers);
-      if (user?.id === userId) {
-        setUser(null);
-        setIsAuthModalOpen(true);
-      }
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const handleCreateProfile = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!newProfileName.trim()) return;
-    
+    setAuthError('');
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
     try {
-      const newUser = await api.createProfile(newProfileName);
-      setUser(newUser);
-      const updatedUsers = await api.getUsers();
-      setAllUsers(updatedUsers);
-      setIsCreatingProfile(false);
-      setNewProfileName('');
+      if (authMode === 'login') {
+        const loggedInUser = await api.login(data);
+        setUser(loggedInUser);
+      } else {
+        await api.register(data);
+        const loggedInUser = await api.login({ username: data.username, password: data.password });
+        setUser(loggedInUser);
+      }
       setIsAuthModalOpen(false);
     } catch (err: any) {
-      alert(err.message);
+      setAuthError(err.message);
     }
   };
 
@@ -277,18 +248,7 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-2 sm:gap-4">
-            <button 
-              onClick={() => setIsAuthModalOpen(true)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-semibold transition-all",
-                !user ? "bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20" : (darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-800 hover:bg-gray-200")
-              )}
-            >
-              <ArrowRightLeft size={16} />
-              <span className="hidden sm:inline">{user ? 'Switch Profile' : 'Select Profile'}</span>
-            </button>
-
-            {user && (
+            {user ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <button 
                   onClick={() => setIsProfileModalOpen(true)}
@@ -320,6 +280,14 @@ export default function App() {
                   <LogOut size={18} />
                 </button>
               </div>
+            ) : (
+              <button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary text-white rounded-full text-sm font-semibold hover:bg-primary-hover transition-all"
+              >
+                <LogIn size={16} />
+                <span className="hidden sm:inline">Login</span>
+              </button>
             )}
 
             <button 
@@ -885,7 +853,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Profile Switcher Modal */}
+      {/* Auth Modal */}
       <AnimatePresence>
         {isAuthModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
@@ -893,7 +861,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => user && setIsAuthModalOpen(false)}
+              onClick={() => setIsAuthModalOpen(false)}
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div 
@@ -907,104 +875,74 @@ export default function App() {
             >
               <div className="text-center space-y-2 mb-8">
                 <h2 className="text-2xl font-bold tracking-tight">
-                  {isCreatingProfile ? 'Create New Profile' : 'Select Profile'}
+                  {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
                 </h2>
                 <p className={cn("text-sm font-medium", darkMode ? "text-gray-300" : "text-gray-600")}>
-                  {isCreatingProfile ? 'Enter a name for the new profile' : 'Choose a profile to continue tracking'}
+                  {authMode === 'login' ? 'Access your body metrics history' : 'Start tracking your health journey'}
                 </p>
               </div>
 
-              {isCreatingProfile ? (
-                <form onSubmit={handleCreateProfile} className="space-y-4">
+              <form onSubmit={handleAuth} className="space-y-4">
+                {authMode === 'register' && (
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Profile Name</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Full Name</label>
                     <input 
-                      value={newProfileName}
-                      onChange={(e) => setNewProfileName(e.target.value)}
+                      name="name"
                       required
-                      autoFocus
                       className={cn(
                         "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                         darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                       )}
-                      placeholder="e.g. Dad, Mom, Brother"
+                      placeholder="John Doe"
                     />
                   </div>
-                  <div className="flex gap-3">
-                    <button 
-                      type="button"
-                      onClick={() => setIsCreatingProfile(false)}
-                      className={cn(
-                        "flex-1 py-3 rounded-xl font-semibold transition-all",
-                        darkMode ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
-                      )}
-                    >
-                      Back
-                    </button>
-                    <button 
-                      type="submit"
-                      className="flex-1 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
-                    >
-                      Create
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="space-y-3">
-                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                    {allUsers.map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => handleSwitchUser(u.id)}
-                        className={cn(
-                          "w-full flex items-center justify-between p-4 rounded-2xl border transition-all group",
-                          user?.id === u.id 
-                            ? (darkMode ? "bg-primary/20 border-primary text-white" : "bg-primary-light border-primary/20 text-primary-dark")
-                            : (darkMode ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" : "bg-white border-gray-200 text-gray-700 hover:border-primary/20")
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          {u.profilePic ? (
-                            <img 
-                              src={u.profilePic} 
-                              alt={u.name} 
-                              className="w-10 h-10 rounded-full object-cover border border-primary/20"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center text-primary-dark">
-                              <UserIcon size={20} />
-                            </div>
-                          )}
-                          <span className="font-semibold">{u.name}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={(e) => handleDeleteUser(e, u.id)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                            title="Delete Profile"
-                          >
-                            <LogOut size={16} className="rotate-180" />
-                          </button>
-                          {user?.id === u.id && <CheckCircle2 size={18} className="text-primary" />}
-                          {user?.id !== u.id && <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  <button 
-                    onClick={() => setIsCreatingProfile(true)}
+                )}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Username</label>
+                  <input 
+                    name="username"
+                    required
                     className={cn(
-                      "w-full py-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 font-bold transition-all mt-4",
-                      darkMode ? "border-white/10 text-gray-400 hover:border-primary/50 hover:text-primary" : "border-gray-200 text-gray-500 hover:border-primary/50 hover:text-primary"
+                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                     )}
-                  >
-                    <UserCircle size={20} />
-                    Add New Profile
-                  </button>
+                    placeholder="johndoe"
+                  />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Password</label>
+                  <input 
+                    name="password"
+                    type="password"
+                    required
+                    className={cn(
+                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                    )}
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                {authError && (
+                  <p className="text-xs text-red-500 font-medium">{authError}</p>
+                )}
+
+                <button 
+                  type="submit"
+                  className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
+                >
+                  {authMode === 'login' ? 'Login' : 'Sign Up'}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button 
+                  onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                  className="text-xs font-medium text-primary hover:text-primary-hover transition-colors"
+                >
+                  {authMode === 'login' ? "Don't have an account? Sign up" : "Already have an account? Login"}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
