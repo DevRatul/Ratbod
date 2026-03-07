@@ -124,18 +124,34 @@ export default function App() {
   };
 
   const handleSaveMetrics = async () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
     if (!metrics) return;
 
-    await api.saveMetrics({
+    const entry = {
+      id: Date.now(),
+      date: new Date().toISOString(),
       ...metricData,
       ...metrics
-    });
+    };
+
+    if (user) {
+      try {
+        await api.saveMetrics(entry);
+        setHistoryRefreshTrigger(prev => prev + 1);
+        alert('Metrics saved to your account history!');
+      } catch (err) {
+        console.error('Failed to save to account:', err);
+        saveToLocalHistory(entry);
+      }
+    } else {
+      saveToLocalHistory(entry);
+    }
+  };
+
+  const saveToLocalHistory = (entry: any) => {
+    const localHistory = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+    localStorage.setItem('ratbod_history', JSON.stringify([entry, ...localHistory]));
     setHistoryRefreshTrigger(prev => prev + 1);
-    alert('Metrics saved to your history!');
+    alert('Metrics saved to your local history!');
   };
 
   // Convert inputs to metric for calculations
@@ -510,6 +526,21 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveMetrics}
+              disabled={!metrics}
+              className={cn(
+                "w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+                !metrics 
+                  ? (darkMode ? "bg-white/5 text-gray-600" : "bg-gray-100 text-gray-400")
+                  : "bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20"
+              )}
+            >
+              <History size={18} />
+              Save to History
+            </button>
           </div>
         </section>
 
@@ -527,18 +558,16 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-semibold tracking-tight">Analysis Results</h2>
                   <div className="flex items-center gap-2">
-                    {user && (
-                      <button 
-                        onClick={handleSaveMetrics}
-                        className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                          darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        )}
-                      >
-                        <History size={16} />
-                        Save
-                      </button>
-                    )}
+                    <button 
+                      onClick={handleSaveMetrics}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                        darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      )}
+                    >
+                      <History size={16} />
+                      Save
+                    </button>
                     <button 
                       onClick={handleDownloadPdf}
                       disabled={isGeneratingPdf}
@@ -724,13 +753,12 @@ export default function App() {
                   </div>
 
                   {/* History Section */}
-                  {user && (
-                    <HistoryComponent 
-                      darkMode={darkMode} 
-                      unit={unit} 
-                      refreshTrigger={historyRefreshTrigger} 
-                    />
-                  )}
+                  <HistoryComponent 
+                    darkMode={darkMode} 
+                    unit={unit} 
+                    refreshTrigger={historyRefreshTrigger} 
+                    isLoggedIn={!!user}
+                  />
 
                 {/* Hidden Report for PDF Generation (Off-screen) */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
