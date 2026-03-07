@@ -43,6 +43,7 @@ import {
   type BodyData
 } from './utils/calculations';
 import { api } from './services/api';
+import Goals from './components/Goals';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -820,6 +821,17 @@ export default function App() {
           </AnimatePresence>
         </section>
       </main>
+
+      {user && (
+        <div className="max-w-5xl mx-auto px-6 pb-12">
+          <Goals 
+            darkMode={darkMode} 
+            unit={unit} 
+            currentWeight={metricData.weight} 
+            currentBodyFat={metrics?.bodyFat}
+          />
+        </div>
+      )}
 
       {/* Footer */}
       <footer className={cn(

@@ -70,4 +70,19 @@ export const api = {
     if (!res.ok) return [];
     return handleResponse(res);
   },
+  
+  async getGoals() {
+    const res = await fetch('/api/goals');
+    if (!res.ok) return null;
+    return handleResponse(res);
+  },
+
+  async saveGoal(data: any) {
+    const res = await fetch('/api/goals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
 };

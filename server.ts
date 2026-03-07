@@ -43,6 +43,16 @@ db.exec(`
     bodyFat REAL,
     FOREIGN KEY(userId) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    targetWeight REAL,
+    targetBodyFat REAL,
+    dailyCalorieGoal INTEGER,
+    targetDate TEXT,
+    FOREIGN KEY(userId) REFERENCES users(id)
+  );
 `);
 
 const app = express();
@@ -154,6 +164,33 @@ app.post("/api/metrics", authenticate, (req: any, res) => {
 app.get("/api/metrics", authenticate, (req: any, res) => {
   const metrics = db.prepare("SELECT * FROM metrics WHERE userId = ? ORDER BY date DESC").all(req.user.id);
   res.json(metrics);
+});
+
+// Goals Routes
+app.get("/api/goals", authenticate, (req: any, res) => {
+  const goal = db.prepare("SELECT * FROM goals WHERE userId = ? ORDER BY id DESC LIMIT 1").get(req.user.id);
+  res.json(goal || null);
+});
+
+app.post("/api/goals", authenticate, (req: any, res) => {
+  const { targetWeight, targetBodyFat, dailyCalorieGoal, targetDate } = req.body;
+  
+  const existingGoal = db.prepare("SELECT id FROM goals WHERE userId = ?").get(req.user.id);
+  
+  if (existingGoal) {
+    db.prepare(`
+      UPDATE goals 
+      SET targetWeight = ?, targetBodyFat = ?, dailyCalorieGoal = ?, targetDate = ?
+      WHERE userId = ?
+    `).run(targetWeight, targetBodyFat, dailyCalorieGoal, targetDate, req.user.id);
+  } else {
+    db.prepare(`
+      INSERT INTO goals (userId, targetWeight, targetBodyFat, dailyCalorieGoal, targetDate)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(req.user.id, targetWeight, targetBodyFat, dailyCalorieGoal, targetDate);
+  }
+  
+  res.json({ success: true });
 });
 
 async function startServer() {
