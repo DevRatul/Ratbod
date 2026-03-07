@@ -85,4 +85,37 @@ export const api = {
     });
     return handleResponse(res);
   },
+
+  async getUsers() {
+    const res = await fetch('/api/users');
+    if (!res.ok) return [];
+    return handleResponse(res);
+  },
+
+  async switchUser(id: number) {
+    const res = await fetch('/api/users/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    return handleResponse(res);
+  },
+
+  async createProfile(name: string) {
+    const res = await fetch('/api/users/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    return handleResponse(res);
+  },
+
+  async deleteUser(id: number) {
+    const res = await fetch('/api/users/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    return handleResponse(res);
+  },
 };
