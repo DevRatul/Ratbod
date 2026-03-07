@@ -12,7 +12,8 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("ratbod.db");
+const dbPath = process.env.VERCEL ? "/tmp/ratbod.db" : "ratbod.db";
+const db = new Database(dbPath);
 const JWT_SECRET = process.env.JWT_SECRET || "ratbod-secret-key-123";
 
 // Initialize Database
@@ -193,23 +194,41 @@ app.post("/api/goals", authenticate, (req: any, res) => {
   res.json({ success: true });
 });
 
-async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+async function setupMiddlewares() {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "dist")));
+    // The SPA fallback is handled by vercel.json in production, 
+    // but we keep this for other production environments
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      if (fs.existsSync(path.join(__dirname, "dist", "index.html"))) {
+        res.sendFile(path.join(__dirname, "dist", "index.html"));
+      } else {
+        res.status(404).send("Not Found");
+      }
     });
   }
+}
 
+// Initialize middlewares
+setupMiddlewares();
+
+async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+// Export for Vercel
+export default app;
+
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  startServer();
+} else if (!process.env.VERCEL) {
+  startServer();
+}
