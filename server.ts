@@ -2,77 +2,59 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
 
-console.log("Server starting up...");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const dbPath = process.env.VERCEL ? "/tmp/ratbod.db" : "ratbod.db";
+const db = new Database(dbPath);
 const JWT_SECRET = process.env.JWT_SECRET || "ratbod-secret-key-123";
-let db: any;
 
-try {
-  console.log("Loading better-sqlite3...");
-  const { default: Database } = await import("better-sqlite3");
-  console.log(`Initializing database at ${dbPath}`);
-  db = new Database(dbPath);
-  
-  // Initialize Database
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE,
-      password TEXT,
-      name TEXT,
-      profilePic TEXT
-    );
+// Initialize Database
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT,
+    name TEXT,
+    profilePic TEXT
+  );
 
-    CREATE TABLE IF NOT EXISTS metrics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER,
-      date TEXT,
-      gender TEXT,
-      age INTEGER,
-      height REAL,
-      weight REAL,
-      waist REAL,
-      neck REAL,
-      hip REAL,
-      activityLevel TEXT,
-      bmi REAL,
-      bmr REAL,
-      tdee REAL,
-      bodyFat REAL,
-      FOREIGN KEY(userId) REFERENCES users(id)
-    );
+  CREATE TABLE IF NOT EXISTS metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    date TEXT,
+    gender TEXT,
+    age INTEGER,
+    height REAL,
+    weight REAL,
+    waist REAL,
+    neck REAL,
+    hip REAL,
+    activityLevel TEXT,
+    bmi REAL,
+    bmr REAL,
+    tdee REAL,
+    bodyFat REAL,
+    FOREIGN KEY(userId) REFERENCES users(id)
+  );
 
-    CREATE TABLE IF NOT EXISTS goals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER,
-      targetWeight REAL,
-      targetBodyFat REAL,
-      dailyCalorieGoal INTEGER,
-      targetDate TEXT,
-      FOREIGN KEY(userId) REFERENCES users(id)
-    );
-  `);
-  console.log("Database initialized successfully");
-} catch (error) {
-  console.error("Database initialization failed:", error);
-  // Fallback to in-memory if file fails (though /tmp should work)
-  try {
-    const { default: Database } = await import("better-sqlite3");
-    db = new Database(":memory:");
-    console.log("Fallback to in-memory database successful");
-  } catch (innerError) {
-    console.error("Critical error: better-sqlite3 could not be loaded at all:", innerError);
-  }
-}
+  CREATE TABLE IF NOT EXISTS goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    targetWeight REAL,
+    targetBodyFat REAL,
+    dailyCalorieGoal INTEGER,
+    targetDate TEXT,
+    FOREIGN KEY(userId) REFERENCES users(id)
+  );
+`);
 
 const app = express();
 const PORT = 3000;
@@ -81,13 +63,9 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Multer setup for profile pictures
-const uploadDir = process.env.VERCEL ? "/tmp/uploads" : path.join(__dirname, "uploads");
+const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
-  try {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  } catch (err) {
-    console.error("Failed to create upload directory:", err);
-  }
+  fs.mkdirSync(uploadDir);
 }
 
 const storage = multer.diskStorage({
@@ -119,54 +97,30 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 // Auth Routes
-app.get("/api/users", (req, res) => {
-  const users = db.prepare("SELECT id, username, name, profilePic FROM users").all();
-  res.json(users);
-});
-
-app.post("/api/users/switch", (req, res) => {
-  const { id } = req.body;
-  const user: any = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
-  res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-  res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic });
-});
-
-app.post("/api/users/create", (req, res) => {
-  const { name } = req.body;
-  const username = `user_${Date.now()}`;
-  const password = "default_password"; // Not really used if we switch via ID
+app.post("/api/register", (req, res) => {
+  const { username, password, name } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   try {
     const stmt = db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)");
     const info = stmt.run(username, hashedPassword, name || username);
-    const newUser: any = db.prepare("SELECT id, username, name, profilePic FROM users WHERE id = ?").get(info.lastInsertRowid);
-    
-    // Automatically log in as the new user
-    const token = jwt.sign({ id: newUser.id, username: newUser.username }, JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    
-    res.json(newUser);
+    res.json({ id: info.lastInsertRowid });
   } catch (err: any) {
-    res.status(400).json({ error: "Failed to create user" });
+    res.status(400).json({ error: "Username already exists" });
   }
 });
 
-app.post("/api/users/delete", authenticate, (req: any, res) => {
-  const { id } = req.body;
-  db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(id);
-  if (req.user.id === id) {
-    res.clearCookie("token");
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  const user: any = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ error: "Invalid credentials" });
   }
-  res.json({ success: true });
+
+  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+  res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+  res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -177,23 +131,6 @@ app.post("/api/logout", (req, res) => {
 app.get("/api/me", authenticate, (req: any, res) => {
   const user: any = db.prepare("SELECT id, username, name, profilePic FROM users WHERE id = ?").get(req.user.id);
   res.json(user);
-});
-
-app.post("/api/users/delete", authenticate, (req: any, res) => {
-  const { id } = req.body;
-  
-  // Don't allow deleting yourself if you are the only one? Or just allow it.
-  // Actually, let's just allow it.
-  
-  db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(id);
-  
-  if (req.user.id === id) {
-    res.clearCookie("token");
-  }
-  
-  res.json({ success: true });
 });
 
 // User Profile Routes
@@ -257,31 +194,20 @@ app.post("/api/goals", authenticate, (req: any, res) => {
   res.json({ success: true });
 });
 
-// Global error handler
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({ error: "Internal server error" });
-});
-
 async function setupMiddlewares() {
-  // On Vercel, we don't need to serve static files or run Vite
-  // because Vercel handles routing and static assets via vercel.json
-  if (process.env.VERCEL) {
-    console.log("Running on Vercel, skipping Vite/Static middleware");
-    return;
-  }
-
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.join(__dirname, "..", "dist")));
+  } else if (process.env.NODE_ENV === "production") {
+    app.use(express.static(path.join(__dirname, "dist")));
+    // The SPA fallback is handled by vercel.json in production, 
+    // but we keep this for other production environments
     app.get("*", (req, res) => {
-      if (fs.existsSync(path.join(__dirname, "..", "dist", "index.html"))) {
-        res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+      if (fs.existsSync(path.join(__dirname, "dist", "index.html"))) {
+        res.sendFile(path.join(__dirname, "dist", "index.html"));
       } else {
         res.status(404).send("Not Found");
       }
@@ -290,11 +216,7 @@ async function setupMiddlewares() {
 }
 
 // Initialize middlewares
-setupMiddlewares().then(() => {
-  console.log("Middlewares initialized");
-}).catch(err => {
-  console.error("Failed to initialize middlewares:", err);
-});
+setupMiddlewares();
 
 async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {

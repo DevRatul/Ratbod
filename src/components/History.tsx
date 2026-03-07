@@ -21,54 +21,25 @@ interface HistoryProps {
   darkMode: boolean;
   unit: 'metric' | 'imperial';
   refreshTrigger?: number;
-  isLoggedIn: boolean;
 }
 
-export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: HistoryProps) {
+export default function History({ darkMode, unit, refreshTrigger }: HistoryProps) {
   const [history, setHistory] = useState<MetricEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchHistory();
-  }, [refreshTrigger, isLoggedIn]);
+  }, [refreshTrigger]);
 
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
-      let data: MetricEntry[] = [];
-      
-      // Always get local history
-      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      
-      if (isLoggedIn) {
-        const cloudData = await api.getMetricsHistory();
-        // Merge and sort by date descending
-        // We use a Map to avoid duplicates if we have IDs
-        const merged = [...cloudData, ...localData].sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        data = merged;
-      } else {
-        data = localData.sort((a: any, b: any) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-      }
-      
+      const data = await api.getMetricsHistory();
       setHistory(data);
     } catch (error) {
       console.error('Failed to fetch history:', error);
-      // Fallback to local on error
-      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      setHistory(localData);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const clearLocalHistory = () => {
-    if (window.confirm('Are you sure you want to clear your local history? This will not affect your account history.')) {
-      localStorage.removeItem('ratbod_history');
-      fetchHistory();
     }
   };
 
@@ -112,26 +83,12 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h3 className={cn("text-lg font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
-            Measurement History
-          </h3>
-          <span className={cn("text-xs font-bold uppercase tracking-widest opacity-40")}>
-            {history.length} Entries
-          </span>
-        </div>
-        
-        {history.length > 0 && (
-          <button
-            onClick={clearLocalHistory}
-            className={cn(
-              "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all",
-              darkMode ? "bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400" : "bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600"
-            )}
-          >
-            Clear Local
-          </button>
-        )}
+        <h3 className={cn("text-lg font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
+          Measurement History
+        </h3>
+        <span className={cn("text-xs font-bold uppercase tracking-widest opacity-40")}>
+          {history.length} Entries
+        </span>
       </div>
 
       <div className={cn(
