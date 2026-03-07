@@ -13,6 +13,7 @@ import {
   Activity, 
   Info,
   ChevronRight,
+  ChevronDown,
   RefreshCw,
   CheckCircle2,
   Sun,
@@ -74,7 +75,7 @@ export default function App() {
   const [waist, setWaist] = useState<string>(''); // cm or inches
   const [neck, setNeck] = useState<string>(''); // cm or inches
   const [hip, setHip] = useState<string>(''); // cm or inches (for female)
-  const [activityLevel, setActivityLevel] = useState<ActivityLevel>('moderately_active');
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>('sedentary');
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
@@ -485,43 +486,28 @@ export default function App() {
             )}
 
             {/* Activity Level */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
                 <Activity size={14} /> Activity Level
               </label>
-              <div className="space-y-2">
-                {activityOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setActivityLevel(option.value)}
-                    className={cn(
-                      "w-full px-4 py-3 rounded-xl border text-left transition-all group",
-                      activityLevel === option.value
-                        ? (darkMode ? "bg-primary border-primary" : "bg-primary-light border-primary/20 ring-1 ring-primary/20")
-                        : (darkMode ? "bg-white/5 border-white/10 hover:border-primary/50" : "bg-white border-gray-200 hover:border-primary/20")
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className={cn(
-                          "text-sm font-bold",
-                          activityLevel === option.value ? (darkMode ? "text-white" : "text-primary-dark") : (darkMode ? "text-gray-300" : "text-gray-800")
-                        )}>
-                          {option.label}
-                        </p>
-                        <p className={cn("text-xs font-medium", darkMode ? "text-white/60" : "text-gray-500")}>{option.desc}</p>
-                      </div>
-                      <div className={cn(
-                        "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
-                        activityLevel === option.value 
-                          ? (darkMode ? "bg-white border-white text-primary" : "bg-primary border-primary text-white") 
-                          : (darkMode ? "border-white/20 group-hover:border-primary/50" : "border-gray-300 group-hover:border-primary/30")
-                      )}>
-                        {activityLevel === option.value && <CheckCircle2 size={12} />}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+              <div className="relative">
+                <select
+                  value={activityLevel}
+                  onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)}
+                  className={cn(
+                    "w-full appearance-none border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer",
+                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                  )}
+                >
+                  {activityOptions.map((option) => (
+                    <option key={option.value} value={option.value} className={darkMode ? "bg-[#0F0F0F] text-white" : "bg-white text-gray-900"}>
+                      {option.label} — {option.desc}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                  <ChevronDown size={16} />
+                </div>
               </div>
             </div>
           </div>
@@ -713,27 +699,28 @@ export default function App() {
                 </div>
 
                   {/* Ideal Weight Section */}
-                  <div className="bg-primary-dark text-white p-8 rounded-3xl shadow-lg relative overflow-hidden">
-                    <div className="relative z-10 space-y-6">
+                  <div className="bg-primary-dark text-white px-6 py-3 rounded-xl shadow-lg relative overflow-hidden">
+                    <div className="relative z-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
                       <div className="flex items-center gap-2">
-                        <Scale size={18} className="text-primary-light/60" />
-                        <h3 className="text-lg font-bold">Ideal Body Weight</h3>
+                        <Scale size={14} className="text-primary-light/60" />
+                        <h3 className="text-xs font-black uppercase tracking-widest">Ideal Body Weight</h3>
                       </div>
-                      <div className="grid grid-cols-2 gap-8">
-                        <div>
-                          <p className="text-xs text-primary-light/60 uppercase tracking-widest font-black mb-1">Metric</p>
-                          <p className="text-3xl font-light tracking-tighter">{metrics.idealWeight.kg.toFixed(1)} <span className="text-sm opacity-60">kg</span></p>
+                      
+                      <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-primary-light/40 uppercase font-black">Metric</span>
+                          <p className="text-lg font-light tracking-tighter">{metrics.idealWeight.kg.toFixed(1)}<span className="text-[10px] opacity-40 ml-0.5">kg</span></p>
                         </div>
-                        <div>
-                          <p className="text-xs text-primary-light/60 uppercase tracking-widest font-black mb-1">Imperial</p>
-                          <p className="text-3xl font-light tracking-tighter">{metrics.idealWeight.lb.toFixed(1)} <span className="text-sm opacity-60">lb</span></p>
+                        <div className="w-px h-3 bg-white/10" />
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-primary-light/40 uppercase font-black">Imperial</span>
+                          <p className="text-lg font-light tracking-tighter">{metrics.idealWeight.lb.toFixed(1)}<span className="text-[10px] opacity-40 ml-0.5">lb</span></p>
                         </div>
                       </div>
                       
-                      <p className="text-[10px] text-primary-light/40 italic font-bold">Based on the Devine Formula for {gender === 'male' ? 'men' : 'women'}.</p>
+                      <p className="text-[8px] text-primary-light/30 italic font-bold hidden sm:block">Devine Formula ({gender === 'male' ? 'M' : 'F'})</p>
                     </div>
-                    {/* Decorative background element */}
-                    <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-primary rounded-full blur-3xl opacity-20" />
+                    <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary rounded-full blur-2xl opacity-10" />
                   </div>
 
                   {/* History Section */}

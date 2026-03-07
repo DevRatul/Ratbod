@@ -106,13 +106,13 @@ export default function History({ darkMode, unit, refreshTrigger }: HistoryProps
                 <th className="px-6 py-4">Weight</th>
                 <th className="px-6 py-4 text-center">BMI</th>
                 <th className="px-6 py-4 text-center">Body Fat</th>
-                <th className="px-6 py-4 text-right">Trend</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {history.map((entry, index) => {
                 const prevEntry = history[index + 1];
                 const weightDiff = prevEntry ? entry.weight - prevEntry.weight : 0;
+                const displayDiff = unit === 'metric' ? weightDiff : weightDiff * 2.20462;
 
                 return (
                   <motion.tr 
@@ -137,10 +137,26 @@ export default function History({ darkMode, unit, refreshTrigger }: HistoryProps
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Scale size={14} className="text-primary/60" />
-                        <span className={cn("text-sm font-bold", darkMode ? "text-white" : "text-gray-900")}>
-                          {formatWeight(entry.weight)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <Scale size={14} className="text-primary/60" />
+                          <span className={cn("text-sm font-bold", darkMode ? "text-white" : "text-gray-900")}>
+                            {formatWeight(entry.weight)}
+                          </span>
+                        </div>
+                        
+                        {prevEntry && (
+                          <div className={cn(
+                            "flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-black",
+                            weightDiff < 0 ? "bg-emerald-500/10 text-emerald-500" : 
+                            weightDiff > 0 ? "bg-red-500/10 text-red-500" : 
+                            "bg-gray-500/10 text-gray-400"
+                          )}>
+                            {weightDiff < 0 ? <TrendingDown size={10} /> : 
+                             weightDiff > 0 ? <TrendingUp size={10} /> : 
+                             <Minus size={10} />}
+                            {weightDiff !== 0 && Math.abs(displayDiff).toFixed(1)}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -158,19 +174,6 @@ export default function History({ darkMode, unit, refreshTrigger }: HistoryProps
                           {entry.bodyFat.toFixed(1)}%
                         </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {prevEntry ? (
-                        <div className={cn(
-                          "flex items-center justify-end gap-1 text-xs font-bold",
-                          weightDiff < 0 ? "text-emerald-500" : weightDiff > 0 ? "text-red-500" : "text-gray-400"
-                        )}>
-                          {weightDiff < 0 ? <TrendingDown size={14} /> : weightDiff > 0 ? <TrendingUp size={14} /> : <Minus size={14} />}
-                          {Math.abs(weightDiff).toFixed(1)}
-                        </div>
-                      ) : (
-                        <span className="text-xs font-bold text-gray-400">—</span>
-                      )}
                     </td>
                   </motion.tr>
                 );
