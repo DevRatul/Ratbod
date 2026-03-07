@@ -44,6 +44,7 @@ import {
 } from './utils/calculations';
 import { api } from './services/api';
 import Goals from './components/Goals';
+import HistoryComponent from './components/History';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -76,6 +77,7 @@ export default function App() {
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('moderately_active');
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,6 +133,7 @@ export default function App() {
       ...metricData,
       ...metrics
     });
+    setHistoryRefreshTrigger(prev => prev + 1);
     alert('Metrics saved to your history!');
   };
 
@@ -709,29 +712,38 @@ export default function App() {
                   )} />
                 </div>
 
-                {/* Ideal Weight Section */}
-                <div className="bg-primary-dark text-white p-8 rounded-3xl shadow-lg relative overflow-hidden">
-                  <div className="relative z-10 space-y-6">
-                    <div className="flex items-center gap-2">
-                      <Scale size={18} className="text-primary-light/60" />
-                      <h3 className="text-lg font-bold">Ideal Body Weight</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-8">
-                      <div>
-                        <p className="text-xs text-primary-light/60 uppercase tracking-widest font-black mb-1">Metric</p>
-                        <p className="text-3xl font-light tracking-tighter">{metrics.idealWeight.kg.toFixed(1)} <span className="text-sm opacity-60">kg</span></p>
+                  {/* Ideal Weight Section */}
+                  <div className="bg-primary-dark text-white p-8 rounded-3xl shadow-lg relative overflow-hidden">
+                    <div className="relative z-10 space-y-6">
+                      <div className="flex items-center gap-2">
+                        <Scale size={18} className="text-primary-light/60" />
+                        <h3 className="text-lg font-bold">Ideal Body Weight</h3>
                       </div>
-                      <div>
-                        <p className="text-xs text-primary-light/60 uppercase tracking-widest font-black mb-1">Imperial</p>
-                        <p className="text-3xl font-light tracking-tighter">{metrics.idealWeight.lb.toFixed(1)} <span className="text-sm opacity-60">lb</span></p>
+                      <div className="grid grid-cols-2 gap-8">
+                        <div>
+                          <p className="text-xs text-primary-light/60 uppercase tracking-widest font-black mb-1">Metric</p>
+                          <p className="text-3xl font-light tracking-tighter">{metrics.idealWeight.kg.toFixed(1)} <span className="text-sm opacity-60">kg</span></p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-primary-light/60 uppercase tracking-widest font-black mb-1">Imperial</p>
+                          <p className="text-3xl font-light tracking-tighter">{metrics.idealWeight.lb.toFixed(1)} <span className="text-sm opacity-60">lb</span></p>
+                        </div>
                       </div>
+                      
+                      <p className="text-[10px] text-primary-light/40 italic font-bold">Based on the Devine Formula for {gender === 'male' ? 'men' : 'women'}.</p>
                     </div>
-                    
-                    <p className="text-[10px] text-primary-light/40 italic font-bold">Based on the Devine Formula for {gender === 'male' ? 'men' : 'women'}.</p>
+                    {/* Decorative background element */}
+                    <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-primary rounded-full blur-3xl opacity-20" />
                   </div>
-                  {/* Decorative background element */}
-                  <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-primary rounded-full blur-3xl opacity-20" />
-                </div>
+
+                  {/* History Section */}
+                  {user && (
+                    <HistoryComponent 
+                      darkMode={darkMode} 
+                      unit={unit} 
+                      refreshTrigger={historyRefreshTrigger} 
+                    />
+                  )}
 
                 {/* Hidden Report for PDF Generation (Off-screen) */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
