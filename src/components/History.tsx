@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Scale, Activity, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { Calendar, Scale, Activity, TrendingDown, TrendingUp, Minus, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -21,25 +21,80 @@ interface HistoryProps {
   darkMode: boolean;
   unit: 'metric' | 'imperial';
   refreshTrigger?: number;
+  isLoggedIn: boolean;
 }
 
-export default function History({ darkMode, unit, refreshTrigger }: HistoryProps) {
+export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: HistoryProps) {
   const [history, setHistory] = useState<MetricEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchHistory();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, isLoggedIn]);
 
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
-      const data = await api.getMetricsHistory();
+      let data: MetricEntry[] = [];
+      
+      // Always get local history
+      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      
+      if (isLoggedIn) {
+        const cloudData = await api.getMetricsHistory();
+        // Merge and sort by date descending
+        // We use a Map to avoid duplicates if we have IDs
+        const merged = [...cloudData, ...localData].sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        data = merged;
+      } else {
+        data = localData.sort((a: any, b: any) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+      }
+      
       setHistory(data);
     } catch (error) {
       console.error('Failed to fetch history:', error);
+      // Fallback to local on error
+      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      setHistory(localData);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const clearLocalHistory = () => {
+    if (window.confirm('Are you sure you want to clear your local history? This will not affect your account history.')) {
+      localStorage.removeItem('ratbod_history');
+      fetchHistory();
+    }
+  };
+
+  const deleteEntry = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this measurement?')) return;
+
+    try {
+      if (isLoggedIn) {
+        // Try to delete from cloud first if logged in
+        try {
+          await api.deleteMetric(id);
+        } catch (err) {
+          console.error('Failed to delete from cloud, might be a local entry:', err);
+        }
+      }
+
+      // Also remove from local storage if it exists there
+      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      const filteredLocal = localData.filter((entry: MetricEntry) => entry.id !== id);
+      localStorage.setItem('ratbod_history', JSON.stringify(filteredLocal));
+
+      // Refresh history
+      fetchHistory();
+    } catch (error) {
+      console.error('Failed to delete entry:', error);
+      alert('Failed to delete measurement. Please try again.');
     }
   };
 
@@ -83,12 +138,26 @@ export default function History({ darkMode, unit, refreshTrigger }: HistoryProps
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className={cn("text-lg font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
-          Measurement History
-        </h3>
-        <span className={cn("text-xs font-bold uppercase tracking-widest opacity-40")}>
-          {history.length} Entries
-        </span>
+        <div className="flex items-center gap-3">
+          <h3 className={cn("text-lg font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
+            Measurement History
+          </h3>
+          <span className={cn("text-xs font-bold uppercase tracking-widest opacity-40")}>
+            {history.length} Entries
+          </span>
+        </div>
+        
+        {history.length > 0 && (
+          <button
+            onClick={clearLocalHistory}
+            className={cn(
+              "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all",
+              darkMode ? "bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400" : "bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600"
+            )}
+          >
+            Clear Local
+          </button>
+        )}
       </div>
 
       <div className={cn(
@@ -106,6 +175,7 @@ export default function History({ darkMode, unit, refreshTrigger }: HistoryProps
                 <th className="px-6 py-4">Weight</th>
                 <th className="px-6 py-4 text-center">BMI</th>
                 <th className="px-6 py-4 text-center">Body Fat</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -174,6 +244,17 @@ export default function History({ darkMode, unit, refreshTrigger }: HistoryProps
                           {entry.bodyFat.toFixed(1)}%
                         </span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => deleteEntry(entry.id)}
+                        className={cn(
+                          "p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100",
+                          darkMode ? "hover:bg-red-500/10 text-gray-500 hover:text-red-400" : "hover:bg-red-50 text-gray-400 hover:text-red-600"
+                        )}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </motion.tr>
                 );

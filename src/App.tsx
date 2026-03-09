@@ -56,6 +56,8 @@ interface User {
   username: string;
   name: string;
   profilePic?: string;
+  birthdate?: string;
+  gender?: Gender;
 }
 
 export default function App() {
@@ -84,6 +86,27 @@ export default function App() {
   useEffect(() => {
     api.getMe().then(setUser);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      if (user.birthdate) {
+        const birthDate = new Date(user.birthdate);
+        const today = new Date();
+        let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          calculatedAge--;
+        }
+        setAge(calculatedAge.toString());
+      }
+      if (user.name) {
+        setName(user.name);
+      }
+      if (user.gender) {
+        setGender(user.gender);
+      }
+    }
+  }, [user]);
 
   const handleAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -212,8 +235,10 @@ export default function App() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
+      const reportName = user?.name || name || 'Guest';
+      const dateStr = new Date().toISOString().split('T')[0];
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`BodyMetrics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`${reportName}-${dateStr}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
     } finally {
@@ -389,9 +414,11 @@ export default function App() {
                   type="number" 
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
+                  readOnly={!!user?.birthdate}
                   className={cn(
                     "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900",
+                    user?.birthdate && "opacity-60 cursor-not-allowed"
                   )}
                   placeholder="25"
                 />
@@ -729,6 +756,7 @@ export default function App() {
                       darkMode={darkMode} 
                       unit={unit} 
                       refreshTrigger={historyRefreshTrigger} 
+                      isLoggedIn={!!user}
                     />
                   )}
 
@@ -884,18 +912,46 @@ export default function App() {
 
               <form onSubmit={handleAuth} className="space-y-4">
                 {authMode === 'register' && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Full Name</label>
-                    <input 
-                      name="name"
-                      required
-                      className={cn(
-                        "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                        darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                      )}
-                      placeholder="John Doe"
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Full Name</label>
+                      <input 
+                        name="name"
+                        required
+                        className={cn(
+                          "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                        )}
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Birthdate</label>
+                      <input 
+                        name="birthdate"
+                        type="date"
+                        required
+                        className={cn(
+                          "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Gender</label>
+                      <select 
+                        name="gender"
+                        required
+                        className={cn(
+                          "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                        )}
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                      </select>
+                    </div>
+                  </>
                 )}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Username</label>
@@ -1009,6 +1065,36 @@ export default function App() {
                       darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                     )}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Birthdate</label>
+                  <input 
+                    name="birthdate"
+                    type="date"
+                    defaultValue={user?.birthdate}
+                    required
+                    className={cn(
+                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Gender</label>
+                  <select 
+                    name="gender"
+                    defaultValue={user?.gender}
+                    required
+                    className={cn(
+                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                    )}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
                 </div>
 
                 <div className="flex gap-3">

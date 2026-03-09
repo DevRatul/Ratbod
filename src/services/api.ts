@@ -24,6 +24,7 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     return handleResponse(res);
   },
@@ -33,17 +34,23 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     return handleResponse(res);
   },
 
   async logout() {
-    const res = await fetch('/api/logout', { method: 'POST' });
+    const res = await fetch('/api/logout', { 
+      method: 'POST',
+      credentials: 'include',
+    });
     return handleResponse(res);
   },
 
   async getMe() {
-    const res = await fetch('/api/me');
+    const res = await fetch('/api/me', {
+      credentials: 'include',
+    });
     if (!res.ok) return null;
     return handleResponse(res);
   },
@@ -52,6 +59,7 @@ export const api = {
     const res = await fetch('/api/profile', {
       method: 'POST',
       body: formData,
+      credentials: 'include',
     });
     return handleResponse(res);
   },
@@ -61,18 +69,31 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     return handleResponse(res);
   },
 
   async getMetricsHistory() {
-    const res = await fetch('/api/metrics');
+    const res = await fetch('/api/metrics', {
+      credentials: 'include',
+    });
     if (!res.ok) return [];
+    return handleResponse(res);
+  },
+
+  async deleteMetric(id: number) {
+    const res = await fetch(`/api/metrics/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
     return handleResponse(res);
   },
   
   async getGoals() {
-    const res = await fetch('/api/goals');
+    const res = await fetch('/api/goals', {
+      credentials: 'include',
+    });
     if (!res.ok) return null;
     return handleResponse(res);
   },
@@ -82,6 +103,45 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    return handleResponse(res);
+  },
+
+  async getUsers() {
+    const res = await fetch('/api/users', {
+      credentials: 'include',
+    });
+    if (!res.ok) return [];
+    return handleResponse(res);
+  },
+
+  async switchUser(id: number) {
+    const res = await fetch('/api/users/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+      credentials: 'include',
+    });
+    return handleResponse(res);
+  },
+
+  async createProfile(name: string) {
+    const res = await fetch('/api/users/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+      credentials: 'include',
+    });
+    return handleResponse(res);
+  },
+
+  async deleteUser(id: number) {
+    const res = await fetch('/api/users/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+      credentials: 'include',
     });
     return handleResponse(res);
   },
