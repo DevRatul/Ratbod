@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
+import { createClient } from "@supabase/supabase-js";
 
 console.log("Server starting up...");
 const __filename = fileURLToPath(import.meta.url);
@@ -14,6 +15,19 @@ const __dirname = path.dirname(__filename);
 
 const dbPath = process.env.VERCEL ? "/tmp/ratbod.db" : "ratbod.db";
 const JWT_SECRET = process.env.JWT_SECRET || "ratbod-secret-key-123";
+
+// Supabase Configuration
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase: any;
+if (supabaseUrl && supabaseServiceKey) {
+  console.log("Initializing Supabase client...");
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+} else {
+  console.warn("Supabase credentials missing. Falling back to SQLite.");
+}
+
 let db: any;
 
 try {
@@ -147,13 +161,29 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 // Auth Routes
-app.post("/api/register", (req, res) => {
+app.post("/api/register", async (req, res) => {
   const { username, password, name, birthdate, gender } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required" });
   }
 
   const hashedPassword = bcrypt.hashSync(password, 10);
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("users")
+      .insert({ username, password: hashedPassword, name: name || username, birthdate: birthdate || null, gender: gender || null })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      return res.status(400).json({ error: "Registration failed: " + error.message });
+    }
+    return res.json({ success: true });
+  }
 
   try {
     const stmt = db.prepare("INSERT INTO users (username, password, name, birthdate, gender) VALUES (?, ?, ?, ?, ?)");
@@ -167,13 +197,27 @@ app.post("/api/register", (req, res) => {
   }
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required" });
   }
 
-  const user: any = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+  let user: any;
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", username)
+      .single();
+    
+    if (error || !data) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+    user = data;
+  } else {
+    user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+  }
 
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: "Invalid username or password" });
@@ -184,14 +228,32 @@ app.post("/api/login", (req, res) => {
   res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
 });
 
-app.get("/api/users", (req, res) => {
+app.get("/api/users", async (req, res) => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, username, name, profilePic");
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json(data);
+  }
   const users = db.prepare("SELECT id, username, name, profilePic FROM users").all();
   res.json(users);
 });
 
-app.post("/api/users/switch", (req, res) => {
+app.post("/api/users/switch", async (req, res) => {
   const { id } = req.body;
-  const user: any = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+  let user: any;
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error || !data) return res.status(404).json({ error: "User not found" });
+    user = data;
+  } else {
+    user = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+  }
 
   if (!user) {
     return res.status(404).json({ error: "User not found" });
@@ -202,11 +264,27 @@ app.post("/api/users/switch", (req, res) => {
   res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
 });
 
-app.post("/api/users/create", (req, res) => {
+app.post("/api/users/create", async (req, res) => {
   const { name, birthdate, gender } = req.body;
   const username = `user_${Date.now()}`;
   const password = "default_password"; // Not really used if we switch via ID
   const hashedPassword = bcrypt.hashSync(password, 10);
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("users")
+      .insert({ username, password: hashedPassword, name: name || username, birthdate: birthdate || null, gender: gender || null })
+      .select("id, username, name, profilePic, birthdate, gender")
+      .single();
+    
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Automatically log in as the new user
+    const token = jwt.sign({ id: data.id, username: data.username }, JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    
+    return res.json(data);
+  }
 
   try {
     const stmt = db.prepare("INSERT INTO users (username, password, name, birthdate, gender) VALUES (?, ?, ?, ?, ?)");
@@ -223,11 +301,17 @@ app.post("/api/users/create", (req, res) => {
   }
 });
 
-app.post("/api/users/delete", authenticate, (req: any, res) => {
+app.post("/api/users/delete", authenticate, async (req: any, res) => {
   const { id } = req.body;
-  db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(id);
+  if (supabase) {
+    await supabase.from("metrics").delete().eq("userId", id);
+    await supabase.from("goals").delete().eq("userId", id);
+    await supabase.from("users").delete().eq("id", id);
+  } else {
+    db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
+    db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
+    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+  }
   if (req.user.id === id) {
     res.clearCookie("token");
   }
@@ -239,15 +323,41 @@ app.post("/api/logout", (req, res) => {
   res.json({ success: true });
 });
 
-app.get("/api/me", authenticate, (req: any, res) => {
-  const user: any = db.prepare("SELECT id, username, name, profilePic, birthdate, gender FROM users WHERE id = ?").get(req.user.id);
+app.get("/api/me", authenticate, async (req: any, res) => {
+  let user: any;
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, username, name, profilePic, birthdate, gender")
+      .eq("id", req.user.id)
+      .single();
+    if (error) return res.status(400).json({ error: error.message });
+    user = data;
+  } else {
+    user = db.prepare("SELECT id, username, name, profilePic, birthdate, gender FROM users WHERE id = ?").get(req.user.id);
+  }
   res.json(user);
 });
 
 // User Profile Routes
-app.post("/api/profile", authenticate, upload.single("profilePic"), (req: any, res) => {
+app.post("/api/profile", authenticate, upload.single("profilePic"), async (req: any, res) => {
   const { name, birthdate, gender } = req.body;
   const profilePic = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+  if (supabase) {
+    const updateData: any = { name, birthdate, gender };
+    if (profilePic) updateData.profilePic = profilePic;
+    
+    const { data, error } = await supabase
+      .from("users")
+      .update(updateData)
+      .eq("id", req.user.id)
+      .select("id, username, name, profilePic, birthdate, gender")
+      .single();
+    
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json(data);
+  }
 
   if (profilePic) {
     db.prepare("UPDATE users SET name = ?, profilePic = ?, birthdate = ?, gender = ? WHERE id = ?").run(name, profilePic, birthdate, gender, req.user.id);
@@ -260,9 +370,17 @@ app.post("/api/profile", authenticate, upload.single("profilePic"), (req: any, r
 });
 
 // Metrics Routes
-app.post("/api/metrics", authenticate, (req: any, res) => {
+app.post("/api/metrics", authenticate, async (req: any, res) => {
   const { gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat } = req.body;
   const date = new Date().toISOString();
+
+  if (supabase) {
+    const { error } = await supabase
+      .from("metrics")
+      .insert({ userId: req.user.id, date, gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat });
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ success: true });
+  }
 
   const stmt = db.prepare(`
     INSERT INTO metrics (userId, date, gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat)
@@ -273,13 +391,31 @@ app.post("/api/metrics", authenticate, (req: any, res) => {
   res.json({ success: true });
 });
 
-app.get("/api/metrics", authenticate, (req: any, res) => {
+app.get("/api/metrics", authenticate, async (req: any, res) => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("metrics")
+      .select("*")
+      .eq("userId", req.user.id)
+      .order("date", { ascending: false });
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json(data);
+  }
   const metrics = db.prepare("SELECT * FROM metrics WHERE userId = ? ORDER BY date DESC").all(req.user.id);
   res.json(metrics);
 });
 
-app.delete("/api/metrics/:id", authenticate, (req: any, res) => {
+app.delete("/api/metrics/:id", authenticate, async (req: any, res) => {
   const { id } = req.params;
+  if (supabase) {
+    const { error } = await supabase
+      .from("metrics")
+      .delete()
+      .eq("id", id)
+      .eq("userId", req.user.id);
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ success: true });
+  }
   const stmt = db.prepare("DELETE FROM metrics WHERE id = ? AND userId = ?");
   const info = stmt.run(Number(id), req.user.id);
   
@@ -291,14 +427,47 @@ app.delete("/api/metrics/:id", authenticate, (req: any, res) => {
 });
 
 // Goals Routes
-app.get("/api/goals", authenticate, (req: any, res) => {
+app.get("/api/goals", authenticate, async (req: any, res) => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("goals")
+      .select("*")
+      .eq("userId", req.user.id)
+      .order("id", { ascending: false })
+      .limit(1)
+      .single();
+    if (error && error.code !== "PGRST116") return res.status(400).json({ error: error.message });
+    return res.json(data || null);
+  }
   const goal = db.prepare("SELECT * FROM goals WHERE userId = ? ORDER BY id DESC LIMIT 1").get(req.user.id);
   res.json(goal || null);
 });
 
-app.post("/api/goals", authenticate, (req: any, res) => {
+app.post("/api/goals", authenticate, async (req: any, res) => {
   const { targetWeight, targetBodyFat, dailyCalorieGoal, targetDate } = req.body;
   
+  if (supabase) {
+    const { data: existingGoal } = await supabase
+      .from("goals")
+      .select("id")
+      .eq("userId", req.user.id)
+      .single();
+    
+    if (existingGoal) {
+      const { error } = await supabase
+        .from("goals")
+        .update({ targetWeight, targetBodyFat, dailyCalorieGoal, targetDate })
+        .eq("userId", req.user.id);
+      if (error) return res.status(400).json({ error: error.message });
+    } else {
+      const { error } = await supabase
+        .from("goals")
+        .insert({ userId: req.user.id, targetWeight, targetBodyFat, dailyCalorieGoal, targetDate });
+      if (error) return res.status(400).json({ error: error.message });
+    }
+    return res.json({ success: true });
+  }
+
   const existingGoal = db.prepare("SELECT id FROM goals WHERE userId = ?").get(req.user.id);
   
   if (existingGoal) {
