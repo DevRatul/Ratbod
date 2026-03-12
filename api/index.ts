@@ -13,107 +13,18 @@ console.log("Server starting up...");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = process.env.VERCEL ? "/tmp/ratbod.db" : "ratbod.db";
 const JWT_SECRET = process.env.JWT_SECRET || "ratbod-secret-key-123";
 
 // Supabase Configuration
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-let supabase: any;
-if (supabaseUrl && supabaseServiceKey) {
-  console.log("Initializing Supabase client...");
-  supabase = createClient(supabaseUrl, supabaseServiceKey);
-} else {
-  console.warn("Supabase credentials missing. Falling back to SQLite.");
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("CRITICAL ERROR: Supabase credentials missing (VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY).");
+  console.error("Please set these in the AI Studio Settings menu.");
 }
 
-let db: any;
-
-try {
-  console.log("Loading better-sqlite3...");
-  const { default: Database } = await import("better-sqlite3");
-  console.log(`Initializing database at ${dbPath}`);
-  db = new Database(dbPath);
-  
-  // Initialize Database
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE,
-      password TEXT,
-      name TEXT,
-      profilePic TEXT,
-      birthdate TEXT,
-      gender TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS metrics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER,
-      date TEXT,
-      gender TEXT,
-      age INTEGER,
-      height REAL,
-      weight REAL,
-      waist REAL,
-      neck REAL,
-      hip REAL,
-      activityLevel TEXT,
-      bmi REAL,
-      bmr REAL,
-      tdee REAL,
-      bodyFat REAL,
-      FOREIGN KEY(userId) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS goals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER,
-      targetWeight REAL,
-      targetBodyFat REAL,
-      dailyCalorieGoal INTEGER,
-      targetDate TEXT,
-      FOREIGN KEY(userId) REFERENCES users(id)
-    );
-  `);
-
-  // Migration: Add birthdate column if it doesn't exist
-  try {
-    db.exec("ALTER TABLE users ADD COLUMN birthdate TEXT;");
-    console.log("Migration: Added birthdate column to users table");
-  } catch (err: any) {
-    if (err.message.includes("duplicate column name")) {
-      console.log("Migration: birthdate column already exists");
-    } else {
-      console.error("Migration failed:", err);
-    }
-  }
-
-  // Migration: Add gender column if it doesn't exist
-  try {
-    db.exec("ALTER TABLE users ADD COLUMN gender TEXT;");
-    console.log("Migration: Added gender column to users table");
-  } catch (err: any) {
-    if (err.message.includes("duplicate column name")) {
-      console.log("Migration: gender column already exists");
-    } else {
-      console.error("Migration failed:", err);
-    }
-  }
-
-  console.log("Database initialized successfully");
-} catch (error) {
-  console.error("Database initialization failed:", error);
-  // Fallback to in-memory if file fails (though /tmp should work)
-  try {
-    const { default: Database } = await import("better-sqlite3");
-    db = new Database(":memory:");
-    console.log("Fallback to in-memory database successful");
-  } catch (innerError) {
-    console.error("Critical error: better-sqlite3 could not be loaded at all:", innerError);
-  }
-}
+const supabase = createClient(supabaseUrl || "", supabaseServiceKey || "");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -161,15 +72,15 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 // Auth Routes
-app.post("/api/register", async (req, res) => {
-  const { username, password, name, birthdate, gender } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
-  }
+app.post("/api/register", async (req, res, next) => {
+  try {
+    const { username, password, name, birthdate, gender } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
 
-  const hashedPassword = bcrypt.hashSync(password, 10);
+    const hashedPassword = bcrypt.hashSync(password, 10);
 
-  if (supabase) {
     const { data, error } = await supabase
       .from("users")
       .insert({ username, password: hashedPassword, name: name || username, birthdate: birthdate || null, gender: gender || null })
@@ -183,94 +94,78 @@ app.post("/api/register", async (req, res) => {
       return res.status(400).json({ error: "Registration failed: " + error.message });
     }
     return res.json({ success: true });
-  }
-
-  try {
-    const stmt = db.prepare("INSERT INTO users (username, password, name, birthdate, gender) VALUES (?, ?, ?, ?, ?)");
-    stmt.run(username, hashedPassword, name || username, birthdate || null, gender || null);
-    res.json({ success: true });
-  } catch (err: any) {
-    if (err.message.includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "Username already exists" });
-    }
-    res.status(400).json({ error: "Registration failed" });
+  } catch (err) {
+    next(err);
   }
 });
 
-app.post("/api/login", async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
-  }
+app.post("/api/login", async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
 
-  let user: any;
-  if (supabase) {
-    const { data, error } = await supabase
+    const { data: user, error } = await supabase
       .from("users")
       .select("*")
       .eq("username", username)
       .single();
     
-    if (error || !data) {
+    if (error || !user) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
-    user = data;
-  } else {
-    user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
-  }
 
-  if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ error: "Invalid username or password" });
-  }
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
 
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
-  res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-  res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get("/api/users", async (req, res) => {
-  if (supabase) {
+app.get("/api/users", async (req, res, next) => {
+  try {
     const { data, error } = await supabase
       .from("users")
       .select("id, username, name, profilePic");
     if (error) return res.status(400).json({ error: error.message });
     return res.json(data);
+  } catch (err) {
+    next(err);
   }
-  const users = db.prepare("SELECT id, username, name, profilePic FROM users").all();
-  res.json(users);
 });
 
-app.post("/api/users/switch", async (req, res) => {
-  const { id } = req.body;
-  let user: any;
-  if (supabase) {
-    const { data, error } = await supabase
+app.post("/api/users/switch", async (req, res, next) => {
+  try {
+    const { id } = req.body;
+    const { data: user, error } = await supabase
       .from("users")
       .select("*")
       .eq("id", id)
       .single();
-    if (error || !data) return res.status(404).json({ error: "User not found" });
-    user = data;
-  } else {
-    user = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-  }
+    
+    if (error || !user) return res.status(404).json({ error: "User not found" });
 
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
+  } catch (err) {
+    next(err);
   }
-
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
-  res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-  res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
 });
 
-app.post("/api/users/create", async (req, res) => {
-  const { name, birthdate, gender } = req.body;
-  const username = `user_${Date.now()}`;
-  const password = "default_password"; // Not really used if we switch via ID
-  const hashedPassword = bcrypt.hashSync(password, 10);
+app.post("/api/users/create", async (req, res, next) => {
+  try {
+    const { name, birthdate, gender } = req.body;
+    const username = `user_${Date.now()}`;
+    const password = "default_password";
+    const hashedPassword = bcrypt.hashSync(password, 10);
 
-  if (supabase) {
     const { data, error } = await supabase
       .from("users")
       .insert({ username, password: hashedPassword, name: name || username, birthdate: birthdate || null, gender: gender || null })
@@ -279,43 +174,29 @@ app.post("/api/users/create", async (req, res) => {
     
     if (error) return res.status(400).json({ error: error.message });
     
-    // Automatically log in as the new user
     const token = jwt.sign({ id: data.id, username: data.username }, JWT_SECRET, { expiresIn: "7d" });
     res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
     
     return res.json(data);
-  }
-
-  try {
-    const stmt = db.prepare("INSERT INTO users (username, password, name, birthdate, gender) VALUES (?, ?, ?, ?, ?)");
-    const info = stmt.run(username, hashedPassword, name || username, birthdate || null, gender || null);
-    const newUser: any = db.prepare("SELECT id, username, name, profilePic, birthdate, gender FROM users WHERE id = ?").get(info.lastInsertRowid);
-    
-    // Automatically log in as the new user
-    const token = jwt.sign({ id: newUser.id, username: newUser.username }, JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    
-    res.json(newUser);
-  } catch (err: any) {
-    res.status(400).json({ error: "Failed to create user" });
+  } catch (err) {
+    next(err);
   }
 });
 
-app.post("/api/users/delete", authenticate, async (req: any, res) => {
-  const { id } = req.body;
-  if (supabase) {
+app.post("/api/users/delete", authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.body;
     await supabase.from("metrics").delete().eq("userId", id);
     await supabase.from("goals").delete().eq("userId", id);
     await supabase.from("users").delete().eq("id", id);
-  } else {
-    db.prepare("DELETE FROM metrics WHERE userId = ?").run(id);
-    db.prepare("DELETE FROM goals WHERE userId = ?").run(id);
-    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    
+    if (req.user.id === id) {
+      res.clearCookie("token");
+    }
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
-  if (req.user.id === id) {
-    res.clearCookie("token");
-  }
-  res.json({ success: true });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -323,28 +204,25 @@ app.post("/api/logout", (req, res) => {
   res.json({ success: true });
 });
 
-app.get("/api/me", authenticate, async (req: any, res) => {
-  let user: any;
-  if (supabase) {
-    const { data, error } = await supabase
+app.get("/api/me", authenticate, async (req: any, res, next) => {
+  try {
+    const { data: user, error } = await supabase
       .from("users")
       .select("id, username, name, profilePic, birthdate, gender")
       .eq("id", req.user.id)
       .single();
     if (error) return res.status(400).json({ error: error.message });
-    user = data;
-  } else {
-    user = db.prepare("SELECT id, username, name, profilePic, birthdate, gender FROM users WHERE id = ?").get(req.user.id);
+    res.json(user);
+  } catch (err) {
+    next(err);
   }
-  res.json(user);
 });
 
-// User Profile Routes
-app.post("/api/profile", authenticate, upload.single("profilePic"), async (req: any, res) => {
-  const { name, birthdate, gender } = req.body;
-  const profilePic = req.file ? `/uploads/${req.file.filename}` : undefined;
+app.post("/api/profile", authenticate, upload.single("profilePic"), async (req: any, res, next) => {
+  try {
+    const { name, birthdate, gender } = req.body;
+    const profilePic = req.file ? `/uploads/${req.file.filename}` : undefined;
 
-  if (supabase) {
     const updateData: any = { name, birthdate, gender };
     if (profilePic) updateData.profilePic = profilePic;
     
@@ -357,42 +235,28 @@ app.post("/api/profile", authenticate, upload.single("profilePic"), async (req: 
     
     if (error) return res.status(400).json({ error: error.message });
     return res.json(data);
+  } catch (err) {
+    next(err);
   }
-
-  if (profilePic) {
-    db.prepare("UPDATE users SET name = ?, profilePic = ?, birthdate = ?, gender = ? WHERE id = ?").run(name, profilePic, birthdate, gender, req.user.id);
-  } else {
-    db.prepare("UPDATE users SET name = ?, birthdate = ?, gender = ? WHERE id = ?").run(name, birthdate, gender, req.user.id);
-  }
-
-  const user: any = db.prepare("SELECT id, username, name, profilePic, birthdate, gender FROM users WHERE id = ?").get(req.user.id);
-  res.json(user);
 });
 
-// Metrics Routes
-app.post("/api/metrics", authenticate, async (req: any, res) => {
-  const { gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat } = req.body;
-  const date = new Date().toISOString();
+app.post("/api/metrics", authenticate, async (req: any, res, next) => {
+  try {
+    const { gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat } = req.body;
+    const date = new Date().toISOString();
 
-  if (supabase) {
     const { error } = await supabase
       .from("metrics")
       .insert({ userId: req.user.id, date, gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat });
     if (error) return res.status(400).json({ error: error.message });
     return res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
-
-  const stmt = db.prepare(`
-    INSERT INTO metrics (userId, date, gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  stmt.run(req.user.id, date, gender, age, height, weight, waist, neck, hip, activityLevel, bmi, bmr, tdee, bodyFat);
-  res.json({ success: true });
 });
 
-app.get("/api/metrics", authenticate, async (req: any, res) => {
-  if (supabase) {
+app.get("/api/metrics", authenticate, async (req: any, res, next) => {
+  try {
     const { data, error } = await supabase
       .from("metrics")
       .select("*")
@@ -400,14 +264,14 @@ app.get("/api/metrics", authenticate, async (req: any, res) => {
       .order("date", { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     return res.json(data);
+  } catch (err) {
+    next(err);
   }
-  const metrics = db.prepare("SELECT * FROM metrics WHERE userId = ? ORDER BY date DESC").all(req.user.id);
-  res.json(metrics);
 });
 
-app.delete("/api/metrics/:id", authenticate, async (req: any, res) => {
-  const { id } = req.params;
-  if (supabase) {
+app.delete("/api/metrics/:id", authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
     const { error } = await supabase
       .from("metrics")
       .delete()
@@ -415,20 +279,13 @@ app.delete("/api/metrics/:id", authenticate, async (req: any, res) => {
       .eq("userId", req.user.id);
     if (error) return res.status(400).json({ error: error.message });
     return res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
-  const stmt = db.prepare("DELETE FROM metrics WHERE id = ? AND userId = ?");
-  const info = stmt.run(Number(id), req.user.id);
-  
-  if (info.changes === 0) {
-    return res.status(404).json({ error: "Metric not found or unauthorized" });
-  }
-  
-  res.json({ success: true });
 });
 
-// Goals Routes
-app.get("/api/goals", authenticate, async (req: any, res) => {
-  if (supabase) {
+app.get("/api/goals", authenticate, async (req: any, res, next) => {
+  try {
     const { data, error } = await supabase
       .from("goals")
       .select("*")
@@ -438,15 +295,15 @@ app.get("/api/goals", authenticate, async (req: any, res) => {
       .single();
     if (error && error.code !== "PGRST116") return res.status(400).json({ error: error.message });
     return res.json(data || null);
+  } catch (err) {
+    next(err);
   }
-  const goal = db.prepare("SELECT * FROM goals WHERE userId = ? ORDER BY id DESC LIMIT 1").get(req.user.id);
-  res.json(goal || null);
 });
 
-app.post("/api/goals", authenticate, async (req: any, res) => {
-  const { targetWeight, targetBodyFat, dailyCalorieGoal, targetDate } = req.body;
-  
-  if (supabase) {
+app.post("/api/goals", authenticate, async (req: any, res, next) => {
+  try {
+    const { targetWeight, targetBodyFat, dailyCalorieGoal, targetDate } = req.body;
+    
     const { data: existingGoal } = await supabase
       .from("goals")
       .select("id")
@@ -466,24 +323,9 @@ app.post("/api/goals", authenticate, async (req: any, res) => {
       if (error) return res.status(400).json({ error: error.message });
     }
     return res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
-
-  const existingGoal = db.prepare("SELECT id FROM goals WHERE userId = ?").get(req.user.id);
-  
-  if (existingGoal) {
-    db.prepare(`
-      UPDATE goals 
-      SET targetWeight = ?, targetBodyFat = ?, dailyCalorieGoal = ?, targetDate = ?
-      WHERE userId = ?
-    `).run(targetWeight, targetBodyFat, dailyCalorieGoal, targetDate, req.user.id);
-  } else {
-    db.prepare(`
-      INSERT INTO goals (userId, targetWeight, targetBodyFat, dailyCalorieGoal, targetDate)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(req.user.id, targetWeight, targetBodyFat, dailyCalorieGoal, targetDate);
-  }
-  
-  res.json({ success: true });
 });
 
 // Global error handler
@@ -493,8 +335,6 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 
 async function setupMiddlewares() {
-  // On Vercel, we don't need to serve static files or run Vite
-  // because Vercel handles routing and static assets via vercel.json
   if (process.env.VERCEL) {
     console.log("Running on Vercel, skipping Vite/Static middleware");
     return;
@@ -518,7 +358,6 @@ async function setupMiddlewares() {
   }
 }
 
-// Initialize middlewares
 setupMiddlewares().then(() => {
   console.log("Middlewares initialized");
 }).catch(err => {
@@ -531,7 +370,6 @@ async function startServer() {
   });
 }
 
-// Export for Vercel
 export default app;
 
 if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
