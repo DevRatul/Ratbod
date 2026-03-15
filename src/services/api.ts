@@ -145,4 +145,9 @@ export const api = {
     });
     return handleResponse(res);
   },
+  
+  async checkStatus() {
+    const res = await fetch('/api/status');
+    return handleResponse(res);
+  },
 };

@@ -62,6 +62,7 @@ interface User {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authError, setAuthError] = useState('');
@@ -85,6 +86,9 @@ export default function App() {
 
   useEffect(() => {
     api.getMe().then(setUser);
+    api.checkStatus().then(data => {
+      setIsSupabaseConfigured(data.supabaseConfigured);
+    });
   }, []);
 
   useEffect(() => {
@@ -119,9 +123,8 @@ export default function App() {
         const loggedInUser = await api.login(data);
         setUser(loggedInUser);
       } else {
-        await api.register(data);
-        const loggedInUser = await api.login({ username: data.username, password: data.password });
-        setUser(loggedInUser);
+        const registeredUser = await api.register(data);
+        setUser(registeredUser);
       }
       setIsAuthModalOpen(false);
     } catch (err: any) {
@@ -260,6 +263,11 @@ export default function App() {
       darkMode ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
+      {!isSupabaseConfigured && (
+        <div className="bg-red-500 text-white text-center py-2 text-xs font-bold uppercase tracking-widest z-[100] relative">
+          Database not configured. Please add Supabase API keys in Settings.
+        </div>
+      )}
       <header className={cn(
         "border-b sticky top-0 z-50 transition-colors duration-300",
         darkMode ? "bg-[#0F0F0F]/80 backdrop-blur-md border-white/5" : "bg-white/80 backdrop-blur-md border-black/5"

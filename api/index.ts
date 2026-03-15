@@ -19,12 +19,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "ratbod-secret-key-123";
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
+const isSupabaseConfigured = !!supabaseUrl && !!supabaseServiceKey;
+
+if (!isSupabaseConfigured) {
   console.error("CRITICAL ERROR: Supabase credentials missing (VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY).");
   console.error("Please set these in the AI Studio Settings menu.");
 }
 
-const supabase = createClient(supabaseUrl || "", supabaseServiceKey || "");
+const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseServiceKey || "placeholder");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -74,6 +76,10 @@ const authenticate = (req: any, res: any, next: any) => {
 // Auth Routes
 app.post("/api/register", async (req, res, next) => {
   try {
+    if (!isSupabaseConfigured) {
+      return res.status(503).json({ error: "Database not configured. Please add Supabase API keys in Settings." });
+    }
+
     const { username, password, name, birthdate, gender } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
@@ -91,9 +97,17 @@ app.post("/api/register", async (req, res, next) => {
       if (error.code === "23505") {
         return res.status(400).json({ error: "Username already exists" });
       }
+      if (error.message.includes("relation \"users\" does not exist")) {
+        return res.status(400).json({ error: "Database table 'users' is missing. Please run the SQL setup in your Supabase SQL Editor." });
+      }
       return res.status(400).json({ error: "Registration failed: " + error.message });
     }
-    return res.json({ success: true });
+
+    const user = data;
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+
+    return res.json({ id: user.id, username: user.username, name: user.name, profilePic: user.profilePic, birthdate: user.birthdate, gender: user.gender });
   } catch (err) {
     next(err);
   }
@@ -101,6 +115,10 @@ app.post("/api/register", async (req, res, next) => {
 
 app.post("/api/login", async (req, res, next) => {
   try {
+    if (!isSupabaseConfigured) {
+      return res.status(503).json({ error: "Database not configured. Please add Supabase API keys in Settings." });
+    }
+
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
@@ -326,6 +344,14 @@ app.post("/api/goals", authenticate, async (req: any, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+app.get("/api/status", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    supabaseConfigured: isSupabaseConfigured,
+    environment: process.env.NODE_ENV || "development"
+  });
 });
 
 // Global error handler
