@@ -68,10 +68,11 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
   const [gender, setGender] = useState<Gender>('male');
   const [name, setName] = useState<string>('');
+  const [birthdate, setBirthdate] = useState<string>('');
   const [age, setAge] = useState<string>('');
   const [height, setHeight] = useState<string>(''); // cm or inches
   const [weight, setWeight] = useState<string>(''); // kg or lbs
@@ -81,6 +82,7 @@ export default function App() {
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('sedentary');
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -94,6 +96,7 @@ export default function App() {
   useEffect(() => {
     if (user) {
       if (user.birthdate) {
+        setBirthdate(user.birthdate);
         const birthDate = new Date(user.birthdate);
         const today = new Date();
         let calculatedAge = today.getFullYear() - birthDate.getFullYear();
@@ -111,6 +114,19 @@ export default function App() {
       }
     }
   }, [user]);
+
+  useEffect(() => {
+    if (birthdate && !user?.birthdate) {
+      const birthDate = new Date(birthdate);
+      const today = new Date();
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+      setAge(calculatedAge.toString());
+    }
+  }, [birthdate, user?.birthdate]);
 
   const handleAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -270,55 +286,55 @@ export default function App() {
       )}
       <header className={cn(
         "border-b sticky top-0 z-50 transition-colors duration-300",
-        darkMode ? "bg-[#0F0F0F]/80 backdrop-blur-md border-white/5" : "bg-white/80 backdrop-blur-md border-black/5"
+        darkMode ? "bg-[#0F0F0F]/60 backdrop-blur-xl border-white/5" : "bg-white/60 backdrop-blur-xl border-black/5"
       )}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-              <Activity size={18} />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity">
+            <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white">
+              <Activity size={14} />
             </div>
-            <h1 className="font-sans font-black text-xl tracking-tighter">RatboD</h1>
-          </div>
+            <h1 className="font-sans font-black text-base tracking-tighter">RatboD</h1>
+          </a>
           
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {user ? (
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button 
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                 >
                   {user.profilePic ? (
                     <img 
                       src={user.profilePic} 
                       alt={user.name} 
-                      className="w-8 h-8 rounded-full object-cover border border-primary/20"
+                      className="w-7 h-7 rounded-full object-cover border border-primary/20"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-primary-light flex items-center justify-center text-primary-dark">
-                      <UserIcon size={16} />
+                    <div className="w-7 h-7 rounded-full bg-primary-light flex items-center justify-center text-primary-dark">
+                      <UserIcon size={14} />
                     </div>
                   )}
-                  <span className={cn("text-sm font-semibold hidden md:block", darkMode ? "text-white" : "text-gray-800")}>
+                  <span className={cn("text-xs font-semibold hidden md:block", darkMode ? "text-white" : "text-gray-800")}>
                     {user.name}
                   </span>
                 </button>
                 <button 
                   onClick={handleLogout}
                   className={cn(
-                    "p-2 rounded-full transition-all",
+                    "p-1.5 rounded-full transition-all",
                     darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   )}
                 >
-                  <LogOut size={18} />
+                  <LogOut size={14} />
                 </button>
               </div>
             ) : (
               <button 
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary text-white rounded-full text-sm font-semibold hover:bg-primary-hover transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary text-white rounded-full text-xs font-semibold hover:bg-primary-hover transition-all"
               >
-                <LogIn size={16} />
+                <LogIn size={14} />
                 <span className="hidden sm:inline">Login</span>
               </button>
             )}
@@ -326,21 +342,21 @@ export default function App() {
             <button 
               onClick={() => setDarkMode(!darkMode)}
               className={cn(
-                "p-2 rounded-full transition-all",
+                "p-1.5 rounded-full transition-all",
                 darkMode ? "bg-white/5 text-primary hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               )}
             >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
             </button>
 
             <div className={cn(
-              "flex p-1 rounded-full transition-colors",
+              "flex p-0.5 rounded-full transition-colors",
               darkMode ? "bg-white/5" : "bg-gray-100"
             )}>
               <button 
                 onClick={() => setUnit('metric')}
                 className={cn(
-                  "px-2 sm:px-4 py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all",
+                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all",
                   unit === 'metric' 
                     ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
@@ -351,7 +367,7 @@ export default function App() {
               <button 
                 onClick={() => setUnit('imperial')}
                 className={cn(
-                  "px-2 sm:px-4 py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all",
+                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all",
                   unit === 'imperial' 
                     ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
@@ -415,22 +431,35 @@ export default function App() {
             </div>
 
             {/* Basic Info Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Date of Birth</label>
+                <input 
+                  type="date" 
+                  value={birthdate}
+                  onChange={(e) => setBirthdate(e.target.value)}
+                  className={cn(
+                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                  )}
+                />
+              </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Age</label>
                 <input 
                   type="number" 
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
-                  readOnly={!!user?.birthdate}
                   className={cn(
                     "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900",
-                    user?.birthdate && "opacity-60 cursor-not-allowed"
+                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder="25"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   Weight ({unit === 'metric' ? 'kg' : 'lb'})
@@ -446,22 +475,21 @@ export default function App() {
                   placeholder={unit === 'metric' ? '70' : '154'}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Height ({unit === 'metric' ? 'cm' : 'in'})
-              </label>
-              <input 
-                type="number" 
-                value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                className={cn(
-                  "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                  darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                )}
-                placeholder={unit === 'metric' ? '175' : '69'}
-              />
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Height ({unit === 'metric' ? 'cm' : 'in'})
+                </label>
+                <input 
+                  type="number" 
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  className={cn(
+                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
+                  )}
+                  placeholder={unit === 'metric' ? '175' : '69'}
+                />
+              </div>
             </div>
 
             {/* Body Measurements */}
@@ -733,29 +761,80 @@ export default function App() {
                   )} />
                 </div>
 
-                  {/* Ideal Weight Section */}
-                  <div className="bg-primary-dark text-white px-6 py-3 rounded-xl shadow-lg relative overflow-hidden">
-                    <div className="relative z-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
-                      <div className="flex items-center gap-2">
-                        <Scale size={14} className="text-primary-light/60" />
-                        <h3 className="text-xs font-black uppercase tracking-widest">Ideal Body Weight</h3>
-                      </div>
-                      
-                      <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] text-primary-light/40 uppercase font-black">Metric</span>
-                          <p className="text-lg font-light tracking-tighter">{metrics.idealWeight.kg.toFixed(1)}<span className="text-[10px] opacity-40 ml-0.5">kg</span></p>
+                  {/* Ideal Weight Section (Accordion) */}
+                  <div className={cn(
+                    "rounded-xl shadow-lg relative overflow-hidden border transition-all duration-300",
+                    darkMode ? "bg-[#0A0A0A] border-white/5" : "bg-[#1A2B3C] border-white/5"
+                  )}>
+                    <button 
+                      onClick={() => setIsIdealWeightOpen(!isIdealWeightOpen)}
+                      className="w-full px-6 py-4 flex items-center justify-between group transition-colors hover:bg-white/5"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "p-2 rounded-lg transition-colors",
+                          darkMode ? "bg-blue-500/10 text-blue-400" : "bg-blue-400/10 text-blue-300"
+                        )}>
+                          <Scale size={18} />
                         </div>
-                        <div className="w-px h-3 bg-white/10" />
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] text-primary-light/40 uppercase font-black">Imperial</span>
-                          <p className="text-lg font-light tracking-tighter">{metrics.idealWeight.lb.toFixed(1)}<span className="text-[10px] opacity-40 ml-0.5">lb</span></p>
+                        <div className="text-left">
+                          <h3 className={cn("text-sm font-black uppercase tracking-widest", darkMode ? "text-white" : "text-blue-100")}>Ideal Body Weight</h3>
+                          <p className={cn("text-[10px] font-medium opacity-50", darkMode ? "text-gray-400" : "text-blue-300")}>Devine Formula ({gender === 'male' ? 'Male' : 'Female'})</p>
                         </div>
                       </div>
-                      
-                      <p className="text-[8px] text-primary-light/30 italic font-bold hidden sm:block">Devine Formula ({gender === 'male' ? 'M' : 'F'})</p>
-                    </div>
-                    <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary rounded-full blur-2xl opacity-10" />
+                      <motion.div
+                        animate={{ rotate: isIdealWeightOpen ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                        className={cn(darkMode ? "text-gray-500" : "text-blue-300/50")}
+                      >
+                        <ChevronDown size={20} />
+                      </motion.div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isIdealWeightOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                        >
+                          <div className="px-6 pb-6 pt-2 border-t border-white/5">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className={cn(
+                                "p-4 rounded-xl border transition-colors",
+                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/20 border-blue-800/20"
+                              )}>
+                                <span className={cn("text-[10px] uppercase font-black block mb-1", darkMode ? "text-white/40" : "text-blue-400/40")}>Metric</span>
+                                <p className="text-2xl font-light tracking-tighter text-white">
+                                  {metrics.idealWeight.kg.toFixed(1)}
+                                  <span className="text-xs opacity-40 ml-1 font-normal">kg</span>
+                                </p>
+                              </div>
+                              <div className={cn(
+                                "p-4 rounded-xl border transition-colors",
+                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/20 border-blue-800/20"
+                              )}>
+                                <span className={cn("text-[10px] uppercase font-black block mb-1", darkMode ? "text-white/40" : "text-blue-400/40")}>Imperial</span>
+                                <p className="text-2xl font-light tracking-tighter text-white">
+                                  {metrics.idealWeight.lb.toFixed(1)}
+                                  <span className="text-xs opacity-40 ml-1 font-normal">lb</span>
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className={cn(
+                              "mt-4 p-3 rounded-lg text-[10px] leading-relaxed",
+                              darkMode ? "bg-blue-500/5 text-blue-300/70 border border-blue-500/10" : "bg-blue-400/5 text-blue-200/70 border border-blue-400/10"
+                            )}>
+                              The Devine formula is a widely used method for estimating ideal body weight based on height and gender. It provides a healthy target weight for medical and nutritional purposes.
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-500 rounded-full blur-3xl opacity-5 pointer-events-none" />
                   </div>
 
                   {/* History Section */}
@@ -870,20 +949,20 @@ export default function App() {
 
       {/* Footer */}
       <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-12 border-t transition-colors",
+        "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
         darkMode ? "border-white/5" : "border-black/5"
       )}>
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2 opacity-40">
-            <Activity size={16} />
-            <span className="text-xs font-black uppercase tracking-widest">RatboD</span>
+            <Activity size={14} className="text-[#b4a8a8]" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#b4a8a8]">RatboD</span>
           </div>
-          <div className="flex gap-8">
-            <a href="#" className="text-xs text-gray-400 hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="#" className="text-xs text-gray-400 hover:text-primary transition-colors">Terms of Service</a>
-            <a href="#" className="text-xs text-gray-400 hover:text-primary transition-colors">Contact Support</a>
+          <div className="flex gap-6">
+            <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Terms of Service</a>
+            <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Contact Support</a>
           </div>
-          <p className="text-[10px] text-gray-300 uppercase tracking-widest">
+          <p className="text-[10px] uppercase tracking-widest text-[#cacaca]">
             © 2026 Crafted By <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Ratul Bin Zahangir</a>
           </p>
         </div>
