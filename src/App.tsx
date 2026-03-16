@@ -284,11 +284,11 @@ export default function App() {
           Database not configured. Please add Supabase API keys in Settings.
         </div>
       )}
-      <header className={cn(
-        "border-b sticky top-0 z-50 transition-colors duration-300",
-        darkMode ? "bg-[#0F0F0F]/60 backdrop-blur-xl border-white/5" : "bg-white/60 backdrop-blur-xl border-black/5"
-      )}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
+      <header className="sticky top-4 z-50 px-4 sm:px-6 transition-all duration-300">
+        <div className={cn(
+          "max-w-5xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-xl shadow-xl transition-colors duration-300",
+          darkMode ? "bg-[#0F0F0F]/80 border-white/10 shadow-black/40" : "bg-white/80 border-black/5 shadow-gray-200/50"
+        )}>
           <a href="/" className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity">
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white">
               <Activity size={14} />
@@ -301,7 +301,7 @@ export default function App() {
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button 
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
                 >
                   {user.profilePic ? (
                     <img 
@@ -322,7 +322,7 @@ export default function App() {
                 <button 
                   onClick={handleLogout}
                   className={cn(
-                    "p-1.5 rounded-full transition-all",
+                    "p-1.5 rounded-full transition-all cursor-pointer",
                     darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   )}
                 >
@@ -332,7 +332,7 @@ export default function App() {
             ) : (
               <button 
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary text-white rounded-full text-xs font-semibold hover:bg-primary-hover transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary text-white rounded-full text-xs font-semibold hover:bg-primary-hover transition-all cursor-pointer"
               >
                 <LogIn size={14} />
                 <span className="hidden sm:inline">Login</span>
@@ -342,7 +342,7 @@ export default function App() {
             <button 
               onClick={() => setDarkMode(!darkMode)}
               className={cn(
-                "p-1.5 rounded-full transition-all",
+                "p-1.5 rounded-full transition-all cursor-pointer",
                 darkMode ? "bg-white/5 text-primary hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               )}
             >
@@ -356,7 +356,7 @@ export default function App() {
               <button 
                 onClick={() => setUnit('metric')}
                 className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all",
+                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all cursor-pointer",
                   unit === 'metric' 
                     ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
@@ -367,7 +367,7 @@ export default function App() {
               <button 
                 onClick={() => setUnit('imperial')}
                 className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all",
+                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all cursor-pointer",
                   unit === 'imperial' 
                     ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
@@ -380,7 +380,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <main className="max-w-5xl mx-auto px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Input Section */}
         <section className="lg:col-span-5 space-y-8">
           <div className="space-y-2">
@@ -594,7 +594,7 @@ export default function App() {
                       <button 
                         onClick={handleSaveMetrics}
                         className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer",
                           darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         )}
                       >
@@ -606,7 +606,7 @@ export default function App() {
                       onClick={handleDownloadPdf}
                       disabled={isGeneratingPdf}
                       className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shiny-button",
                         darkMode ? "bg-primary text-white hover:bg-primary-hover" : "bg-black text-white hover:bg-gray-800"
                       )}
                     >
@@ -768,7 +768,7 @@ export default function App() {
                   )}>
                     <button 
                       onClick={() => setIsIdealWeightOpen(!isIdealWeightOpen)}
-                      className="w-full px-6 py-4 flex items-center justify-between group transition-colors hover:bg-white/5"
+                      className="w-full px-6 py-4 flex items-center justify-between group transition-colors hover:bg-white/5 cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
@@ -962,7 +962,10 @@ export default function App() {
             <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Terms of Service</a>
             <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Contact Support</a>
           </div>
-          <p className="text-[10px] uppercase tracking-widest text-[#cacaca]">
+          <p className={cn(
+            "text-[10px] uppercase tracking-widest transition-colors",
+            darkMode ? "text-[#201e1e]" : "text-[#cacaca]"
+          )}>
             © 2026 Crafted By <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Ratul Bin Zahangir</a>
           </p>
         </div>

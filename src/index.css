@@ -9,4 +9,27 @@
   --color-primary-hover: #2eb82e;
   --color-primary-light: #e6f9e6;
   --color-primary-dark: #248f24;
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+}
+
+@utility shiny-button {
+  @apply relative overflow-hidden transition-all duration-300 active:scale-95;
+  &::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    animation: shimmer 3s infinite;
+  }
+  &:hover {
+    @apply scale-[1.02] shadow-lg;
+  }
 }

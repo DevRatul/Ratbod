@@ -151,7 +151,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
           <button
             onClick={clearLocalHistory}
             className={cn(
-              "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all",
+              "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all cursor-pointer",
               darkMode ? "bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400" : "bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600"
             )}
           >
@@ -249,7 +249,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
                       <button
                         onClick={() => deleteEntry(entry.id)}
                         className={cn(
-                          "p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100",
+                          "p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 cursor-pointer",
                           darkMode ? "hover:bg-red-500/10 text-gray-500 hover:text-red-400" : "hover:bg-red-50 text-gray-400 hover:text-red-600"
                         )}
                       >

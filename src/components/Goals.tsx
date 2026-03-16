@@ -123,7 +123,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           <button
             onClick={() => setIsEditing(true)}
             className={cn(
-              "px-4 py-2 rounded-full text-sm font-bold transition-all",
+              "px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer",
               darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             )}
           >
@@ -214,7 +214,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-hover transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-hover transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isSaving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
               Save Goals
@@ -223,7 +223,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
               type="button"
               onClick={() => setIsEditing(false)}
               className={cn(
-                "px-6 py-3 rounded-xl font-bold transition-all",
+                "px-6 py-3 rounded-xl font-bold transition-all cursor-pointer",
                 darkMode ? "bg-white/5 text-gray-400 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               )}
             >
@@ -351,7 +351,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           </div>
           <button
             onClick={() => setIsEditing(true)}
-            className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:bg-primary-hover transition-all flex items-center gap-2"
+            className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:bg-primary-hover transition-all flex items-center gap-2 cursor-pointer"
           >
             Set Your First Goal
             <ArrowRight size={18} />
