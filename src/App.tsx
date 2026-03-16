@@ -286,7 +286,7 @@ export default function App() {
       )}
       <header className="sticky top-4 z-50 px-4 sm:px-6 transition-all duration-300">
         <div className={cn(
-          "max-w-5xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-xl shadow-xl transition-colors duration-300",
+          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-xl shadow-xl transition-colors duration-300",
           darkMode ? "bg-[#0F0F0F]/80 border-white/10 shadow-black/40" : "bg-white/80 border-black/5 shadow-gray-200/50"
         )}>
           <a href="/" className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity">
