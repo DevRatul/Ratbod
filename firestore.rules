@@ -1,0 +1,133 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: userId (from Auth)
+// Fields:
+//   - username: string (required) - unique username
+//   - password: string (required) - hashed password
+//   - name: string (optional) - display name
+//   - profilePic: string (optional) - URL to profile picture
+//   - birthdate: string (optional) - date of birth
+//   - gender: string (optional) - male or female
+//
+// Collection: metrics
+// Document ID: auto-generated
+// Fields:
+//   - userId: string (required) - ID of the user who owns this metric
+//   - date: timestamp (required) - date of measurement
+//   - gender: string
+//   - age: number
+//   - height: number
+//   - weight: number
+//   - waist: number
+//   - neck: number
+//   - hip: number
+//   - activityLevel: string
+//   - bmi: number
+//   - bmr: number
+//   - tdee: number
+//   - bodyFat: number
+//
+// Collection: goals
+// Document ID: auto-generated (one per user)
+// Fields:
+//   - userId: string (required) - ID of the user who owns this goal
+//   - targetWeight: number
+//   - targetBodyFat: number
+//   - dailyCalorieGoal: number
+//   - targetDate: string
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ratraj7256@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['username', 'password', 'name', 'profilePic', 'birthdate', 'gender', 'role']) &&
+        data.username is string && data.username.size() > 0 && data.username.size() < 50 &&
+        data.password is string && data.password.size() > 0 &&
+        (!('name' in data) || (data.name is string && data.name.size() < 100)) &&
+        (!('profilePic' in data) || (data.profilePic is string && data.profilePic.size() < 500)) &&
+        (!('birthdate' in data) || (data.birthdate is string)) &&
+        (!('gender' in data) || (data.gender in ['male', 'female']));
+    }
+
+    function isValidMetric(data) {
+      return hasOnlyAllowedFields(['userId', 'date', 'gender', 'age', 'height', 'weight', 'waist', 'neck', 'hip', 'activityLevel', 'bmi', 'bmr', 'tdee', 'bodyFat']) &&
+        data.userId == request.auth.uid &&
+        data.date is timestamp &&
+        data.weight is number && data.weight > 0 &&
+        data.height is number && data.height > 0;
+    }
+
+    function isValidGoal(data) {
+      return hasOnlyAllowedFields(['userId', 'targetWeight', 'targetBodyFat', 'dailyCalorieGoal', 'targetDate']) &&
+        data.userId == request.auth.uid &&
+        (!('targetWeight' in data) || (data.targetWeight is number && data.targetWeight > 0)) &&
+        (!('targetBodyFat' in data) || (data.targetBodyFat is number && data.targetBodyFat > 0)) &&
+        (!('dailyCalorieGoal' in data) || (data.dailyCalorieGoal is number && data.dailyCalorieGoal > 0));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /metrics/{metricId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidMetric(request.resource.data);
+      allow update: if isAuthenticated() && isValidMetric(request.resource.data) && isDocOwner();
+      allow delete: if (isAuthenticated() && isDocOwner()) || isAdmin();
+    }
+
+    match /goals/{goalId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidGoal(request.resource.data);
+      allow update: if isAuthenticated() && isValidGoal(request.resource.data) && isDocOwner();
+      allow delete: if (isAuthenticated() && isDocOwner()) || isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

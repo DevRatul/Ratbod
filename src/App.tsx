@@ -68,7 +68,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
   const [gender, setGender] = useState<Gender>('male');
   const [name, setName] = useState<string>('');
@@ -275,7 +275,7 @@ export default function App() {
 
   return (
     <div className={cn(
-      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light",
+      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden",
       darkMode ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
@@ -380,9 +380,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden">
         {/* Input Section */}
-        <section className="lg:col-span-5 space-y-8">
+        <section className="lg:col-span-5 space-y-8 no-scrollbar">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight">Your Measurements</h2>
             <p className={cn("text-sm font-medium", darkMode ? "text-gray-300" : "text-gray-600")}>Enter your details for a precise body analysis.</p>
@@ -392,7 +392,7 @@ export default function App() {
             {/* Name and Gender Row */}
             <div className="grid grid-cols-2 gap-4">
               {/* Name Input */}
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Name</label>
                 <input 
                   type="text" 
@@ -407,7 +407,7 @@ export default function App() {
               </div>
 
               {/* Gender Selection */}
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
                   <UserIcon size={14} /> Gender
                 </label>
@@ -432,7 +432,7 @@ export default function App() {
 
             {/* Basic Info Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Date of Birth</label>
                 <input 
                   type="date" 
@@ -444,7 +444,7 @@ export default function App() {
                   )}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Age</label>
                 <input 
                   type="number" 
@@ -460,7 +460,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   Weight ({unit === 'metric' ? 'kg' : 'lb'})
                 </label>
@@ -475,7 +475,7 @@ export default function App() {
                   placeholder={unit === 'metric' ? '70' : '154'}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   Height ({unit === 'metric' ? 'cm' : 'in'})
                 </label>
@@ -494,7 +494,7 @@ export default function App() {
 
             {/* Body Measurements */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   Waist ({unit === 'metric' ? 'cm' : 'in'})
                 </label>
@@ -509,7 +509,7 @@ export default function App() {
                   placeholder="80"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   Neck ({unit === 'metric' ? 'cm' : 'in'})
                 </label>
@@ -577,7 +577,7 @@ export default function App() {
         </section>
 
         {/* Results Section */}
-        <section className="lg:col-span-7">
+        <section className="lg:col-span-7 no-scrollbar">
           <AnimatePresence mode="wait">
             {metrics ? (
               <motion.div 

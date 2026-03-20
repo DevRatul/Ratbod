@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "description": "Unique username" },
+        "password": { "type": "string", "description": "Hashed password" },
+        "name": { "type": "string", "description": "Display name" },
+        "profilePic": { "type": "string", "description": "URL to profile picture" },
+        "birthdate": { "type": "string", "format": "date", "description": "Date of birth" },
+        "gender": { "type": "string", "enum": ["male", "female"], "description": "User gender" }
+      },
+      "required": ["username", "password"]
+    },
+    "Metric": {
+      "title": "Metric",
+      "description": "Body measurement record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who owns this metric" },
+        "date": { "type": "string", "format": "date-time", "description": "Date of measurement" },
+        "gender": { "type": "string" },
+        "age": { "type": "number" },
+        "height": { "type": "number" },
+        "weight": { "type": "number" },
+        "waist": { "type": "number" },
+        "neck": { "type": "number" },
+        "hip": { "type": "number" },
+        "activityLevel": { "type": "string" },
+        "bmi": { "type": "number" },
+        "bmr": { "type": "number" },
+        "tdee": { "type": "number" },
+        "bodyFat": { "type": "number" }
+      },
+      "required": ["userId", "date"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "User health goal",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who owns this goal" },
+        "targetWeight": { "type": "number" },
+        "targetBodyFat": { "type": "number" },
+        "dailyCalorieGoal": { "type": "number" },
+        "targetDate": { "type": "string", "format": "date" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/metrics/{metricId}": {
+      "schema": "Metric",
+      "description": "Body measurement history"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User goals"
+    }
+  }
+}

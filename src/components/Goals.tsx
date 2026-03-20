@@ -15,7 +15,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface Goal {
-  id?: number;
+  id?: string;
   targetWeight: number;
   targetBodyFat: number;
   dailyCalorieGoal: number;

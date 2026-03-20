@@ -16,6 +16,22 @@
   }
 }
 
+@layer base {
+  body {
+    @apply overflow-x-hidden;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 @utility shiny-button {
   @apply relative overflow-hidden transition-all duration-300 active:scale-95;
   &::after {

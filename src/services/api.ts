@@ -82,7 +82,7 @@ export const api = {
     return handleResponse(res);
   },
 
-  async deleteMetric(id: number) {
+  async deleteMetric(id: string) {
     const res = await fetch(`/api/metrics/${id}`, {
       method: 'DELETE',
       credentials: 'include',
@@ -116,7 +116,7 @@ export const api = {
     return handleResponse(res);
   },
 
-  async switchUser(id: number) {
+  async switchUser(id: string) {
     const res = await fetch('/api/users/switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -136,7 +136,7 @@ export const api = {
     return handleResponse(res);
   },
 
-  async deleteUser(id: number) {
+  async deleteUser(id: string) {
     const res = await fetch('/api/users/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -164,7 +164,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
         "rounded-3xl border overflow-hidden shadow-sm",
         darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
       )}>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className={cn(
