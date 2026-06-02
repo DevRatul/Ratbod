@@ -21,7 +21,8 @@ import {
   ArrowRightLeft,
   Camera,
   History,
-  UserCircle
+  UserCircle,
+  Wind
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -43,6 +44,7 @@ import {
 } from './utils/calculations';
 import Goals from './components/Goals';
 import HistoryComponent from './components/History';
+import BreathingTimer from './components/BreathingTimer';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -65,7 +67,7 @@ export default function App() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'history' | 'goals'>('calculator');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'history' | 'goals' | 'breathing'>('calculator');
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Load from localStorage on mount
@@ -293,6 +295,55 @@ export default function App() {
             <h1 className="font-sans font-black text-base tracking-tighter">RatboD</h1>
           </a>
           
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
+            <button
+              onClick={() => setActiveTab('calculator')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                (activeTab === 'calculator' || activeTab === 'results')
+                  ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
+              )}
+            >
+              Calculator
+            </button>
+            <button
+              onClick={() => setActiveTab('goals')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                activeTab === 'goals'
+                  ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
+              )}
+            >
+              Goals
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                activeTab === 'history'
+                  ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
+              )}
+            >
+              History
+            </button>
+            <button
+              onClick={() => setActiveTab('breathing')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                activeTab === 'breathing'
+                  ? (darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-50 text-teal-700 shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-505 hover:text-gray-900")
+              )}
+            >
+              <Wind size={12} className="animate-pulse text-teal-400" />
+              Breathe (4-7-8)
+            </button>
+          </nav>
+          
           <div className="flex items-center gap-1.5 sm:gap-3">
             <button 
               onClick={() => setDarkMode(!darkMode)}
@@ -335,7 +386,18 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden">
+      {/* Breathing Tab Content */}
+      <div className={cn(
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        activeTab === 'breathing' ? "block" : "hidden"
+      )}>
+        <BreathingTimer darkMode={darkMode} />
+      </div>
+
+      <main className={cn(
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden",
+        activeTab === 'breathing' ? "hidden" : "grid"
+      )}>
         {/* Input Section */}
         <section className={cn(
           "lg:col-span-5 space-y-8 no-scrollbar",
@@ -887,7 +949,7 @@ export default function App() {
         </section>
       </main>
 
-      <div className={cn("max-w-5xl mx-auto px-6 pb-12 md:block", activeTab === 'goals' ? "block" : "hidden")}>
+      <div className={cn("max-w-5xl mx-auto px-6 pb-12 md:block", activeTab === 'goals' ? "block" : (activeTab === 'breathing' ? "hidden md:hidden" : "hidden"))}>
         <Goals 
           darkMode={darkMode} 
           unit={unit} 
@@ -976,6 +1038,18 @@ export default function App() {
           >
             <History size={18} />
             <span className="text-[10px] font-bold mt-1 tracking-tight">History</span>
+          </button>
+
+          <button 
+            id="tab_breathing"
+            onClick={() => setActiveTab('breathing')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
+              activeTab === 'breathing' ? "text-primary scale-105 animate-pulse" : "text-gray-400 hover:text-gray-500"
+            )}
+          >
+            <Wind size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">Breathe</span>
           </button>
         </div>
       </div>
