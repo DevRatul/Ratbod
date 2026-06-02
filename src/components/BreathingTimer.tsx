@@ -81,11 +81,16 @@ function playSoundTone(type: 'inhale' | 'hold' | 'exhale' | 'finish' | 'tick', d
   }
 }
 
+import { Language, translations } from '../utils/translations';
+
 interface BreathingTimerProps {
   darkMode: boolean;
+  lang?: Language;
 }
 
-function speakText(text: string) {
+const bnNumbers = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', '১০', '১১', '১২'];
+
+function speakText(text: string, lang: Language) {
   if (typeof window === 'undefined') return;
   try {
     const synth = window.speechSynthesis;
@@ -95,10 +100,13 @@ function speakText(text: string) {
     utterance.volume = 0.9;
     utterance.rate = 0.85; // Relaxing, slightly slower pace
     
+    utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
+    
     const voices = synth.getVoices();
     const desiredVoice = voices.find(v => 
-      v.lang.startsWith('en') && 
-      (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('en-US'))
+      lang === 'bn' 
+        ? v.lang.startsWith('bn') || v.lang.startsWith('in')
+        : (v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('en-US')))
     );
     if (desiredVoice) {
       utterance.voice = desiredVoice;
@@ -109,7 +117,14 @@ function speakText(text: string) {
   }
 }
 
-export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
+export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimerProps) {
+  const t = translations[lang];
+  const formatNum = (num: number) => {
+    if (lang === 'bn') {
+      return num.toString().split('').map(digit => bnNumbers[parseInt(digit, 10)] !== undefined ? bnNumbers[parseInt(digit, 10)] : digit).join('');
+    }
+    return num.toString();
+  };
   const [phase, setPhase] = useState<BreathingPhase>('idle');
   const [isActive, setIsActive] = useState<boolean>(false);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(4);
@@ -137,19 +152,20 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
   const triggerVocalPhase = (phaseName: 'inhale' | 'hold' | 'exhale' | 'finish') => {
     if (soundMode !== 'voice') return;
     if (phaseName === 'inhale') {
-      speakText("Inhale");
+      speakText(t.inhale, lang);
     } else if (phaseName === 'hold') {
-      speakText("Hold");
+      speakText(t.hold, lang);
     } else if (phaseName === 'exhale') {
-      speakText("Exhale");
+      speakText(t.exhale, lang);
     } else if (phaseName === 'finish') {
-      speakText("Well done. Session completed.");
+      speakText(t.breatheCompletedInst, lang);
     }
   };
 
   const triggerVocalCount = (countNum: number) => {
     if (soundMode !== 'voice') return;
-    speakText(countNum.toString());
+    const voiceText = lang === 'bn' && countNum < bnNumbers.length ? bnNumbers[countNum] : countNum.toString();
+    speakText(voiceText, lang);
   };
 
   // Sync soundMode with localStorage
@@ -290,8 +306,8 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
     switch (phase) {
       case 'inhale':
         return {
-          title: 'Inhale',
-          instructions: 'Breathe in quietly through your nose.',
+          title: t.inhale,
+          instructions: t.breatheInhaleInst,
           circleScale: 1.5,
           color: 'bg-emerald-500 border-emerald-400',
           textColor: 'text-emerald-500',
@@ -299,8 +315,8 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
         };
       case 'hold':
         return {
-          title: 'Hold',
-          instructions: 'Hold your breath and stay still.',
+          title: t.hold,
+          instructions: t.breatheHoldInst,
           circleScale: 1.5,
           color: 'bg-sky-500 border-sky-400 shadow-[0_0_30px_rgba(14,165,233,0.3)]',
           textColor: 'text-sky-500',
@@ -308,8 +324,8 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
         };
       case 'exhale':
         return {
-          title: 'Exhale',
-          instructions: 'Whoosh your breath out completely.',
+          title: t.exhale,
+          instructions: t.breatheExhaleInst,
           circleScale: 0.9,
           color: 'bg-teal-500 border-teal-400',
           textColor: 'text-teal-500',
@@ -317,8 +333,8 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
         };
       case 'completed':
         return {
-          title: 'Composed',
-          instructions: 'Session completed. Keep this serenity with you!',
+          title: t.composed,
+          instructions: t.breatheCompletedInst,
           circleScale: 1.0,
           color: 'bg-primary border-primary-light',
           textColor: 'text-primary',
@@ -326,8 +342,8 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
         };
       default:
         return {
-          title: 'Ready',
-          instructions: 'Press Start to begin your 4-7-8 breathing.',
+          title: t.ready,
+          instructions: t.breatheReady,
           circleScale: 1.0,
           color: 'bg-gray-400 border-gray-300',
           textColor: 'text-gray-400',
@@ -357,8 +373,8 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
             <Wind size={20} className="animate-pulse" />
           </div>
           <div>
-            <h3 className="text-xl font-bold tracking-tight font-sans">4-7-8 Breathing Calmer</h3>
-            <p className="text-xs text-gray-500 font-medium">Lower heartbeat • Reduce stress & cortisol • Relax</p>
+            <h3 className="text-xl font-bold tracking-tight font-sans">{t.breathingTitle}</h3>
+            <p className="text-xs text-gray-500 font-medium">{t.breathingSubtitle}</p>
           </div>
         </div>
 
@@ -376,10 +392,10 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
                   ? (darkMode ? "bg-white/10 text-white shadow-sm" : "bg-white text-gray-900 shadow-sm")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
-              title="Mute Guidance"
+              title={t.soundMuted}
             >
               <VolumeX size={14} />
-              <span className="hidden sm:inline">Mute</span>
+              <span className="hidden sm:inline">{t.soundMuted}</span>
             </button>
             <button
               onClick={() => {
@@ -392,15 +408,15 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
                   ? "bg-teal-500 text-white shadow-md shadow-teal-500/20"
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
-              title="Play Zen Tones & Bells"
+              title={t.soundTones}
             >
               <Volume2 size={14} />
-              <span className="hidden sm:inline">Zen Tones</span>
+              <span className="hidden sm:inline">{t.soundTones}</span>
             </button>
             <button
               onClick={() => {
                 setSoundMode('voice');
-                speakText("Voice coach");
+                speakText(lang === 'bn' ? "ভয়েস কোচ" : "Voice coach", lang);
               }}
               className={cn(
                 "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
@@ -408,10 +424,10 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
                   ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
-              title="Enable Voice Coach Counting"
+              title={t.soundCoach}
             >
               <Sparkles size={14} />
-              <span className="hidden sm:inline">Voice Coach</span>
+              <span className="hidden sm:inline">{t.soundCoach}</span>
             </button>
           </div>
 
@@ -421,7 +437,7 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
             darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
           )}>
             <Sparkles size={12} className="text-teal-400" />
-            <span>{completedSessionsCount} session{completedSessionsCount !== 1 ? 's' : ''} today</span>
+            <span>{lang === 'bn' ? `${completedSessionsCount.toString().split('').map(x => bnNumbers[parseInt(x)] || x).join('')} ${t.sessionsToday}` : `${completedSessionsCount} session${completedSessionsCount !== 1 ? 's' : ''} today`}</span>
           </div>
         </div>
       </div>
@@ -495,16 +511,16 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
                   className="text-center p-3 flex flex-col items-center"
                 >
                   <span className="text-[10px] font-black tracking-widest uppercase opacity-80 mb-0.5">
-                    {isActive ? `Cycle ${currentCycle}/${targetCycles}` : '4-7-8'}
+                    {isActive ? `${lang === 'bn' ? 'ধাপ' : 'Cycle'} ${formatNum(currentCycle)}/${formatNum(targetCycles)}` : '4-7-8'}
                   </span>
                   
                   <span className="text-3xl font-black tracking-tighter">
-                    {phase === 'idle' ? 'START' : currentConfig.title.toUpperCase()}
+                    {phase === 'idle' ? (lang === 'bn' ? 'শুরু' : 'START') : currentConfig.title.toUpperCase()}
                   </span>
 
                   {phase !== 'completed' && isActive && (
                     <span className="text-4xl font-extrabold tracking-tight font-mono mt-1 drop-shadow-md">
-                      {secondsRemaining}s
+                      {formatNum(secondsRemaining)}s
                     </span>
                   )}
 
@@ -519,17 +535,17 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
           {/* Interactive Guided Instructions Text */}
           <div className="text-center mt-6 max-w-sm px-4">
             <h4 className="text-sm font-extrabold capitalize mb-1 min-h-[20px]">
-              {isActive ? currentConfig.instructions : 'Click center button or use the controller keys below.'}
+              {isActive ? currentConfig.instructions : t.breatheClickTip}
             </h4>
             <p className={cn(
               "text-xs font-medium transition-all",
               darkMode ? "text-gray-400" : "text-gray-500"
             )}>
-              {phase === 'inhale' && "Quietly expand your stomach & chest"}
-              {phase === 'hold' && "Realign. Calm down your central nervous nervous system"}
-              {phase === 'exhale' && "Let out a slow, smooth whooshy blow"}
-              {phase === 'completed' && "Superb! Your oxygen levels are optimized, heartbeat stabilized."}
-              {phase === 'idle' && "Ideal to clear carbon dioxide, prepare body for sleep or stress relief"}
+              {phase === 'inhale' && t.quietlyInhale}
+              {phase === 'hold' && t.realignCalm}
+              {phase === 'exhale' && t.slowWhooshPath}
+              {phase === 'completed' && t.oxygenOptimized}
+              {phase === 'idle' && t.idleBreatheTip}
             </p>
           </div>
 
@@ -542,7 +558,7 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
                 "p-3 rounded-full border transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed",
                 darkMode ? "bg-white/5 border-white/5 hover:bg-white/10 text-white" : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-500"
               )}
-              title="Reset timer"
+              title={lang === 'bn' ? "টাইমার রিসেট" : "Reset timer"}
             >
               <RotateCcw size={16} />
             </button>
@@ -559,12 +575,12 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
               {isActive ? (
                 <>
                   <Pause size={16} fill="currentColor" />
-                  Pause
+                  {t.breathePauseBtn}
                 </>
               ) : (
                 <>
                   <Play size={16} fill="currentColor" />
-                  {phase === 'completed' ? 'Start Over' : 'Start Session'}
+                  {phase === 'completed' ? t.breatheStartOver : t.breatheStartBtn}
                 </>
               )}
             </button>
@@ -581,15 +597,15 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
           )}>
             <div className="flex items-center gap-2 mb-4 text-teal-500">
               <Sparkles size={16} />
-              <h4 className="text-xs uppercase font-extrabold tracking-wider">Session Settings</h4>
+              <h4 className="text-xs uppercase font-extrabold tracking-wider">{t.sessionSettings}</h4>
             </div>
 
             <div className="space-y-4">
               {/* Set cycles */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Target Cycles</span>
-                  <span className="text-teal-500 font-extrabold">{targetCycles} sets</span>
+                  <span className={darkMode ? "text-gray-300" : "text-gray-600"}>{t.targetCycles}</span>
+                  <span className="text-teal-500 font-extrabold">{formatNum(targetCycles)} {t.sets}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {[2, 4, 8, 12].map((num) => (
@@ -606,7 +622,7 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
                           : (darkMode ? "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50")
                       )}
                     >
-                      {num} Sets
+                      {formatNum(num)} {t.sets}
                     </button>
                   ))}
                 </div>
@@ -614,7 +630,7 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
 
               {/* Progress Indicator dots */}
               <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-white/5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Continuous Progress</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t.continuousProgress}</span>
                 <div className="flex items-center gap-1.5">
                   {Array.from({ length: targetCycles }).map((_, i) => (
                     <div 
@@ -634,32 +650,32 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
           <div className="space-y-3">
             <h4 className="text-xs uppercase font-extrabold tracking-wider text-gray-500 flex items-center gap-1.5">
               <Info size={14} className="text-teal-500" />
-              Guiding 4-7-8 Instructions
+              {t.instructionsTitle}
             </h4>
             <div className="grid grid-cols-3 gap-3">
               <div className={cn(
                 "p-3 rounded-xl border text-center transition-colors",
                 phase === 'inhale' ? "border-emerald-500 bg-emerald-500/5" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")
               )}>
-                <span className="text-lg font-black text-emerald-500">4s</span>
-                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">Inhale</p>
-                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">Silently via nose</span>
+                <span className="text-lg font-black text-emerald-500">{formatNum(4)}s</span>
+                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">{t.inhale}</p>
+                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">{lang === 'bn' ? "নাক দিয়ে আলতো করে" : "Silently via nose"}</span>
               </div>
               <div className={cn(
                 "p-3 rounded-xl border text-center transition-colors",
                 phase === 'hold' ? "border-sky-500 bg-sky-500/5" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")
               )}>
-                <span className="text-lg font-black text-sky-500">7s</span>
-                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">Hold</p>
-                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">Seal breath still</span>
+                <span className="text-lg font-black text-sky-500">{formatNum(7)}s</span>
+                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">{t.hold}</p>
+                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">{lang === 'bn' ? "শ্বাস ধরে রাখুন" : "Seal breath still"}</span>
               </div>
               <div className={cn(
                 "p-3 rounded-xl border text-center transition-colors",
                 phase === 'exhale' ? "border-teal-500 bg-teal-500/5" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")
               )}>
-                <span className="text-lg font-black text-teal-500">8s</span>
-                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">Exhale</p>
-                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">With whoosh blow</span>
+                <span className="text-lg font-black text-teal-500">{formatNum(8)}s</span>
+                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">{t.exhale}</p>
+                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">{lang === 'bn' ? "ফু দিয়ে সম্পূর্ণ বের" : "With whoosh blow"}</span>
               </div>
             </div>
           </div>
@@ -671,9 +687,9 @@ export default function BreathingTimer({ darkMode }: BreathingTimerProps) {
           )}>
             <Heart size={16} className="text-red-500 shrink-0 mt-0.5 animate-pulse" />
             <div className="space-y-1 text-xs">
-              <span className={cn("font-bold block", darkMode ? "text-gray-300" : "text-gray-800")}>Clinical Fitness Benefits</span>
+              <span className={cn("font-bold block", darkMode ? "text-gray-300" : "text-gray-800")}>{t.clinicalFitnessTitle}</span>
               <p className="leading-relaxed font-medium">
-                The 4-7-8 breathing method acts as a natural tranquilizer for the nervous system. By forcing the heart frequency to sync with a slow pattern, it reduces cortisol levels, opens congested bronchioles, lowers blood pressure, and helps quiet an overactive mind. Perfect choice post-exercise or right before sleep.
+                {t.clinicalFitnessText}
               </p>
             </div>
           </div>

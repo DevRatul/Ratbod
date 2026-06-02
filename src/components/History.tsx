@@ -21,11 +21,24 @@ interface HistoryProps {
   unit: 'metric' | 'imperial';
   refreshTrigger?: number;
   isLoggedIn: boolean;
+  lang?: string;
 }
 
-export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: HistoryProps) {
+export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, lang = 'en' }: HistoryProps) {
   const [history, setHistory] = useState<MetricEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const formatNum = (num: number | string | undefined | null) => {
+    if (num === undefined || num === null) return '';
+    const str = typeof num === 'number' ? num.toFixed(1) : num.toString();
+    let finalStr = str;
+    if (finalStr.endsWith('.0')) {
+      finalStr = finalStr.substring(0, finalStr.length - 2);
+    }
+    if (lang !== 'bn') return finalStr;
+    const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    return finalStr.replace(/[0-9]/g, (digit) => bnDigits[parseInt(digit)]);
+  };
 
   useEffect(() => {
     fetchHistory();
@@ -48,14 +61,20 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
   };
 
   const clearLocalHistory = () => {
-    if (window.confirm('Are you sure you want to clear your local history?')) {
+    const confirmMsg = lang === 'bn' 
+      ? 'আপনি কি নিশ্চিত যে আপনি আপনার সম্পূর্ণ ইতিহাস ডিলিট করতে চান?' 
+      : 'Are you sure you want to clear your local history?';
+    if (window.confirm(confirmMsg)) {
       localStorage.removeItem('ratbod_history');
       fetchHistory();
     }
   };
 
   const deleteEntry = async (id: string | number) => {
-    if (!window.confirm('Are you sure you want to delete this measurement?')) return;
+    const confirmMsg = lang === 'bn' 
+      ? 'আপনি কি নিশ্চিত যে আপনি এই পরিমাপটি ডিলিট করতে চান?' 
+      : 'Are you sure you want to delete this measurement?';
+    if (!window.confirm(confirmMsg)) return;
 
     try {
       const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
@@ -66,23 +85,25 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
       fetchHistory();
     } catch (error) {
       console.error('Failed to delete entry:', error);
-      alert('Failed to delete measurement. Please try again.');
+      const errMsg = lang === 'bn'
+        ? 'পরিমাপটি ডিলিট করা সম্ভব হয়নি। দয়া করে আবার চেষ্টা করুন।'
+        : 'Failed to delete measurement. Please try again.';
+      alert(errMsg);
     }
   };
 
   const formatWeight = (kg: number) => {
-    if (unit === 'metric') return `${kg.toFixed(1)} kg`;
-    return `${(kg * 2.20462).toFixed(1)} lb`;
+    if (unit === 'metric') return `${formatNum(kg)} ${lang === 'bn' ? 'কেজি' : 'kg'}`;
+    return `${formatNum(kg * 2.20462)} ${lang === 'bn' ? 'পাউন্ড' : 'lb'}`;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
+    const raw = new Date(dateString).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
+    return formatNum(raw);
   };
 
   if (isLoading) {
@@ -101,7 +122,9 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
       )}>
         <Calendar className="mx-auto text-gray-400" size={32} />
         <p className={cn("text-sm font-medium", darkMode ? "text-gray-400" : "text-gray-500")}>
-          No history entries found. Save your first measurement to see it here!
+          {lang === 'bn' 
+            ? 'পরিমাপের কোনো ইতিহাস পাওয়া যায়নি। এটি দেখতে প্রথমে আপনার পরিমাপ সংরক্ষণ করুন!'
+            : 'No history entries found. Save your first measurement to see it here!'}
         </p>
       </div>
     );
@@ -112,10 +135,10 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h3 className={cn("text-lg font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
-            Measurement History
+            {lang === 'bn' ? 'পরিমাপের ইতিহাস' : 'Measurement History'}
           </h3>
           <span className={cn("text-xs font-bold uppercase tracking-widest opacity-40")}>
-            {history.length} Entries
+            {lang === 'bn' ? `${formatNum(history.length)}টি ভুক্তি` : `${history.length} Entries`}
           </span>
         </div>
         
@@ -127,7 +150,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
               darkMode ? "bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400" : "bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600"
             )}
           >
-            Clear Local
+            {lang === 'bn' ? 'ইতিহাস ডিলিট করুন' : 'Clear Local'}
           </button>
         )}
       </div>
@@ -143,11 +166,11 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
                 "border-b text-[10px] font-black uppercase tracking-[0.2em]",
                 darkMode ? "border-white/5 text-gray-500" : "border-gray-100 text-gray-400"
               )}>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Weight</th>
-                <th className="px-6 py-4 text-center">BMI</th>
-                <th className="px-6 py-4 text-center">Body Fat</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4">{lang === 'bn' ? 'তারিখ' : 'Date'}</th>
+                <th className="px-6 py-4">{lang === 'bn' ? 'ওজন' : 'Weight'}</th>
+                <th className="px-6 py-4 text-center">{lang === 'bn' ? 'বিএমআই (BMI)' : 'BMI'}</th>
+                <th className="px-6 py-4 text-center">{lang === 'bn' ? 'শরীরের চর্বি' : 'Body Fat'}</th>
+                <th className="px-6 py-4 text-right">{lang === 'bn' ? 'পদক্ষেপ' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -170,10 +193,10 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className={cn("text-sm font-bold", darkMode ? "text-white" : "text-gray-900")}>
-                          {new Date(entry.date).toLocaleDateString()}
+                          {formatDate(entry.date)}
                         </span>
                         <span className="text-[10px] font-medium opacity-40">
-                          {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatNum(new Date(entry.date).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' }))}
                         </span>
                       </div>
                     </td>
@@ -196,7 +219,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
                             {weightDiff < 0 ? <TrendingDown size={10} /> : 
                              weightDiff > 0 ? <TrendingUp size={10} /> : 
                              <Minus size={10} />}
-                            {weightDiff !== 0 && Math.abs(displayDiff).toFixed(1)}
+                            {weightDiff !== 0 && formatNum(Math.abs(displayDiff).toFixed(1))}
                           </div>
                         )}
                       </div>
@@ -206,14 +229,14 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
                         "inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold",
                         darkMode ? "bg-white/5 text-gray-300" : "bg-gray-100 text-gray-700"
                       )}>
-                        {entry.bmi.toFixed(1)}
+                        {formatNum(entry.bmi.toFixed(1))}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Activity size={12} className="text-primary/60" />
                         <span className={cn("text-sm font-bold", darkMode ? "text-white" : "text-gray-900")}>
-                          {entry.bodyFat.toFixed(1)}%
+                          {formatNum(entry.bodyFat.toFixed(1))}%
                         </span>
                       </div>
                     </td>

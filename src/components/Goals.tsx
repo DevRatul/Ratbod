@@ -27,13 +27,26 @@ interface GoalsProps {
   currentWeight?: number; // in kg
   currentBodyFat?: number;
   onGoalUpdate?: () => void;
+  lang?: string;
 }
 
-export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, onGoalUpdate }: GoalsProps) {
+export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, onGoalUpdate, lang = 'en' }: GoalsProps) {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const formatNum = (num: number | string | undefined | null) => {
+    if (num === undefined || num === null) return '';
+    const str = typeof num === 'number' ? num.toFixed(1) : num.toString();
+    let finalStr = str;
+    if (finalStr.endsWith('.0')) {
+      finalStr = finalStr.substring(0, finalStr.length - 2);
+    }
+    if (lang !== 'bn') return finalStr;
+    const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    return finalStr.replace(/[0-9]/g, (digit) => bnDigits[parseInt(digit)]);
+  };
 
   // Form state
   const [targetWeight, setTargetWeight] = useState('');
@@ -117,7 +130,9 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target className="text-primary" size={24} />
-          <h2 className="text-2xl font-bold tracking-tight">Health Goals</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            {lang === 'bn' ? 'স্বাস্থ্য লক্ষ্যসমূহ' : 'Health Goals'}
+          </h2>
         </div>
         {!isEditing && (
           <button
@@ -127,7 +142,9 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
               darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             )}
           >
-            {goal ? 'Edit Goals' : 'Set Goals'}
+            {goal 
+              ? (lang === 'bn' ? 'লক্ষ্য পরিবর্তন করুন' : 'Edit Goals') 
+              : (lang === 'bn' ? 'লক্ষ্য নির্ধারণ করুন' : 'Set Goals')}
           </button>
         )}
       </div>
@@ -145,7 +162,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Target Weight ({unit === 'metric' ? 'kg' : 'lb'})
+                {lang === 'bn' ? 'লক্ষ্যিত ওজন' : 'Target Weight'} ({unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')})
               </label>
               <input 
                 type="number" 
@@ -162,7 +179,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Target Body Fat (%)
+                {lang === 'bn' ? 'লক্ষ্যিত চর্বি (%)' : 'Target Body Fat (%)'}
               </label>
               <input 
                 type="number" 
@@ -179,7 +196,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Daily Calorie Goal (kcal)
+                {lang === 'bn' ? 'দৈনিক ক্যালোরির লক্ষ্য (ক্যালোরি)' : 'Daily Calorie Goal (kcal)'}
               </label>
               <input 
                 type="number" 
@@ -195,7 +212,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Target Date
+                {lang === 'bn' ? 'লক্ষ্যের সম্ভাব্য তারিখ' : 'Target Date'}
               </label>
               <input 
                 type="date" 
@@ -217,7 +234,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
               className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-hover transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isSaving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
-              Save Goals
+              {lang === 'bn' ? 'লক্ষ্য সংরক্ষণ করুন' : 'Save Goals'}
             </button>
             <button
               type="button"
@@ -227,7 +244,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                 darkMode ? "bg-white/5 text-gray-400 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               )}
             >
-              Cancel
+              {lang === 'bn' ? 'বাতিল' : 'Cancel'}
             </button>
           </div>
         </motion.form>
@@ -239,16 +256,16 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
           )}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Weight Goal</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'ওজন লক্ষ্য' : 'Weight Goal'}</span>
               <Trophy className="text-yellow-500" size={16} />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-3xl font-light tracking-tighter">
-                  {unit === 'metric' ? goal.targetWeight.toFixed(1) : (goal.targetWeight * 2.20462).toFixed(1)}
-                  <span className="text-sm text-gray-500 font-bold ml-1">{unit === 'metric' ? 'kg' : 'lb'}</span>
+                  {formatNum(unit === 'metric' ? goal.targetWeight.toFixed(1) : (goal.targetWeight * 2.20462).toFixed(1))}
+                  <span className="text-sm text-gray-500 font-bold ml-1">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                 </p>
-                <p className="text-xs text-gray-500 font-medium">Target Weight</p>
+                <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যিত ওজন' : 'Target Weight'}</p>
               </div>
               {currentWeight && (
                 <div className="text-right space-y-1">
@@ -260,10 +277,10 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                       "text-xl font-bold tracking-tighter",
                       weightProgress === 'down' ? "text-primary" : weightProgress === 'up' ? "text-red-500" : "text-gray-400"
                     )}>
-                      {Math.abs(currentWeight - goal.targetWeight).toFixed(1)}
+                      {formatNum(Math.abs(currentWeight - goal.targetWeight).toFixed(1))}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 font-medium">To Go</p>
+                  <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বাকি আছে' : 'To Go'}</p>
                 </div>
               )}
             </div>
@@ -275,16 +292,16 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
           )}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Body Fat Goal</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'চর্বির লক্ষ্য' : 'Body Fat Goal'}</span>
               <Target className="text-primary" size={16} />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-3xl font-light tracking-tighter">
-                  {goal.targetBodyFat.toFixed(1)}
+                  {formatNum(goal.targetBodyFat.toFixed(1))}
                   <span className="text-sm text-gray-500 font-bold ml-1">%</span>
                 </p>
-                <p className="text-xs text-gray-500 font-medium">Target Fat %</p>
+                <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যিত চর্বি %' : 'Target Fat %'}</p>
               </div>
               {currentBodyFat && (
                 <div className="text-right space-y-1">
@@ -296,10 +313,10 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                       "text-xl font-bold tracking-tighter",
                       bodyFatProgress === 'down' ? "text-primary" : bodyFatProgress === 'up' ? "text-red-500" : "text-gray-400"
                     )}>
-                      {Math.abs(currentBodyFat - goal.targetBodyFat).toFixed(1)}%
+                      {formatNum(Math.abs(currentBodyFat - goal.targetBodyFat).toFixed(1))}%
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 font-medium">To Go</p>
+                  <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বাকি আছে' : 'To Go'}</p>
                 </div>
               )}
             </div>
@@ -310,12 +327,12 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             "p-6 rounded-3xl border space-y-4",
             darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
           )}>
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Daily Calorie Budget</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'দৈনিক ক্যালরি বরাদ্দ' : 'Daily Calorie Budget'}</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-light tracking-tighter text-primary">{goal.dailyCalorieGoal}</span>
-              <span className="text-sm text-gray-500 font-bold">kcal</span>
+              <span className="text-3xl font-light tracking-tighter text-primary">{formatNum(goal.dailyCalorieGoal)}</span>
+              <span className="text-sm text-gray-500 font-bold">{lang === 'bn' ? 'ক্যালোরি' : 'kcal'}</span>
             </div>
-            <p className="text-xs text-gray-500 font-medium">Daily intake to reach goal</p>
+            <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যে পৌঁছাতে দৈনিক ক্যালোরি গ্রহণ' : 'Daily intake to reach goal'}</p>
           </div>
 
           {/* Timeframe Card */}
@@ -324,16 +341,18 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
           )}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Target Date</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'লক্ষ্যের শেষ তারিখ' : 'Target Date'}</span>
               <Calendar className="text-gray-400" size={16} />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight">
-                {new Date(goal.targetDate).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                {formatNum(new Date(goal.targetDate).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'long', day: 'numeric', year: 'numeric' }))}
               </span>
             </div>
             <p className="text-xs text-gray-500 font-medium">
-              {Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+              {lang === 'bn' 
+                ? `${formatNum(Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} দিন বাকি আছে`
+                : `${Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining`}
             </p>
           </div>
         </div>
@@ -346,14 +365,14 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             <Target size={32} />
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-bold">No Goals Set Yet</h3>
-            <p className="text-sm text-gray-500 max-w-xs">Set your fitness objectives to track your progress and stay motivated.</p>
+            <h3 className="text-lg font-bold">{lang === 'bn' ? 'এখনো কোনো লক্ষ্য নির্ধারিত হয়নি' : 'No Goals Set Yet'}</h3>
+            <p className="text-sm text-gray-500 max-w-xs">{lang === 'bn' ? 'অগ্রগতি ট্র্যাক করতে এবং অনুপ্রাণিত থাকতে আপনার স্বাস্থ্য ও ফিটনেস লক্ষ্য নির্ধারণ করুন।' : 'Set your fitness objectives to track your progress and stay motivated.'}</p>
           </div>
           <button
             onClick={() => setIsEditing(true)}
             className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:bg-primary-hover transition-all flex items-center gap-2 cursor-pointer"
           >
-            Set Your First Goal
+            {lang === 'bn' ? 'আপনার প্রথম লক্ষ্য নির্ধারণ করুন' : 'Set Your First Goal'}
             <ArrowRight size={18} />
           </button>
         </div>
