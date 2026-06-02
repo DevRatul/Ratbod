@@ -9,6 +9,11 @@
   --color-primary-hover: #2eb82e;
   --color-primary-light: #e6f9e6;
   --color-primary-dark: #248f24;
+  
+  --color-ink: #1A1A1A;
+  --color-ink-muted: #6B7280;
+  --color-paper: #F5F5F5;
+  --color-paper-dark: #0A0A0A;
 
   @keyframes shimmer {
     0% { transform: translateX(-100%); }

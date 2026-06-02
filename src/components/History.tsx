@@ -3,14 +3,13 @@ import { Calendar, Scale, Activity, TrendingDown, TrendingUp, Minus, Trash2 } fr
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { api } from '../services/api';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 interface MetricEntry {
-  id: number;
+  id: string | number;
   date: string;
   weight: number;
   bmi: number;
@@ -35,57 +34,30 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn }: 
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
-      let data: MetricEntry[] = [];
-      
-      // Always get local history
       const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      
-      if (isLoggedIn) {
-        const cloudData = await api.getMetricsHistory();
-        // Merge and sort by date descending
-        // We use a Map to avoid duplicates if we have IDs
-        const merged = [...cloudData, ...localData].sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        data = merged;
-      } else {
-        data = localData.sort((a: any, b: any) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-      }
-      
-      setHistory(data);
+      const sorted = localData.sort((a: any, b: any) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setHistory(sorted);
     } catch (error) {
       console.error('Failed to fetch history:', error);
-      // Fallback to local on error
-      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      setHistory(localData);
+      setHistory([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const clearLocalHistory = () => {
-    if (window.confirm('Are you sure you want to clear your local history? This will not affect your account history.')) {
+    if (window.confirm('Are you sure you want to clear your local history?')) {
       localStorage.removeItem('ratbod_history');
       fetchHistory();
     }
   };
 
-  const deleteEntry = async (id: number) => {
+  const deleteEntry = async (id: string | number) => {
     if (!window.confirm('Are you sure you want to delete this measurement?')) return;
 
     try {
-      if (isLoggedIn) {
-        // Try to delete from cloud first if logged in
-        try {
-          await api.deleteMetric(id);
-        } catch (err) {
-          console.error('Failed to delete from cloud, might be a local entry:', err);
-        }
-      }
-
-      // Also remove from local storage if it exists there
       const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
       const filteredLocal = localData.filter((entry: MetricEntry) => entry.id !== id);
       localStorage.setItem('ratbod_history', JSON.stringify(filteredLocal));

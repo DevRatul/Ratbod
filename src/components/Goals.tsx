@@ -6,7 +6,6 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Trophy, Calendar, ArrowRight, Save, RefreshCw, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { motion } from 'motion/react';
-import { api } from '../services/api';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -55,8 +54,9 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
   const fetchGoal = async () => {
     setIsLoading(true);
     try {
-      const data = await api.getGoals();
-      if (data) {
+      const savedGoalJson = localStorage.getItem('ratbod_goals');
+      if (savedGoalJson) {
+        const data = JSON.parse(savedGoalJson);
         setGoal(data);
         setTargetWeight(unit === 'metric' ? data.targetWeight.toString() : (data.targetWeight * 2.20462).toFixed(1));
         setTargetBodyFat(data.targetBodyFat.toString());
@@ -85,7 +85,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
     };
 
     try {
-      await api.saveGoal(goalData);
+      localStorage.setItem('ratbod_goals', JSON.stringify(goalData));
       setGoal(goalData as Goal);
       setIsEditing(false);
       if (onGoalUpdate) onGoalUpdate();

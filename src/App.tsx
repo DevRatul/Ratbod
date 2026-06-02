@@ -19,8 +19,6 @@ import {
   Sun,
   Moon,
   ArrowRightLeft,
-  LogOut,
-  LogIn,
   Camera,
   History,
   UserCircle
@@ -43,7 +41,6 @@ import {
   type ActivityLevel,
   type BodyData
 } from './utils/calculations';
-import { api } from './services/api';
 import Goals from './components/Goals';
 import HistoryComponent from './components/History';
 
@@ -51,23 +48,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface User {
-  id: number;
-  username: string;
-  name: string;
-  profilePic?: string;
-  birthdate?: string;
-  gender?: Gender;
-}
-
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(true);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authError, setAuthError] = useState('');
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  
   const [darkMode, setDarkMode] = useState(false);
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
   const [gender, setGender] = useState<Gender>('male');
@@ -84,39 +65,90 @@ export default function App() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'history' | 'goals'>('calculator');
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // Load from localStorage on mount
   useEffect(() => {
-    api.getMe().then(setUser);
-    api.checkStatus().then(data => {
-      setIsSupabaseConfigured(data.supabaseConfigured);
-    });
+    const savedName = localStorage.getItem('ratbod_name') || '';
+    const savedGender = localStorage.getItem('ratbod_gender') as Gender || 'male';
+    const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
+    const savedAge = localStorage.getItem('ratbod_age') || '';
+    const savedHeight = localStorage.getItem('ratbod_height') || '';
+    const savedWeight = localStorage.getItem('ratbod_weight') || '';
+    const savedWaist = localStorage.getItem('ratbod_waist') || '';
+    const savedNeck = localStorage.getItem('ratbod_neck') || '';
+    const savedHip = localStorage.getItem('ratbod_hip') || '';
+    const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
+    const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
+    const savedDarkMode = localStorage.getItem('ratbod_darkmode') === 'true';
+
+    setName(savedName);
+    setGender(savedGender);
+    setBirthdate(savedBirthdate);
+    setAge(savedAge);
+    setHeight(savedHeight);
+    setWeight(savedWeight);
+    setWaist(savedWaist);
+    setNeck(savedNeck);
+    setHip(savedHip);
+    setActivityLevel(savedActivity);
+    setUnit(savedUnit);
+    setDarkMode(savedDarkMode);
   }, []);
 
+  // Sync back to localStorage
   useEffect(() => {
-    if (user) {
-      if (user.birthdate) {
-        setBirthdate(user.birthdate);
-        const birthDate = new Date(user.birthdate);
-        const today = new Date();
-        let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          calculatedAge--;
-        }
-        setAge(calculatedAge.toString());
-      }
-      if (user.name) {
-        setName(user.name);
-      }
-      if (user.gender) {
-        setGender(user.gender);
-      }
-    }
-  }, [user]);
+    localStorage.setItem('ratbod_name', name);
+  }, [name]);
 
   useEffect(() => {
-    if (birthdate && !user?.birthdate) {
+    localStorage.setItem('ratbod_gender', gender);
+  }, [gender]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_birthdate', birthdate);
+  }, [birthdate]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_age', age);
+  }, [age]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_height', height);
+  }, [height]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_weight', weight);
+  }, [weight]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_waist', waist);
+  }, [waist]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_neck', neck);
+  }, [neck]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_hip', hip);
+  }, [hip]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_activity', activityLevel);
+  }, [activityLevel]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_unit', unit);
+  }, [unit]);
+
+  useEffect(() => {
+    localStorage.setItem('ratbod_darkmode', darkMode.toString());
+  }, [darkMode]);
+
+  // Calculate age when birthdate changes
+  useEffect(() => {
+    if (birthdate) {
       const birthDate = new Date(birthdate);
       const today = new Date();
       let calculatedAge = today.getFullYear() - birthDate.getFullYear();
@@ -126,58 +158,28 @@ export default function App() {
       }
       setAge(calculatedAge.toString());
     }
-  }, [birthdate, user?.birthdate]);
+  }, [birthdate]);
 
-  const handleAuth = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setAuthError('');
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
-
-    try {
-      if (authMode === 'login') {
-        const loggedInUser = await api.login(data);
-        setUser(loggedInUser);
-      } else {
-        const registeredUser = await api.register(data);
-        setUser(registeredUser);
-      }
-      setIsAuthModalOpen(false);
-    } catch (err: any) {
-      setAuthError(err.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    await api.logout();
-    setUser(null);
-  };
-
-  const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    try {
-      const updatedUser = await api.updateProfile(formData);
-      setUser(updatedUser);
-      setIsProfileModalOpen(false);
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const handleSaveMetrics = async () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
+  const handleSaveMetrics = () => {
     if (!metrics) return;
+    
+    const entry = {
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      weight: metricData.weight,
+      bmi: metrics.bmi,
+      bodyFat: metrics.bodyFat
+    };
 
-    await api.saveMetrics({
-      ...metricData,
-      ...metrics
-    });
+    const existing = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+    existing.push(entry);
+    localStorage.setItem('ratbod_history', JSON.stringify(existing));
+
     setHistoryRefreshTrigger(prev => prev + 1);
     alert('Metrics saved to your history!');
+    
+    // Automatically switch to history tab on mobile so they see it!
+    setActiveTab('history');
   };
 
   // Convert inputs to metric for calculations
@@ -254,7 +256,7 @@ export default function App() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      const reportName = user?.name || name || 'Guest';
+      const reportName = name || 'Guest';
       const dateStr = new Date().toISOString().split('T')[0];
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${reportName}-${dateStr}.pdf`);
@@ -275,15 +277,10 @@ export default function App() {
 
   return (
     <div className={cn(
-      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden",
+      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden pb-24 md:pb-0",
       darkMode ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
-      {!isSupabaseConfigured && (
-        <div className="bg-red-500 text-white text-center py-2 text-xs font-bold uppercase tracking-widest z-[100] relative">
-          Database not configured. Please add Supabase API keys in Settings.
-        </div>
-      )}
       <header className="sticky top-4 z-50 px-4 sm:px-6 transition-all duration-300">
         <div className={cn(
           "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-xl shadow-xl transition-colors duration-300",
@@ -297,48 +294,6 @@ export default function App() {
           </a>
           
           <div className="flex items-center gap-1.5 sm:gap-3">
-            {user ? (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <button 
-                  onClick={() => setIsProfileModalOpen(true)}
-                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
-                >
-                  {user.profilePic ? (
-                    <img 
-                      src={user.profilePic} 
-                      alt={user.name} 
-                      className="w-7 h-7 rounded-full object-cover border border-primary/20"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-primary-light flex items-center justify-center text-primary-dark">
-                      <UserIcon size={14} />
-                    </div>
-                  )}
-                  <span className={cn("text-xs font-semibold hidden md:block", darkMode ? "text-white" : "text-gray-800")}>
-                    {user.name}
-                  </span>
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className={cn(
-                    "p-1.5 rounded-full transition-all cursor-pointer",
-                    darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  )}
-                >
-                  <LogOut size={14} />
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary text-white rounded-full text-xs font-semibold hover:bg-primary-hover transition-all cursor-pointer"
-              >
-                <LogIn size={14} />
-                <span className="hidden sm:inline">Login</span>
-              </button>
-            )}
-
             <button 
               onClick={() => setDarkMode(!darkMode)}
               className={cn(
@@ -382,7 +337,10 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden">
         {/* Input Section */}
-        <section className="lg:col-span-5 space-y-8 no-scrollbar">
+        <section className={cn(
+          "lg:col-span-5 space-y-8 no-scrollbar",
+          activeTab === 'calculator' ? "block" : "hidden md:block"
+        )}>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight">Your Measurements</h2>
             <p className={cn("text-sm font-medium", darkMode ? "text-gray-300" : "text-gray-600")}>Enter your details for a precise body analysis.</p>
@@ -577,7 +535,10 @@ export default function App() {
         </section>
 
         {/* Results Section */}
-        <section className="lg:col-span-7 no-scrollbar">
+        <section className={cn(
+          "lg:col-span-7 no-scrollbar",
+          activeTab === 'results' ? "block" : "hidden md:block"
+        )}>
           <AnimatePresence mode="wait">
             {metrics ? (
               <motion.div 
@@ -590,18 +551,16 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-semibold tracking-tight">Analysis Results</h2>
                   <div className="flex items-center gap-2">
-                    {user && (
-                      <button 
-                        onClick={handleSaveMetrics}
-                        className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer",
-                          darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        )}
-                      >
-                        <History size={16} />
-                        Save
-                      </button>
-                    )}
+                    <button 
+                      onClick={handleSaveMetrics}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer",
+                        darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      )}
+                    >
+                      <History size={16} />
+                      Save
+                    </button>
                     <button 
                       onClick={handleDownloadPdf}
                       disabled={isGeneratingPdf}
@@ -763,31 +722,31 @@ export default function App() {
 
                   {/* Ideal Weight Section (Accordion) */}
                   <div className={cn(
-                    "rounded-xl shadow-lg relative overflow-hidden border transition-all duration-300",
-                    darkMode ? "bg-[#0A0A0A] border-white/5" : "bg-[#1A2B3C] border-white/5"
+                    "rounded-2xl shadow-xl relative overflow-hidden border transition-all duration-500",
+                    darkMode ? "bg-[#0A0A0A] border-white/10" : "bg-[#1A2B3C] border-white/10"
                   )}>
                     <button 
                       onClick={() => setIsIdealWeightOpen(!isIdealWeightOpen)}
-                      className="w-full px-6 py-4 flex items-center justify-between group transition-colors hover:bg-white/5 cursor-pointer"
+                      className="w-full px-8 py-6 flex items-center justify-between group transition-colors hover:bg-white/5 cursor-pointer"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <div className={cn(
-                          "p-2 rounded-lg transition-colors",
+                          "p-3 rounded-xl transition-colors",
                           darkMode ? "bg-blue-500/10 text-blue-400" : "bg-blue-400/10 text-blue-300"
                         )}>
-                          <Scale size={18} />
+                          <Scale size={20} />
                         </div>
                         <div className="text-left">
-                          <h3 className={cn("text-sm font-black uppercase tracking-widest", darkMode ? "text-white" : "text-blue-100")}>Ideal Body Weight</h3>
-                          <p className={cn("text-[10px] font-medium opacity-50", darkMode ? "text-gray-400" : "text-blue-300")}>Devine Formula ({gender === 'male' ? 'Male' : 'Female'})</p>
+                          <h3 className={cn("text-xl font-serif font-bold tracking-tight", darkMode ? "text-white" : "text-blue-50")}>Ideal Body Weight</h3>
+                          <p className={cn("text-xs font-medium opacity-60", darkMode ? "text-gray-400" : "text-blue-200")}>Devine Formula ({gender === 'male' ? 'Male' : 'Female'})</p>
                         </div>
                       </div>
                       <motion.div
                         animate={{ rotate: isIdealWeightOpen ? 180 : 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.4, ease: "backOut" }}
                         className={cn(darkMode ? "text-gray-500" : "text-blue-300/50")}
                       >
-                        <ChevronDown size={20} />
+                        <ChevronDown size={24} />
                       </motion.div>
                     </button>
 
@@ -797,35 +756,35 @@ export default function App() {
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                          transition={{ duration: 0.4, ease: "easeInOut" }}
                         >
-                          <div className="px-6 pb-6 pt-2 border-t border-white/5">
-                            <div className="grid grid-cols-2 gap-4">
+                          <div className="px-8 pb-8 pt-2 border-t border-white/5">
+                            <div className="grid grid-cols-2 gap-6">
                               <div className={cn(
-                                "p-4 rounded-xl border transition-colors",
-                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/20 border-blue-800/20"
+                                "p-5 rounded-2xl border transition-colors",
+                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/30 border-blue-800/30"
                               )}>
-                                <span className={cn("text-[10px] uppercase font-black block mb-1", darkMode ? "text-white/40" : "text-blue-400/40")}>Metric</span>
-                                <p className="text-2xl font-light tracking-tighter text-white">
+                                <span className={cn("text-[10px] uppercase font-black tracking-widest block mb-2", darkMode ? "text-white/40" : "text-blue-300/40")}>Metric</span>
+                                <p className="text-3xl font-serif font-bold tracking-tighter text-primary">
                                   {metrics.idealWeight.kg.toFixed(1)}
-                                  <span className="text-xs opacity-40 ml-1 font-normal">kg</span>
+                                  <span className={cn("text-sm opacity-40 ml-1 font-sans font-medium", darkMode ? "text-white" : "text-blue-50")}>kg</span>
                                 </p>
                               </div>
                               <div className={cn(
-                                "p-4 rounded-xl border transition-colors",
-                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/20 border-blue-800/20"
+                                "p-5 rounded-2xl border transition-colors",
+                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/30 border-blue-800/30"
                               )}>
-                                <span className={cn("text-[10px] uppercase font-black block mb-1", darkMode ? "text-white/40" : "text-blue-400/40")}>Imperial</span>
-                                <p className="text-2xl font-light tracking-tighter text-white">
+                                <span className={cn("text-[10px] uppercase font-black tracking-widest block mb-2", darkMode ? "text-white/40" : "text-blue-300/40")}>Imperial</span>
+                                <p className="text-3xl font-serif font-bold tracking-tighter text-primary">
                                   {metrics.idealWeight.lb.toFixed(1)}
-                                  <span className="text-xs opacity-40 ml-1 font-normal">lb</span>
+                                  <span className={cn("text-sm opacity-40 ml-1 font-sans font-medium", darkMode ? "text-white" : "text-blue-50")}>lb</span>
                                 </p>
                               </div>
                             </div>
                             
                             <div className={cn(
-                              "mt-4 p-3 rounded-lg text-[10px] leading-relaxed",
-                              darkMode ? "bg-blue-500/5 text-blue-300/70 border border-blue-500/10" : "bg-blue-400/5 text-blue-200/70 border border-blue-400/10"
+                              "mt-6 p-4 rounded-xl text-xs leading-relaxed font-medium",
+                              darkMode ? "bg-blue-500/10 text-blue-200/80 border border-blue-500/20" : "bg-blue-400/10 text-blue-100/80 border border-blue-400/20"
                             )}>
                               The Devine formula is a widely used method for estimating ideal body weight based on height and gender. It provides a healthy target weight for medical and nutritional purposes.
                             </div>
@@ -834,35 +793,27 @@ export default function App() {
                       )}
                     </AnimatePresence>
                     
-                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-500 rounded-full blur-3xl opacity-5 pointer-events-none" />
+                    <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-blue-500 rounded-full blur-[60px] opacity-10 pointer-events-none" />
                   </div>
 
                   {/* History Section */}
-                  {user && (
+                  <div className={cn("md:block", activeTab === 'history' ? "block" : "hidden")}>
                     <HistoryComponent 
                       darkMode={darkMode} 
                       unit={unit} 
                       refreshTrigger={historyRefreshTrigger} 
-                      isLoggedIn={!!user}
+                      isLoggedIn={false}
                     />
-                  )}
+                  </div>
 
                 {/* Hidden Report for PDF Generation (Off-screen) */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
                   <div ref={reportRef} style={{ backgroundColor: '#ffffff', color: '#1a1a1a' }} className="p-12 w-[800px] space-y-12">
                     <div style={{ borderBottom: '1px solid #e5e7eb' }} className="flex justify-between items-start pb-8">
                       <div className="flex items-center gap-4">
-                        {user?.profilePic && (
-                          <img 
-                            src={user.profilePic} 
-                            alt={user.name} 
-                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #32CD32' }}
-                            referrerPolicy="no-referrer"
-                          />
-                        )}
                         <div>
                           <h1 style={{ color: '#32CD32' }} className="text-4xl font-black tracking-tighter">RatboD</h1>
-                          <p style={{ color: '#6b7280' }}>Health Analysis for {user?.name || name || 'Guest'}</p>
+                          <p style={{ color: '#6b7280' }}>Health Analysis for {name || 'Guest'}</p>
                         </div>
                       </div>
                       <div style={{ color: '#9ca3af' }} className="text-right text-sm">
@@ -936,16 +887,14 @@ export default function App() {
         </section>
       </main>
 
-      {user && (
-        <div className="max-w-5xl mx-auto px-6 pb-12">
-          <Goals 
-            darkMode={darkMode} 
-            unit={unit} 
-            currentWeight={metricData.weight} 
-            currentBodyFat={metrics?.bodyFat}
-          />
-        </div>
-      )}
+      <div className={cn("max-w-5xl mx-auto px-6 pb-12 md:block", activeTab === 'goals' ? "block" : "hidden")}>
+        <Goals 
+          darkMode={darkMode} 
+          unit={unit} 
+          currentWeight={metricData.weight} 
+          currentBodyFat={metrics?.bodyFat}
+        />
+      </div>
 
       {/* Footer */}
       <footer className={cn(
@@ -971,245 +920,65 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Auth Modal */}
-      <AnimatePresence>
-        {isAuthModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAuthModalOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={cn(
-                "relative w-full max-w-md p-8 rounded-3xl shadow-2xl transition-colors",
-                darkMode ? "bg-[#0F0F0F] text-white" : "bg-white text-[#1A1A1A]"
-              )}
-            >
-              <div className="text-center space-y-2 mb-8">
-                <h2 className="text-2xl font-bold tracking-tight">
-                  {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
-                </h2>
-                <p className={cn("text-sm font-medium", darkMode ? "text-gray-300" : "text-gray-600")}>
-                  {authMode === 'login' ? 'Access your body metrics history' : 'Start tracking your health journey'}
-                </p>
-              </div>
+      {/* Mobile Sticky Tab Navigation */}
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-lg transition-colors duration-300",
+        darkMode ? "bg-[#0F0F0F]/90 border-white/10 text-white" : "bg-white/90 border-black/5 text-gray-900",
+        "pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 px-6 shadow-2xl shadow-black/20"
+      )}>
+        <div className="flex items-center justify-between">
+          <button 
+            id="tab_calculator"
+            onClick={() => setActiveTab('calculator')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
+              activeTab === 'calculator' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
+            )}
+          >
+            <Calculator size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">Measure</span>
+          </button>
+          
+          <button 
+            id="tab_results"
+            onClick={() => setActiveTab('results')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all relative",
+              activeTab === 'results' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
+            )}
+          >
+            <Scale size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">Results</span>
+            {metrics && activeTab !== 'results' && (
+              <span className="absolute top-1 right-1/3 w-2 h-2 bg-primary rounded-full animate-pulse" />
+            )}
+          </button>
+          
+          <button 
+            id="tab_goals"
+            onClick={() => setActiveTab('goals')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
+              activeTab === 'goals' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
+            )}
+          >
+            <Activity size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">Goals</span>
+          </button>
 
-              <form onSubmit={handleAuth} className="space-y-4">
-                {authMode === 'register' && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Full Name</label>
-                      <input 
-                        name="name"
-                        required
-                        className={cn(
-                          "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                        )}
-                        placeholder="John Doe"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Birthdate</label>
-                      <input 
-                        name="birthdate"
-                        type="date"
-                        required
-                        className={cn(
-                          "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Gender</label>
-                      <select 
-                        name="gender"
-                        required
-                        className={cn(
-                          "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                        )}
-                      >
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Username</label>
-                  <input 
-                    name="username"
-                    required
-                    className={cn(
-                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                    )}
-                    placeholder="johndoe"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Password</label>
-                  <input 
-                    name="password"
-                    type="password"
-                    required
-                    className={cn(
-                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                    )}
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                {authError && (
-                  <p className="text-xs text-red-500 font-medium">{authError}</p>
-                )}
-
-                <button 
-                  type="submit"
-                  className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
-                >
-                  {authMode === 'login' ? 'Login' : 'Sign Up'}
-                </button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <button 
-                  onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                  className="text-xs font-medium text-primary hover:text-primary-hover transition-colors"
-                >
-                  {authMode === 'login' ? "Don't have an account? Sign up" : "Already have an account? Login"}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Profile Modal */}
-      <AnimatePresence>
-        {isProfileModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsProfileModalOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={cn(
-                "relative w-full max-w-md p-8 rounded-3xl shadow-2xl transition-colors",
-                darkMode ? "bg-[#0F0F0F] text-white" : "bg-white text-[#1A1A1A]"
-              )}
-            >
-              <h2 className="text-2xl font-bold tracking-tight mb-8">Edit Profile</h2>
-              
-              <form onSubmit={handleUpdateProfile} className="space-y-6">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative group">
-                    {user?.profilePic ? (
-                      <img 
-                        src={user.profilePic} 
-                        alt={user.name} 
-                        className="w-24 h-24 rounded-full object-cover border-2 border-primary"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-primary-light flex items-center justify-center text-primary-dark">
-                        <UserCircle size={48} />
-                      </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                      <Camera size={24} className="text-white" />
-                      <input 
-                        type="file" 
-                        name="profilePic" 
-                        className="hidden" 
-                        accept="image/*"
-                      />
-                    </label>
-                  </div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest">Click to change photo</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Display Name</label>
-                  <input 
-                    name="name"
-                    defaultValue={user?.name}
-                    required
-                    className={cn(
-                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Birthdate</label>
-                  <input 
-                    name="birthdate"
-                    type="date"
-                    defaultValue={user?.birthdate}
-                    required
-                    className={cn(
-                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Gender</label>
-                  <select 
-                    name="gender"
-                    defaultValue={user?.gender}
-                    required
-                    className={cn(
-                      "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                      darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
-                    )}
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-
-                <div className="flex gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setIsProfileModalOpen(false)}
-                    className={cn(
-                      "flex-1 py-3 rounded-xl font-semibold transition-all",
-                      darkMode ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
-                    )}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    className="flex-1 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          <button 
+            id="tab_history"
+            onClick={() => setActiveTab('history')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
+              activeTab === 'history' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
+            )}
+          >
+            <History size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">History</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
