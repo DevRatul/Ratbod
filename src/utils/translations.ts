@@ -21,7 +21,7 @@ export const translations = {
     tabMeasure: "Measure",
     tabResults: "Results",
     tabGoals: "Goals",
-    tabHistory: "History",
+    tabHistory: "Groceries",
     tabBreathe: "Breathe",
 
     // Fields & Labels
@@ -153,7 +153,7 @@ export const translations = {
     tabMeasure: "পরিমাপ",
     tabResults: "ফলাফল",
     tabGoals: "লক্ষ্য সমূহ",
-    tabHistory: "ইতিহাস",
+    tabHistory: "বাজার হিসাব",
     tabBreathe: "শ্বাস নিন",
 
     // Fields & Labels

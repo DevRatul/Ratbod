@@ -20,7 +20,7 @@ import {
   Moon,
   ArrowRightLeft,
   Camera,
-  History,
+  ShoppingBag,
   UserCircle,
   Wind
 } from 'lucide-react';
@@ -42,9 +42,9 @@ import {
   type ActivityLevel,
   type BodyData
 } from './utils/calculations';
-import Goals from './components/Goals';
-import HistoryComponent from './components/History';
+import GroceryCalculator from './components/GroceryCalculator';
 import BreathingTimer from './components/BreathingTimer';
+import Goals from './components/Goals';
 import { translations } from './utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -70,7 +70,7 @@ export default function App() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'history' | 'goals' | 'breathing'>('calculator');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'goals' | 'breathing'>('calculator');
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Load from localStorage on mount
@@ -212,8 +212,8 @@ export default function App() {
     setHistoryRefreshTrigger(prev => prev + 1);
     alert(t.savedAlert);
     
-    // Automatically switch to history tab on mobile so they see it!
-    setActiveTab('history');
+    // Keep active tab on results since history tab is replaced with groceries
+    setActiveTab('results');
   };
 
   // Convert inputs to metric for calculations
@@ -324,7 +324,7 @@ export default function App() {
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white">
               <Activity size={14} />
             </div>
-            <h1 className="font-sans font-black text-base tracking-tighter">{t.appName}</h1>
+            <h1 className="font-sans font-black text-base tracking-tighter">RatboD</h1>
           </a>
           
           {/* Desktop Navigation Links */}
@@ -341,22 +341,11 @@ export default function App() {
               {t.tabMeasure}
             </button>
             <button
-              onClick={() => setActiveTab('goals')}
+              onClick={() => setActiveTab('groceries')}
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
-                activeTab === 'goals'
-                  ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
-              )}
-            >
-              {t.tabGoals}
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
-                activeTab === 'history'
-                  ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
+                activeTab === 'groceries'
+                  ? (darkMode ? "bg-sky-500/20 text-sky-400" : "bg-sky-50 text-sky-700 shadow-sm")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
             >
@@ -377,37 +366,6 @@ export default function App() {
           </nav>
           
           <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Language Switcher */}
-            <div className={cn(
-              "flex p-0.5 rounded-full transition-colors",
-              darkMode ? "bg-white/5" : "bg-gray-100"
-            )}>
-              <button 
-                onClick={() => setLang('en')}
-                className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all cursor-pointer",
-                  lang === 'en' 
-                    ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
-                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
-                )}
-                title="English"
-              >
-                EN
-              </button>
-              <button 
-                onClick={() => setLang('bn')}
-                className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all cursor-pointer",
-                  lang === 'bn' 
-                    ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
-                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
-                )}
-                title="বাংলা"
-              >
-                বাং
-              </button>
-            </div>
-
             <button 
               onClick={() => setDarkMode(!darkMode)}
               className={cn(
@@ -457,9 +415,17 @@ export default function App() {
         <BreathingTimer darkMode={darkMode} lang={lang} />
       </div>
 
+      {/* Groceries Tab Content */}
+      <div className={cn(
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        activeTab === 'groceries' ? "block" : "hidden"
+      )}>
+        <GroceryCalculator darkMode={darkMode} lang={lang} />
+      </div>
+
       <main className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden",
-        activeTab === 'breathing' ? "hidden" : "grid"
+        (activeTab === 'breathing' || activeTab === 'groceries') ? "hidden" : "grid"
       )}>
         {/* Input Section */}
         <section className={cn(
@@ -683,7 +649,7 @@ export default function App() {
                         darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       )}
                     >
-                      <History size={16} />
+                      <CheckCircle2 size={16} />
                       {t.saveBtn}
                     </button>
                     <button 
@@ -925,17 +891,6 @@ export default function App() {
                     <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-blue-500 rounded-full blur-[60px] opacity-10 pointer-events-none" />
                   </div>
 
-                  {/* History Section */}
-                  <div className={cn("md:block", activeTab === 'history' ? "block" : "hidden")}>
-                    <HistoryComponent 
-                      darkMode={darkMode} 
-                      unit={unit} 
-                      refreshTrigger={historyRefreshTrigger} 
-                      isLoggedIn={false}
-                      lang={lang}
-                    />
-                  </div>
-
                 {/* Hidden Report for PDF Generation (Off-screen) */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
                   <div ref={reportRef} style={{ backgroundColor: '#ffffff', color: '#1a1a1a' }} className="p-12 w-[800px] space-y-12">
@@ -1021,7 +976,11 @@ export default function App() {
         </section>
       </main>
 
-      <div className={cn("max-w-5xl mx-auto px-6 pb-12 md:block", activeTab === 'goals' ? "block" : (activeTab === 'breathing' ? "hidden md:hidden" : "hidden"))}>
+      {/* Health Goals Section */}
+      <div className={cn(
+        "max-w-5xl mx-auto px-6 pb-12",
+        (activeTab === 'calculator' || activeTab === 'results') ? "block" : "hidden"
+      )}>
         <Goals 
           darkMode={darkMode} 
           unit={unit} 
@@ -1033,14 +992,49 @@ export default function App() {
 
       {/* Footer */}
       <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
+        "max-w-5xl mx-auto px-6 py-8 border-t transition-colors",
         darkMode ? "border-white/5" : "border-black/5"
       )}>
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 opacity-40">
             <Activity size={14} className="text-[#b4a8a8]" />
             <span className="text-[10px] font-black uppercase tracking-widest text-[#b4a8a8]">RatboD</span>
           </div>
+
+          {/* Multi-Language Switcher in Footer */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{lang === 'bn' ? 'ভাষা:' : 'Lang:'}</span>
+            <div className={cn(
+              "flex p-0.5 rounded-lg transition-colors border",
+              darkMode ? "bg-white/5 border-white/10" : "bg-gray-100 border-black/5"
+            )}>
+              <button 
+                onClick={() => setLang('en')}
+                className={cn(
+                  "px-2 py-0.5 rounded-md text-[9px] font-black transition-all cursor-pointer",
+                  lang === 'en' 
+                    ? (darkMode ? "bg-sky-500 text-white" : "bg-white shadow-sm text-sky-700") 
+                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-800")
+                )}
+                title="English"
+              >
+                EN
+              </button>
+              <button 
+                onClick={() => setLang('bn')}
+                className={cn(
+                  "px-2 py-0.5 rounded-md text-[9px] font-black transition-all cursor-pointer",
+                  lang === 'bn' 
+                    ? (darkMode ? "bg-sky-500 text-white" : "bg-white shadow-sm text-sky-700") 
+                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-800")
+                )}
+                title="বাংলা"
+              >
+                বাং
+              </button>
+            </div>
+          </div>
+
           <div className="flex gap-6">
             <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Privacy Policy</a>
             <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Terms of Service</a>
@@ -1090,26 +1084,14 @@ export default function App() {
           </button>
           
           <button 
-            id="tab_goals"
-            onClick={() => setActiveTab('goals')}
+            id="tab_groceries"
+            onClick={() => setActiveTab('groceries')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'goals' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
+              activeTab === 'groceries' ? "text-sky-500 scale-105" : "text-gray-400 hover:text-gray-500"
             )}
           >
-            <Activity size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabGoals}</span>
-          </button>
-
-          <button 
-            id="tab_history"
-            onClick={() => setActiveTab('history')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'history' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
-            )}
-          >
-            <History size={18} />
+            <ShoppingBag size={18} />
             <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabHistory}</span>
           </button>
 
