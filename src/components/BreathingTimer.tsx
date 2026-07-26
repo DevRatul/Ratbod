@@ -139,8 +139,66 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   });
   const [completedSessionsCount, setCompletedSessionsCount] = useState<number>(0);
   const [showTooltip, setShowTooltip] = useState<boolean>(true);
+  const [isWakeLockActive, setIsWakeLockActive] = useState<boolean>(false);
 
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const wakeLockRef = useRef<any>(null);
+
+  // Screen Wake Lock effect: keeps mobile screen awake when breathing session is running
+  useEffect(() => {
+    let released = false;
+
+    async function requestWakeLock() {
+      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+        try {
+          const lock = await (navigator as any).wakeLock.request('screen');
+          if (!released) {
+            wakeLockRef.current = lock;
+            setIsWakeLockActive(true);
+            lock.addEventListener('release', () => {
+              wakeLockRef.current = null;
+              setIsWakeLockActive(false);
+            });
+          } else {
+            lock.release();
+          }
+        } catch (err) {
+          console.warn('Screen wake lock request failed or not allowed:', err);
+          setIsWakeLockActive(false);
+        }
+      }
+    }
+
+    async function releaseWakeLock() {
+      released = true;
+      if (wakeLockRef.current) {
+        try {
+          await wakeLockRef.current.release();
+          wakeLockRef.current = null;
+        } catch (e) {}
+      }
+      setIsWakeLockActive(false);
+    }
+
+    if (isActive && phase !== 'completed') {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isActive && phase !== 'completed') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      releaseWakeLock();
+    };
+  }, [isActive, phase]);
 
   // Initialize Web Audio API on click if sound active
   const triggerAudioTick = (type: 'inhale' | 'hold' | 'exhale' | 'finish' | 'tick', duration: number) => {
@@ -430,6 +488,19 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
               <span className="hidden sm:inline">{t.soundCoach}</span>
             </button>
           </div>
+
+          {/* Screen Wake Lock Status Badge */}
+          {isActive && (
+            <div className={cn(
+              "px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all animate-fade-in",
+              isWakeLockActive
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 dark:text-emerald-400"
+                : "bg-teal-500/10 border-teal-500/30 text-teal-500 dark:text-teal-400"
+            )}>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>{lang === 'bn' ? "স্ক্রিন অন থাকবে" : "Screen Kept Awake"}</span>
+            </div>
+          )}
 
           {/* Sessions Counter */}
           <div className={cn(

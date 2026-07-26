@@ -22,7 +22,8 @@ import {
   Camera,
   ShoppingBag,
   UserCircle,
-  Wind
+  Wind,
+  Droplet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -43,6 +44,7 @@ import {
   type BodyData
 } from './utils/calculations';
 import GroceryCalculator from './components/GroceryCalculator';
+import WaterTracker from './components/WaterTracker';
 import BreathingTimer from './components/BreathingTimer';
 import Goals from './components/Goals';
 import { translations } from './utils/translations';
@@ -70,7 +72,7 @@ export default function App() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'goals' | 'breathing'>('calculator');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>('water');
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Load from localStorage on mount
@@ -341,6 +343,18 @@ export default function App() {
               {t.tabMeasure}
             </button>
             <button
+              onClick={() => setActiveTab('water')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                activeTab === 'water'
+                  ? (darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-50 text-blue-700 shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
+              )}
+            >
+              <Droplet size={12} className="text-blue-400" />
+              {t.tabWater}
+            </button>
+            <button
               onClick={() => setActiveTab('groceries')}
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
@@ -423,9 +437,17 @@ export default function App() {
         <GroceryCalculator darkMode={darkMode} lang={lang} />
       </div>
 
+      {/* Water Tab Content */}
+      <div className={cn(
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        activeTab === 'water' ? "block" : "hidden"
+      )}>
+        <WaterTracker darkMode={darkMode} lang={lang} />
+      </div>
+
       <main className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden",
-        (activeTab === 'breathing' || activeTab === 'groceries') ? "hidden" : "grid"
+        (activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "grid"
       )}>
         {/* Input Section */}
         <section className={cn(
@@ -1081,6 +1103,18 @@ export default function App() {
             {metrics && activeTab !== 'results' && (
               <span className="absolute top-1 right-1/3 w-2 h-2 bg-primary rounded-full animate-pulse" />
             )}
+          </button>
+
+          <button 
+            id="tab_water"
+            onClick={() => setActiveTab('water')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
+              activeTab === 'water' ? "text-blue-400 scale-105" : "text-gray-400 hover:text-gray-500"
+            )}
+          >
+            <Droplet size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabWater}</span>
           </button>
           
           <button 

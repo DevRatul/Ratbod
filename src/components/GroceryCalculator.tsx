@@ -63,7 +63,8 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
     else if (baseUnit === 'g') setDesiredUnit('g');
     else if (baseUnit === 'L') setDesiredUnit('L');
     else if (baseUnit === 'ml') setDesiredUnit('ml');
-    else if (baseUnit === 'dozen') setDesiredUnit('dozen');
+    else if (baseUnit === 'dozen') setDesiredUnit('piece');
+    else if (baseUnit === 'khachi') setDesiredUnit('piece');
     else if (baseUnit === 'piece') setDesiredUnit('piece');
     else if (baseUnit === 'pack') setDesiredUnit('pack');
   }, [baseUnit]);
@@ -73,7 +74,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
     en: {
       title: "Grocery Calculator",
       itemName: "Item Name",
-      itemNamePlaceholder: "e.g., Rice, Milk, Onions",
+      itemNamePlaceholder: "e.g., Rice, Milk, Eggs, Onions",
       baseUnit: "Price Base Unit",
       pricePerUnit: "Price per Base Unit",
       desiredQty: "Desired Quantity",
@@ -97,13 +98,14 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       ml: "Milliliter (ml)",
       piece: "Piece (qty)",
       dozen: "Dozen",
+      khachi: "Khachi",
       pack: "Pack",
       units: "Units",
     },
     bn: {
       title: "বাজার হিসাবকারী",
       itemName: "পণ্যের নাম",
-      itemNamePlaceholder: "যেমন: চাল, দুধ, পেঁয়াজ",
+      itemNamePlaceholder: "যেমন: চাল, ডিম, দুধ, পেঁয়াজ",
       baseUnit: "মূল্যের বেস ইউনিট",
       pricePerUnit: "প্রতি ইউনিটের মূল্য",
       desiredQty: "ক্রয়কৃত পরিমাণ",
@@ -126,7 +128,8 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       L: "লিটার (L)",
       ml: "মিলি (ml)",
       piece: "টি / পিস (piece)",
-      dozen: "ডজন (dozen)",
+      dozen: "ডজন",
+      khachi: "খাঁচি",
       pack: "প্যাকেট (pack)",
       units: "টি পণ্য",
     }
@@ -169,11 +172,12 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
         case 'ml': return 'মিলি';
         case 'piece': return 'টি';
         case 'dozen': return 'ডজন';
+        case 'khachi': return 'খাঁচি';
         case 'pack': return 'প্যাকেট';
         default: return u;
       }
     }
-    return u;
+    return u === 'khachi' ? 'Khachi' : u;
   };
 
   // Conversion logic multiplier
@@ -188,9 +192,19 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
     if (from === 'L' && to === 'ml') return 0.001;
     if (from === 'ml' && to === 'L') return 1000;
 
-    // Dozen / Piece conversions
-    if (from === 'dozen' && to === 'piece') return 1 / 12;
-    if (from === 'piece' && to === 'dozen') return 12;
+    // Count conversions (piece, dozen, khachi)
+    const countInPieces = (unit: string): number => {
+      if (unit === 'piece') return 1;
+      if (unit === 'dozen') return 12;
+      if (unit === 'khachi') return 30;
+      return 0;
+    };
+
+    const fromPcs = countInPieces(from);
+    const toPcs = countInPieces(to);
+    if (fromPcs > 0 && toPcs > 0) {
+      return toPcs / fromPcs;
+    }
 
     return 1;
   };
@@ -355,13 +369,19 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
         ];
       case 'dozen':
         return [
-          { value: 'dozen', label: labels.dozen },
-          { value: 'piece', label: labels.piece }
+          { value: 'piece', label: labels.piece },
+          { value: 'dozen', label: `${labels.dozen} (12 ${lang === 'bn' ? 'টি' : 'pcs'})` }
+        ];
+      case 'khachi':
+        return [
+          { value: 'piece', label: labels.piece },
+          { value: 'khachi', label: `${labels.khachi} (30 ${lang === 'bn' ? 'টি' : 'pcs'})` }
         ];
       case 'piece':
         return [
           { value: 'piece', label: labels.piece },
-          { value: 'dozen', label: labels.dozen }
+          { value: 'dozen', label: `${labels.dozen} (12 ${lang === 'bn' ? 'টি' : 'pcs'})` },
+          { value: 'khachi', label: `${labels.khachi} (30 ${lang === 'bn' ? 'টি' : 'pcs'})` }
         ];
       case 'pack':
         return [
@@ -422,6 +442,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                   <option value="ml">{labels.ml}</option>
                   <option value="piece">{labels.piece}</option>
                   <option value="dozen">{labels.dozen}</option>
+                  <option value="khachi">{labels.khachi}</option>
                   <option value="pack">{labels.pack}</option>
                 </select>
               </div>
@@ -448,8 +469,8 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
               </div>
             </div>
 
-            {/* Purchase Desired Section (Grid of 3 elements) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Purchase Desired Section */}
+            <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   {labels.desiredUnit}
@@ -467,63 +488,66 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                 </select>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  {labels.desiredQty}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="0.00"
-                  value={desiredQty}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setDesiredQty(val);
-                    setLastModified('qty');
-                    const qty = parseFloat(val);
-                    const price = parseFloat(pricePerUnit);
-                    if (!isNaN(qty) && !isNaN(price) && price > 0) {
-                      const multiplier = getConversionMultiplier(baseUnit, desiredUnit);
-                      setDesiredPrice((price * qty * multiplier).toFixed(2));
-                    } else {
-                      setDesiredPrice('');
-                    }
-                  }}
-                  className="w-full bg-transparent border border-gray-700/50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  {labels.desiredPrice}
-                </label>
-                <div className="relative">
+              {/* Desired Quantity & Desired Price in the SAME ROW on mobile (grid-cols-2) */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    {labels.desiredQty}
+                  </label>
                   <input
                     type="number"
                     step="any"
                     min="0"
-                    placeholder={labels.desiredPricePlaceholder}
-                    value={desiredPrice}
+                    placeholder="0.00"
+                    value={desiredQty}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setDesiredPrice(val);
-                      setLastModified('price');
-                      const budget = parseFloat(val);
+                      setDesiredQty(val);
+                      setLastModified('qty');
+                      const qty = parseFloat(val);
                       const price = parseFloat(pricePerUnit);
-                      if (!isNaN(budget) && !isNaN(price) && price > 0) {
+                      if (!isNaN(qty) && !isNaN(price) && price > 0) {
                         const multiplier = getConversionMultiplier(baseUnit, desiredUnit);
-                        if (multiplier > 0) {
-                          setDesiredQty((budget / (price * multiplier)).toFixed(3));
-                        }
+                        setDesiredPrice((price * qty * multiplier).toFixed(2));
                       } else {
-                        setDesiredQty('');
+                        setDesiredPrice('');
                       }
                     }}
-                    className="w-full bg-transparent border border-gray-700/50 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-transparent border border-gray-700/50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">
-                    {labels.bdtSuffix}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    {labels.desiredPrice}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      placeholder={labels.desiredPricePlaceholder}
+                      value={desiredPrice}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDesiredPrice(val);
+                        setLastModified('price');
+                        const budget = parseFloat(val);
+                        const price = parseFloat(pricePerUnit);
+                        if (!isNaN(budget) && !isNaN(price) && price > 0) {
+                          const multiplier = getConversionMultiplier(baseUnit, desiredUnit);
+                          if (multiplier > 0) {
+                            setDesiredQty((budget / (price * multiplier)).toFixed(3));
+                          }
+                        } else {
+                          setDesiredQty('');
+                        }
+                      }}
+                      className="w-full bg-transparent border border-gray-700/50 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">
+                      {labels.bdtSuffix}
+                    </div>
                   </div>
                 </div>
               </div>
