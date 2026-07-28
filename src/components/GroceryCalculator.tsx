@@ -397,11 +397,21 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
 
   return (
     <div className="space-y-6">
-      {/* Header section */}
-      <div className="flex items-center justify-between pb-2 border-b border-white/5">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-[#F04A00] flex items-center gap-2">
-            <ShoppingBag className="text-[#F04A00] animate-pulse" size={24} />
+      {/* Header Banner - Ultra Slim & Compressed */}
+      <div className={cn(
+        "px-3 py-1.5 rounded-xl border transition-all relative overflow-hidden",
+        darkMode
+          ? "bg-gradient-to-r from-orange-950/90 via-amber-950/70 to-orange-900/80 border-orange-500/30 shadow-xs"
+          : "bg-gradient-to-r from-orange-500/15 via-amber-400/10 to-orange-600/15 border-orange-200/80 shadow-2xs"
+      )}>
+        {/* Background glow circle */}
+        <div className="absolute -right-10 -bottom-10 w-24 h-24 rounded-full bg-orange-500/15 blur-xl pointer-events-none" />
+
+        <div className="flex items-center gap-2 relative z-10">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-orange-700 via-orange-500 to-amber-400 flex items-center justify-center text-white shadow-xs shadow-orange-500/30 shrink-0">
+            <ShoppingBag size={15} />
+          </div>
+          <h2 className="text-xs sm:text-sm font-black tracking-tight text-[#F04A00] dark:text-orange-400 whitespace-nowrap">
             {labels.title}
           </h2>
         </div>

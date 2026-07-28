@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -421,7 +421,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           {/* Header: Consumed Label + Percentage Badge */}
           <div className="w-full flex items-center justify-between border-b pb-2.5 border-gray-200/20 dark:border-white/5">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              <Droplet size={14} className="text-blue-500 fill-blue-500/20" />
+              <Droplet size={15} className="text-blue-500 fill-blue-500/20" />
               {labels.consumed}
             </span>
             <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
@@ -429,7 +429,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             </span>
           </div>
 
-          {/* Radial Ring with Liquid Fill, Left (250ml) & Right (400ml) Quick Glass Buttons */}
+          {/* Glass Cup with Liquid Fill, Left (250ml) & Right (400ml) Quick Glass Buttons */}
           <div className="relative my-1 flex flex-col items-center justify-center w-full">
             <div className="flex items-center justify-center gap-2.5 sm:gap-4 w-full">
               {/* Left Side: 250 ml Glass Button */}
@@ -446,18 +446,29 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 )}
               >
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                  <Droplet size={15} />
+                  <Droplet size={15} className="fill-current" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
                   250 {labels.mlUnit}
                 </span>
               </motion.button>
 
-              {/* Circular Ring Container with Liquid Water Fill (Display Only) */}
+              {/* Glass Tumbler Container with Liquid Water Fill (Display Only) */}
               <div className={cn(
-                "relative w-32 h-32 sm:w-36 sm:h-36 rounded-full border-4 border-blue-500/60 dark:border-blue-500/50 flex items-center justify-center shadow-lg shadow-blue-500/25 overflow-hidden transition-all shrink-0",
-                darkMode ? "bg-slate-950/80" : "bg-blue-50/80"
+                "relative w-28 h-36 sm:w-32 sm:h-40 rounded-b-[2.2rem] rounded-t-md border-x-4 border-b-4 border-t-2 border-blue-400/80 dark:border-blue-500/70 flex items-center justify-center shadow-xl shadow-blue-500/20 overflow-hidden transition-all shrink-0",
+                darkMode ? "bg-slate-950/90" : "bg-blue-50/90"
               )}>
+                {/* Vertical Glass Shine Reflection */}
+                <div className="absolute left-2 top-2 bottom-4 w-1.5 bg-gradient-to-b from-white/50 via-white/20 to-transparent rounded-full z-20 pointer-events-none" />
+
+                {/* Measurement Notch Lines on Right Side */}
+                <div className="absolute right-1.5 top-4 bottom-4 flex flex-col justify-between z-20 pointer-events-none opacity-50">
+                  <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                  <div className="w-2.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                  <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                  <div className="w-3 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                </div>
+
                 {/* Liquid Water Level Fill (Sea Water Gradient) */}
                 <motion.div
                   className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-blue-800 via-blue-600 to-sky-400 pointer-events-none"
@@ -466,12 +477,12 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   transition={{ duration: 0.8, ease: "easeOut" }}
                 >
                   {/* Wave effect at top of water surface */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/40 animate-pulse" />
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/50 animate-pulse" />
                 </motion.div>
 
                 {/* Center Display Overlay */}
-                <div className="relative z-10 w-full h-full rounded-full flex flex-col items-center justify-center text-center p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/30 dark:bg-black/30 backdrop-blur-md text-blue-600 dark:text-blue-200 flex items-center justify-center mb-0.5 shadow-2xs">
+                <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md text-blue-600 dark:text-blue-200 flex items-center justify-center mb-0.5 shadow-2xs">
                     <Droplet size={13} className="fill-current animate-pulse" />
                   </div>
                   <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
@@ -511,7 +522,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             {/* Hydration Status Label */}
             <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 font-medium flex items-center gap-1">
               <Sparkles size={11} className="text-blue-400 animate-pulse" />
-              {lang === 'bn' ? 'দৈনিক হাইড্রেশন লেভেল' : 'Daily Hydration Ring'}
+              {lang === 'bn' ? 'দৈনিক হাইড্রেশন গ্লাস' : 'Daily Hydration Glass'}
             </span>
           </div>
 

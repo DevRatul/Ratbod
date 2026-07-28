@@ -3,17 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, Sparkles, CheckCircle, ShieldAlert, Heart, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, Sparkles, CheckCircle, Heart, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { Language, translations } from '../utils/translations';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 type BreathingPhase = 'idle' | 'inhale' | 'hold' | 'exhale' | 'completed';
+
+// 4-7-8 Technique Durations in Seconds
+const PATTERN = {
+  inhale: 4,
+  hold: 7,
+  exhale: 8,
+};
 
 let audioCtx: AudioContext | null = null;
 
@@ -36,36 +44,36 @@ function playSoundTone(type: 'inhale' | 'hold' | 'exhale' | 'finish' | 'tick', d
     
     if (type === 'inhale') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(260, audioCtx.currentTime); // Middle C-ish
-      osc.frequency.linearRampToValueAtTime(392, audioCtx.currentTime + duration); // Ascend to G4
+      osc.frequency.setValueAtTime(260, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(392, audioCtx.currentTime + duration);
       gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1);
+      gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 0.8);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     } else if (type === 'hold') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(392, audioCtx.currentTime);
       gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.015, audioCtx.currentTime + duration - 0.5);
+      gain.gain.setValueAtTime(0.015, audioCtx.currentTime + duration - 0.3);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     } else if (type === 'exhale') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(392, audioCtx.currentTime);
-      osc.frequency.linearRampToValueAtTime(220, audioCtx.currentTime + duration); // Down to A3
+      osc.frequency.linearRampToValueAtTime(220, audioCtx.currentTime + duration);
       gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     } else if (type === 'tick') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+      osc.frequency.setValueAtTime(750, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
       osc.start(audioCtx.currentTime);
-      osc.stop(audioCtx.currentTime + 0.05);
+      osc.stop(audioCtx.currentTime + 0.04);
       return;
     } else if (type === 'finish') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
-      osc.frequency.setValueAtTime(554.37, audioCtx.currentTime + 0.15); // C#5
-      osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.3); // E5
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(554.37, audioCtx.currentTime + 0.15);
+      osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.3);
       gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
       gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.4);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
@@ -81,8 +89,6 @@ function playSoundTone(type: 'inhale' | 'hold' | 'exhale' | 'finish' | 'tick', d
   }
 }
 
-import { Language, translations } from '../utils/translations';
-
 interface BreathingTimerProps {
   darkMode: boolean;
   lang?: Language;
@@ -95,11 +101,10 @@ function speakText(text: string, lang: Language) {
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
-    synth.cancel(); // Cancel any current speech
+    synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.volume = 0.9;
-    utterance.rate = 0.85; // Relaxing, slightly slower pace
-    
+    utterance.rate = 0.88;
     utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
     
     const voices = synth.getVoices();
@@ -125,9 +130,9 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     }
     return num.toString();
   };
+
   const [phase, setPhase] = useState<BreathingPhase>('idle');
   const [isActive, setIsActive] = useState<boolean>(false);
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(4);
   const [currentCycle, setCurrentCycle] = useState<number>(1);
   const [targetCycles, setTargetCycles] = useState<number>(4);
   const [soundMode, setSoundMode] = useState<'muted' | 'tones' | 'voice'>(() => {
@@ -138,107 +143,51 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     return 'tones';
   });
   const [completedSessionsCount, setCompletedSessionsCount] = useState<number>(0);
-  const [showTooltip, setShowTooltip] = useState<boolean>(true);
-  const [isWakeLockActive, setIsWakeLockActive] = useState<boolean>(false);
 
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const wakeLockRef = useRef<any>(null);
+  // Precision animation state
+  const [progress, setProgress] = useState<number>(0); // 0.0 to 1.0 continuously
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(PATTERN.inhale);
+  const [visualScale, setVisualScale] = useState<number>(1.0);
+  const [interactiveRipples, setInteractiveRipples] = useState<{ id: number; x: number; y: number }[]>([]);
 
-  // Screen Wake Lock effect: keeps mobile screen awake when breathing session is running
-  useEffect(() => {
-    let released = false;
+  // Engine refs
+  const animationFrameRef = useRef<number | null>(null);
+  const phaseStartTimeRef = useRef<number>(0);
+  const pausedTimeElapsedRef = useRef<number>(0);
+  const lastSecondTickedRef = useRef<number>(-1);
 
-    async function requestWakeLock() {
-      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
-        try {
-          const lock = await (navigator as any).wakeLock.request('screen');
-          if (!released) {
-            wakeLockRef.current = lock;
-            setIsWakeLockActive(true);
-            lock.addEventListener('release', () => {
-              wakeLockRef.current = null;
-              setIsWakeLockActive(false);
-            });
-          } else {
-            lock.release();
-          }
-        } catch (err) {
-          console.warn('Screen wake lock request failed or not allowed:', err);
-          setIsWakeLockActive(false);
-        }
-      }
+  const getPhaseDuration = useCallback((p: BreathingPhase): number => {
+    switch (p) {
+      case 'inhale': return PATTERN.inhale;
+      case 'hold': return PATTERN.hold;
+      case 'exhale': return PATTERN.exhale;
+      default: return PATTERN.inhale;
     }
+  }, []);
 
-    async function releaseWakeLock() {
-      released = true;
-      if (wakeLockRef.current) {
-        try {
-          await wakeLockRef.current.release();
-          wakeLockRef.current = null;
-        } catch (e) {}
-      }
-      setIsWakeLockActive(false);
-    }
-
-    if (isActive && phase !== 'completed') {
-      requestWakeLock();
-    } else {
-      releaseWakeLock();
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isActive && phase !== 'completed') {
-        requestWakeLock();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      releaseWakeLock();
-    };
-  }, [isActive, phase]);
-
-  // Initialize Web Audio API on click if sound active
-  const triggerAudioTick = (type: 'inhale' | 'hold' | 'exhale' | 'finish' | 'tick', duration: number) => {
+  const triggerAudioTick = useCallback((type: 'inhale' | 'hold' | 'exhale' | 'finish' | 'tick', duration: number) => {
     if (soundMode === 'tones' || soundMode === 'voice') {
       playSoundTone(type, duration);
     }
-  };
+  }, [soundMode]);
 
-  const triggerVocalPhase = (phaseName: 'inhale' | 'hold' | 'exhale' | 'finish') => {
+  const triggerVocalPhase = useCallback((phaseName: 'inhale' | 'hold' | 'exhale' | 'finish') => {
     if (soundMode !== 'voice') return;
-    if (phaseName === 'inhale') {
-      speakText(t.inhale, lang);
-    } else if (phaseName === 'hold') {
-      speakText(t.hold, lang);
-    } else if (phaseName === 'exhale') {
-      speakText(t.exhale, lang);
-    } else if (phaseName === 'finish') {
-      speakText(t.breatheCompletedInst, lang);
-    }
-  };
+    if (phaseName === 'inhale') speakText(t.inhale, lang);
+    else if (phaseName === 'hold') speakText(t.hold, lang);
+    else if (phaseName === 'exhale') speakText(t.exhale, lang);
+    else if (phaseName === 'finish') speakText(t.breatheCompletedInst, lang);
+  }, [soundMode, lang, t]);
 
-  const triggerVocalCount = (countNum: number) => {
+  const triggerVocalCount = useCallback((countNum: number) => {
     if (soundMode !== 'voice') return;
     const voiceText = lang === 'bn' && countNum < bnNumbers.length ? bnNumbers[countNum] : countNum.toString();
     speakText(voiceText, lang);
-  };
+  }, [soundMode, lang]);
 
-  // Sync soundMode with localStorage
   useEffect(() => {
     localStorage.setItem('ratbod_sound_mode', soundMode);
   }, [soundMode]);
-
-  // Cancel any talking when session gets paused
-  useEffect(() => {
-    if (!isActive) {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    }
-  }, [isActive]);
 
   useEffect(() => {
     const savedCount = localStorage.getItem('ratbod_breathing_sessions');
@@ -247,85 +196,125 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     }
   }, []);
 
-  // Timer Tick management
+  // Main High-Precision Sync Animation Loop
   useEffect(() => {
     if (!isActive) {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
       return;
     }
 
-    if (phase === 'idle') {
-      // Transition immediately to Inhale phase'
-      setPhase('inhale');
-      setSecondsRemaining(4);
-      triggerAudioTick('inhale', 4);
-      triggerVocalPhase('inhale');
-      return;
-    }
+    const durationSec = getPhaseDuration(phase);
+    const durationMs = durationSec * 1000;
 
-    countdownIntervalRef.current = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          // Transition to next phase
-          handlePhaseTransition();
-          return 0;
-        }
-        // Tick soft tone
+    const tick = (now: number) => {
+      if (!phaseStartTimeRef.current) {
+        phaseStartTimeRef.current = now - pausedTimeElapsedRef.current;
+      }
+
+      const elapsedMs = now - phaseStartTimeRef.current;
+      const rawProgress = Math.min(1, Math.max(0, elapsedMs / durationMs));
+      const secsLeft = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
+
+      setProgress(rawProgress);
+      setSecondsRemaining(secsLeft);
+
+      // Sound ticks on second transitions
+      if (secsLeft !== lastSecondTickedRef.current && secsLeft > 0) {
+        lastSecondTickedRef.current = secsLeft;
         if (soundMode !== 'muted') {
-          triggerAudioTick('tick', 0.05);
-
-          // Vocal Countdown Speech trigger
-          const duration = phase === 'inhale' ? 4 : phase === 'hold' ? 7 : phase === 'exhale' ? 8 : 4;
-          const currentCount = duration - prev + 2;
+          triggerAudioTick('tick', 0.04);
+          const currentCount = durationSec - secsLeft + 1;
           triggerVocalCount(currentCount);
         }
-        return prev - 1;
-      });
-    }, 1000);
+      }
+
+      // Compute smooth synchronized scale
+      let scale = 1.0;
+      if (phase === 'inhale') {
+        // Smooth sine ease in-out expansion from 1.0 to 1.42
+        const ease = 0.5 - 0.5 * Math.cos(rawProgress * Math.PI);
+        scale = 1.0 + 0.42 * ease;
+      } else if (phase === 'hold') {
+        // Subtle organic breathing micro vibration at peak expansion
+        const microWave = Math.sin(rawProgress * Math.PI * 6) * 0.015;
+        scale = 1.42 + microWave;
+      } else if (phase === 'exhale') {
+        // Smooth sine contraction from 1.42 down to 0.88
+        const ease = 0.5 - 0.5 * Math.cos(rawProgress * Math.PI);
+        scale = 1.42 - 0.54 * ease;
+      }
+      setVisualScale(scale);
+
+      // Phase completion check
+      if (elapsedMs >= durationMs) {
+        advancePhase();
+        return;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(tick);
 
     return () => {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isActive, phase, currentCycle, soundMode]);
+  }, [isActive, phase, soundMode, getPhaseDuration, triggerAudioTick, triggerVocalCount]);
 
-  const handlePhaseTransition = () => {
+  const advancePhase = () => {
+    phaseStartTimeRef.current = 0;
+    pausedTimeElapsedRef.current = 0;
+    lastSecondTickedRef.current = -1;
+
+    let nextPhase: BreathingPhase = 'inhale';
+
     if (phase === 'inhale') {
-      setPhase('hold');
-      setSecondsRemaining(7);
-      triggerAudioTick('hold', 7);
-      triggerVocalPhase('hold');
+      nextPhase = 'hold';
     } else if (phase === 'hold') {
-      setPhase('exhale');
-      setSecondsRemaining(8);
-      triggerAudioTick('exhale', 8);
-      triggerVocalPhase('exhale');
+      nextPhase = 'exhale';
     } else if (phase === 'exhale') {
       if (currentCycle >= targetCycles) {
-        // Completed all cycles
-        setPhase('completed');
-        setIsActive(false);
-        triggerAudioTick('finish', 1);
-        triggerVocalPhase('finish');
-        const newCount = completedSessionsCount + 1;
-        setCompletedSessionsCount(newCount);
-        localStorage.setItem('ratbod_breathing_sessions', newCount.toString());
+        finishSession();
+        return;
       } else {
-        // Move to next cycle, starting with inhale
-        setCurrentCycle((prev) => prev + 1);
-        setPhase('inhale');
-        setSecondsRemaining(4);
-        triggerAudioTick('inhale', 4);
-        triggerVocalPhase('inhale');
+        setCurrentCycle(prev => prev + 1);
+        nextPhase = 'inhale';
       }
     }
+
+    const dur = getPhaseDuration(nextPhase);
+    setPhase(nextPhase);
+    setSecondsRemaining(dur);
+    triggerAudioTick(nextPhase, dur);
+    triggerVocalPhase(nextPhase);
   };
 
-  const handleStartPause = () => {
-    // Resume audio context
+  const finishSession = () => {
+    setPhase('completed');
+    setIsActive(false);
+    setVisualScale(1.0);
+    setProgress(1);
+    triggerAudioTick('finish', 1);
+    triggerVocalPhase('finish');
+    const newCount = completedSessionsCount + 1;
+    setCompletedSessionsCount(newCount);
+    localStorage.setItem('ratbod_breathing_sessions', newCount.toString());
+  };
+
+  const handleStartPause = (e?: React.MouseEvent) => {
+    // Add interactive ripple effect on click
+    if (e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const newRipple = { id: Date.now(), x, y };
+      setInteractiveRipples(prev => [...prev.slice(-3), newRipple]);
+    }
+
     if (typeof window !== 'undefined') {
       try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -338,454 +327,431 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
       } catch (e) {}
     }
 
-    if (phase === 'completed') {
-      // Re-initialize for new session
+    if (phase === 'idle' || phase === 'completed') {
       setPhase('inhale');
-      setSecondsRemaining(4);
       setCurrentCycle(1);
+      phaseStartTimeRef.current = 0;
+      pausedTimeElapsedRef.current = 0;
+      lastSecondTickedRef.current = -1;
       setIsActive(true);
-      triggerAudioTick('inhale', 4);
+      const dur = PATTERN.inhale;
+      triggerAudioTick('inhale', dur);
       triggerVocalPhase('inhale');
       return;
     }
 
-    setIsActive(!isActive);
+    if (isActive) {
+      if (phaseStartTimeRef.current) {
+        pausedTimeElapsedRef.current = performance.now() - phaseStartTimeRef.current;
+      }
+      setIsActive(false);
+    } else {
+      phaseStartTimeRef.current = 0;
+      setIsActive(true);
+    }
   };
 
   const handleReset = () => {
     setIsActive(false);
     setPhase('idle');
-    setSecondsRemaining(4);
+    setSecondsRemaining(PATTERN.inhale);
     setCurrentCycle(1);
+    setProgress(0);
+    setVisualScale(1.0);
+    phaseStartTimeRef.current = 0;
+    pausedTimeElapsedRef.current = 0;
+    lastSecondTickedRef.current = -1;
   };
 
-  // Descriptive state text and visual properties
   const getPhaseConfig = () => {
     switch (phase) {
       case 'inhale':
         return {
           title: t.inhale,
           instructions: t.breatheInhaleInst,
-          circleScale: 1.5,
-          color: 'bg-emerald-500 border-emerald-400',
-          textColor: 'text-emerald-500',
-          duration: 4,
+          colorClass: 'from-emerald-500 via-teal-500 to-cyan-400',
+          badgeBg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+          glowColor: 'rgba(16, 185, 129, 0.4)',
         };
       case 'hold':
         return {
           title: t.hold,
           instructions: t.breatheHoldInst,
-          circleScale: 1.5,
-          color: 'bg-sky-500 border-sky-400 shadow-[0_0_30px_rgba(14,165,233,0.3)]',
-          textColor: 'text-sky-500',
-          duration: 7,
+          colorClass: 'from-sky-500 via-cyan-500 to-blue-400',
+          badgeBg: 'bg-sky-500/15 border-sky-500/30 text-sky-600 dark:text-sky-400',
+          glowColor: 'rgba(56, 189, 248, 0.4)',
         };
       case 'exhale':
         return {
           title: t.exhale,
           instructions: t.breatheExhaleInst,
-          circleScale: 0.9,
-          color: 'bg-teal-500 border-teal-400',
-          textColor: 'text-teal-500',
-          duration: 8,
+          colorClass: 'from-teal-600 via-teal-500 to-emerald-500',
+          badgeBg: 'bg-teal-500/15 border-teal-500/30 text-teal-600 dark:text-teal-400',
+          glowColor: 'rgba(20, 184, 166, 0.4)',
         };
       case 'completed':
         return {
           title: t.composed,
           instructions: t.breatheCompletedInst,
-          circleScale: 1.0,
-          color: 'bg-primary border-primary-light',
-          textColor: 'text-primary',
-          duration: 1,
+          colorClass: 'from-emerald-600 to-teal-500',
+          badgeBg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-500',
+          glowColor: 'rgba(16, 185, 129, 0.5)',
         };
       default:
         return {
           title: t.ready,
           instructions: t.breatheReady,
-          circleScale: 1.0,
-          color: 'bg-gray-400 border-gray-300',
-          textColor: 'text-gray-400',
-          duration: 4,
+          colorClass: 'from-teal-800 via-slate-800 to-emerald-900',
+          badgeBg: 'bg-gray-500/10 border-gray-500/20 text-gray-500',
+          glowColor: 'rgba(20, 184, 166, 0.2)',
         };
     }
   };
 
   const currentConfig = getPhaseConfig();
-  const currentRatio = secondsRemaining / currentConfig.duration;
+
+  // SVG ring geometry
+  const radius = 120;
+  const circumference = 2 * Math.PI * radius;
+  const strokeOffset = circumference * (1 - progress);
 
   return (
-    <div className={cn(
-      "w-full rounded-3xl border shadow-xl p-6 sm:p-8 transition-colors duration-300 relative overflow-hidden",
-      darkMode 
-        ? "bg-[#0F0F0F]/90 border-white/10 shadow-black/40 text-white" 
-        : "bg-white border-black/5 shadow-gray-200/50 text-[#1A1A1A]"
-    )}>
-      {/* Absolute Decorative Background Elements */}
-      <div className="absolute top-[-50px] right-[-50px] w-48 h-48 rounded-full blur-[80px] opacity-15 pointer-events-none bg-primary" />
-      <div className="absolute bottom-[-50px] left-[-50px] w-48 h-48 rounded-full blur-[80px] opacity-15 pointer-events-none bg-teal-500" />
+    <div className="space-y-4 max-w-4xl mx-auto pb-6">
+      {/* Header Banner - Ultra Slim & Minimalist */}
+      <div className={cn(
+        "px-3 py-2 sm:px-4 sm:py-2 rounded-xl border transition-all relative overflow-hidden",
+        darkMode
+          ? "bg-gradient-to-r from-teal-950/90 via-emerald-950/70 to-teal-900/80 border-teal-500/30 shadow-xs"
+          : "bg-gradient-to-r from-teal-500/15 via-emerald-400/10 to-teal-600/15 border-teal-200/80 shadow-2xs"
+      )}>
+        <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-teal-500/15 blur-2xl pointer-events-none" />
 
-      {/* Header Info Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-white/5 pb-5 mb-6 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-teal-500/10 dark:bg-teal-500/5 flex items-center justify-center text-teal-500">
-            <Wind size={20} className="animate-pulse" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold tracking-tight font-sans">{t.breathingTitle}</h3>
-            <p className="text-xs text-gray-500 font-medium">{t.breathingSubtitle}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Audio mode selector */}
-          <div className={cn(
-            "flex items-center border p-1 rounded-2xl",
-            darkMode ? "bg-white/5 border-white/10" : "bg-gray-100 border-black/5"
-          )}>
-            <button
-              onClick={() => setSoundMode('muted')}
-              className={cn(
-                "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
-                soundMode === 'muted'
-                  ? (darkMode ? "bg-white/10 text-white shadow-sm" : "bg-white text-gray-900 shadow-sm")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
-              )}
-              title={t.soundMuted}
-            >
-              <VolumeX size={14} />
-              <span className="hidden sm:inline">{t.soundMuted}</span>
-            </button>
-            <button
-              onClick={() => {
-                setSoundMode('tones');
-                playSoundTone('tick', 0.05);
-              }}
-              className={cn(
-                "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
-                soundMode === 'tones'
-                  ? "bg-teal-500 text-white shadow-md shadow-teal-500/20"
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
-              )}
-              title={t.soundTones}
-            >
-              <Volume2 size={14} />
-              <span className="hidden sm:inline">{t.soundTones}</span>
-            </button>
-            <button
-              onClick={() => {
-                setSoundMode('voice');
-                speakText(lang === 'bn' ? "ভয়েস কোচ" : "Voice coach", lang);
-              }}
-              className={cn(
-                "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
-                soundMode === 'voice'
-                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
-              )}
-              title={t.soundCoach}
-            >
-              <Sparkles size={14} />
-              <span className="hidden sm:inline">{t.soundCoach}</span>
-            </button>
-          </div>
-
-          {/* Screen Wake Lock Status Badge */}
-          {isActive && (
-            <div className={cn(
-              "px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all animate-fade-in",
-              isWakeLockActive
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 dark:text-emerald-400"
-                : "bg-teal-500/10 border-teal-500/30 text-teal-500 dark:text-teal-400"
-            )}>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>{lang === 'bn' ? "স্ক্রিন অন থাকবে" : "Screen Kept Awake"}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 relative z-10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-tr from-teal-700 via-emerald-500 to-cyan-400 flex items-center justify-center text-white shadow-xs shadow-teal-500/30 shrink-0">
+              <Wind size={17} className="animate-pulse" />
             </div>
-          )}
-
-          {/* Sessions Counter */}
-          <div className={cn(
-            "px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-          )}>
-            <Sparkles size={12} className="text-teal-400" />
-            <span>{lang === 'bn' ? `${completedSessionsCount.toString().split('').map(x => bnNumbers[parseInt(x)] || x).join('')} ${t.sessionsToday}` : `${completedSessionsCount} session${completedSessionsCount !== 1 ? 's' : ''} today`}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-        
-        {/* Core Breathing Timer Panel */}
-        <div className="lg:col-span-7 flex flex-col items-center justify-center py-6 sm:py-8 relative">
-          
-          {/* Animated Circle Container */}
-          <div className="relative w-64 h-64 flex items-center justify-center">
-            {/* Background Svg Pulsing Progress Ring */}
-            <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-              <circle
-                cx="128"
-                cy="128"
-                r="112"
-                className={cn(
-                  "stroke-current transition-colors duration-300",
-                  darkMode ? "text-white/5" : "text-black/5"
-                )}
-                strokeWidth="6"
-                fill="none"
-              />
-              {isActive && phase !== 'completed' && (
-                <motion.circle
-                  cx="128"
-                  cy="128"
-                  r="112"
-                  className={cn(
-                    "stroke-current transition-colors duration-500 shadow-xl",
-                    phase === 'inhale' ? 'text-emerald-500' : phase === 'hold' ? 'text-sky-500' : 'text-teal-500'
-                  )}
-                  strokeWidth="8"
-                  strokeDasharray={2 * Math.PI * 112}
-                  strokeDashoffset={2 * Math.PI * 112 * (1 - currentRatio)}
-                  strokeLinecap="round"
-                  fill="none"
-                  animate={{ strokeWidth: phase === 'hold' ? 10 : 8 }}
-                  transition={{ ease: "easeInOut", duration: 1 }}
-                />
-              )}
-            </svg>
-
-            {/* Pulser / Breathing core ball */}
-            <motion.div
-              animate={{
-                scale: phase === 'idle' ? 1.0 : currentConfig.circleScale,
-                boxShadow: phase === 'hold' ? "0 0 45px rgba(14,165,233,0.4)" : "0 8px 30px rgba(0,0,0,0.12)"
-              }}
-              transition={{
-                duration: phase === 'exhale' ? 8 : phase === 'hold' ? 0.4 : 4,
-                ease: phase === 'hold' ? "backOut" : "easeInOut"
-              }}
-              className={cn(
-                "w-44 h-44 rounded-full flex flex-col items-center justify-center transition-colors duration-500 relative cursor-pointer z-10 bg-gradient-to-tr",
-                phase === 'inhale' ? "from-emerald-600 to-teal-400 text-white" :
-                phase === 'hold' ? "from-sky-600 to-blue-400 text-white" :
-                phase === 'exhale' ? "from-teal-600 to-emerald-400 text-white" :
-                phase === 'completed' ? "from-primary to-primary-light text-white animate-bounce" :
-                "from-gray-300 dark:from-white/10 to-gray-400 dark:to-white/5 text-gray-600 dark:text-gray-300"
-              )}
-              onClick={handleStartPause}
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentConfig.title}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-center p-3 flex flex-col items-center"
-                >
-                  <span className="text-[10px] font-black tracking-widest uppercase opacity-80 mb-0.5">
-                    {isActive ? `${lang === 'bn' ? 'ধাপ' : 'Cycle'} ${formatNum(currentCycle)}/${formatNum(targetCycles)}` : '4-7-8'}
-                  </span>
-                  
-                  <span className="text-3xl font-black tracking-tighter">
-                    {phase === 'idle' ? (lang === 'bn' ? 'শুরু' : 'START') : currentConfig.title.toUpperCase()}
-                  </span>
-
-                  {phase !== 'completed' && isActive && (
-                    <span className="text-4xl font-extrabold tracking-tight font-mono mt-1 drop-shadow-md">
-                      {formatNum(secondsRemaining)}s
-                    </span>
-                  )}
-
-                  {phase === 'completed' && (
-                    <CheckCircle size={32} className="text-white mt-1 animate-pulse" />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
-          </div>
-
-          {/* Interactive Guided Instructions Text */}
-          <div className="text-center mt-6 max-w-sm px-4">
-            <h4 className="text-sm font-extrabold capitalize mb-1 min-h-[20px]">
-              {isActive ? currentConfig.instructions : t.breatheClickTip}
-            </h4>
-            <p className={cn(
-              "text-xs font-medium transition-all",
-              darkMode ? "text-gray-400" : "text-gray-500"
-            )}>
-              {phase === 'inhale' && t.quietlyInhale}
-              {phase === 'hold' && t.realignCalm}
-              {phase === 'exhale' && t.slowWhooshPath}
-              {phase === 'completed' && t.oxygenOptimized}
-              {phase === 'idle' && t.idleBreatheTip}
-            </p>
-          </div>
-
-          {/* Controls Actions Row */}
-          <div className="flex items-center gap-4 mt-8 relative z-20">
-            <button 
-              onClick={handleReset}
-              disabled={phase === 'idle'}
-              className={cn(
-                "p-3 rounded-full border transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed",
-                darkMode ? "bg-white/5 border-white/5 hover:bg-white/10 text-white" : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-500"
-              )}
-              title={lang === 'bn' ? "টাইমার রিসেট" : "Reset timer"}
-            >
-              <RotateCcw size={16} />
-            </button>
-
-            <button 
-              onClick={handleStartPause}
-              className={cn(
-                "px-8 py-3 rounded-full text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer",
-                isActive 
-                  ? "bg-red-500 hover:bg-red-600 text-white" 
-                  : "bg-teal-500 hover:bg-teal-600 text-white"
-              )}
-            >
-              {isActive ? (
-                <>
-                  <Pause size={16} fill="currentColor" />
-                  {t.breathePauseBtn}
-                </>
-              ) : (
-                <>
-                  <Play size={16} fill="currentColor" />
-                  {phase === 'completed' ? t.breatheStartOver : t.breatheStartBtn}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Configurations, instructions, and benefit guidelines */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Set Configurations card */}
-          <div className={cn(
-            "p-5 rounded-2xl border relative overflow-hidden transition-colors",
-            darkMode ? "bg-white/5 border-white/5 shadow-inner" : "bg-gray-50 border-gray-100 shadow-sm"
-          )}>
-            <div className="flex items-center gap-2 mb-4 text-teal-500">
-              <Sparkles size={16} />
-              <h4 className="text-xs uppercase font-extrabold tracking-wider">{t.sessionSettings}</h4>
-            </div>
-
-            <div className="space-y-4">
-              {/* Set cycles */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className={darkMode ? "text-gray-300" : "text-gray-600"}>{t.targetCycles}</span>
-                  <span className="text-teal-500 font-extrabold">{formatNum(targetCycles)} {t.sets}</span>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {[2, 4, 8, 12].map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => {
-                        setTargetCycles(num);
-                        if (!isActive) handleReset();
-                      }}
-                      className={cn(
-                        "py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer border",
-                        targetCycles === num
-                          ? "bg-teal-500 border-teal-400 text-white"
-                          : (darkMode ? "bg-white/5 border-white/5 text-gray-300 hover:bg-white/10" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50")
-                      )}
-                    >
-                      {formatNum(num)} {t.sets}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Progress Indicator dots */}
-              <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-white/5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t.continuousProgress}</span>
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: targetCycles }).map((_, i) => (
-                    <div 
-                      key={i}
-                      className={cn(
-                        "h-3 rounded-full transition-all duration-500",
-                        activeTabDots(i)
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick instructions list */}
-          <div className="space-y-3">
-            <h4 className="text-xs uppercase font-extrabold tracking-wider text-gray-500 flex items-center gap-1.5">
-              <Info size={14} className="text-teal-500" />
-              {t.instructionsTitle}
-            </h4>
-            <div className="grid grid-cols-3 gap-3">
-              <div className={cn(
-                "p-3 rounded-xl border text-center transition-colors",
-                phase === 'inhale' ? "border-emerald-500 bg-emerald-500/5" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")
-              )}>
-                <span className="text-lg font-black text-emerald-500">{formatNum(4)}s</span>
-                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">{t.inhale}</p>
-                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">{lang === 'bn' ? "নাক দিয়ে আলতো করে" : "Silently via nose"}</span>
-              </div>
-              <div className={cn(
-                "p-3 rounded-xl border text-center transition-colors",
-                phase === 'hold' ? "border-sky-500 bg-sky-500/5" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")
-              )}>
-                <span className="text-lg font-black text-sky-500">{formatNum(7)}s</span>
-                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">{t.hold}</p>
-                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">{lang === 'bn' ? "শ্বাস ধরে রাখুন" : "Seal breath still"}</span>
-              </div>
-              <div className={cn(
-                "p-3 rounded-xl border text-center transition-colors",
-                phase === 'exhale' ? "border-teal-500 bg-teal-500/5" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")
-              )}>
-                <span className="text-lg font-black text-teal-500">{formatNum(8)}s</span>
-                <p className="text-[10px] font-extrabold tracking-tight mt-0.5 uppercase">{t.exhale}</p>
-                <span className="text-[9px] text-gray-400 block mt-1 leading-tight">{lang === 'bn' ? "ফু দিয়ে সম্পূর্ণ বের" : "With whoosh blow"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Health Benefits info */}
-          <div className={cn(
-            "p-4 rounded-xl border flex items-start gap-3 transition-colors",
-            darkMode ? "bg-white/[0.02] border-white/5 text-gray-400" : "bg-slate-50 border-slate-100 text-gray-600"
-          )}>
-            <Heart size={16} className="text-red-500 shrink-0 mt-0.5 animate-pulse" />
-            <div className="space-y-1 text-xs">
-              <span className={cn("font-bold block", darkMode ? "text-gray-300" : "text-gray-800")}>{t.clinicalFitnessTitle}</span>
-              <p className="leading-relaxed font-medium">
-                {t.clinicalFitnessText}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2.5 min-w-0">
+              <h2 className="text-sm sm:text-base font-black tracking-tight text-teal-600 dark:text-teal-400 whitespace-nowrap">
+                {lang === 'bn' ? '৪-৭-৮ গভীর শ্বাসের ব্যায়াম' : '4-7-8 Deep Breathing'}
+              </h2>
+              <span className="hidden sm:inline text-gray-400 dark:text-gray-600 text-xs">•</span>
+              <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
+                {lang === 'bn' ? 'গভীর ঘুম ও প্রশান্তির জন্য বৈজ্ঞানিক চর্চা' : 'Clinical relaxation method for deep calm'}
               </p>
             </div>
           </div>
 
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Audio Mode Selector */}
+            <div className={cn(
+              "flex items-center border p-0.5 rounded-xl text-xs",
+              darkMode ? "bg-white/5 border-white/10" : "bg-white/80 border-black/5"
+            )}>
+              <button
+                onClick={() => setSoundMode('muted')}
+                className={cn(
+                  "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 text-[11px]",
+                  soundMode === 'muted'
+                    ? (darkMode ? "bg-white/15 text-white shadow-xs" : "bg-gray-100 text-gray-900 shadow-xs")
+                    : "text-gray-400 hover:text-gray-200"
+                )}
+                title={t.soundMuted}
+              >
+                <VolumeX size={13} />
+                <span className="hidden xs:inline">{t.soundMuted}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSoundMode('tones');
+                  playSoundTone('tick', 0.05);
+                }}
+                className={cn(
+                  "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 text-[11px]",
+                  soundMode === 'tones'
+                    ? "bg-teal-500 text-white shadow-xs shadow-teal-500/30"
+                    : "text-gray-400 hover:text-gray-200"
+                )}
+                title={t.soundTones}
+              >
+                <Volume2 size={13} />
+                <span className="hidden xs:inline">{t.soundTones}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSoundMode('voice');
+                  speakText(lang === 'bn' ? "ভয়েস কোচ" : "Voice coach", lang);
+                }}
+                className={cn(
+                  "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 text-[11px]",
+                  soundMode === 'voice'
+                    ? "bg-emerald-500 text-white shadow-xs shadow-emerald-500/30"
+                    : "text-gray-400 hover:text-gray-200"
+                )}
+                title={t.soundCoach}
+              >
+                <Sparkles size={13} />
+                <span className="hidden xs:inline">{t.soundCoach}</span>
+              </button>
+            </div>
+
+            {/* Sessions Counter Badge */}
+            <div className={cn(
+              "px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 shrink-0",
+              darkMode ? "bg-teal-500/10 border-teal-500/20 text-teal-300" : "bg-teal-50 border-teal-200 text-teal-700"
+            )}>
+              <Sparkles size={12} className="text-teal-400 animate-pulse" />
+              <span>{formatNum(completedSessionsCount)} {t.sessionsToday}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Clean Layout */}
+      <div className={cn(
+        "p-6 sm:p-8 rounded-2xl border flex flex-col items-center justify-between gap-6 relative overflow-hidden transition-all",
+        darkMode ? "bg-white/5 border-white/10 shadow-xl shadow-black/20" : "bg-white border-black/5 shadow-sm"
+      )}>
+        {/* Ambient Radial Background Glows */}
+        <div className="absolute top-[-50px] right-[-50px] w-64 h-64 rounded-full blur-[90px] opacity-20 pointer-events-none bg-teal-400" />
+        <div className="absolute bottom-[-50px] left-[-50px] w-64 h-64 rounded-full blur-[90px] opacity-20 pointer-events-none bg-emerald-400" />
+
+        {/* Phase Header & Cycle Indicator */}
+        <div className="w-full flex items-center justify-between z-10 border-b pb-3 border-gray-200/20 dark:border-white/5">
+          <span className={cn(
+            "px-3 py-1 rounded-full border text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs",
+            currentConfig.badgeBg
+          )}>
+            <Activity size={13} className="animate-pulse" />
+            {currentConfig.title}
+          </span>
+
+          <div className="flex items-center gap-3">
+            {/* Sets Selector Inline Pill */}
+            <div className={cn(
+              "flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-bold",
+              darkMode ? "bg-white/5 border-white/10 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"
+            )}>
+              <span className="text-gray-400 font-normal">{lang === 'bn' ? 'সেট:' : 'Sets:'}</span>
+              {[2, 4, 8].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => {
+                    setTargetCycles(num);
+                    if (!isActive) handleReset();
+                  }}
+                  className={cn(
+                    "px-1.5 py-0.5 rounded cursor-pointer transition-all",
+                    targetCycles === num
+                      ? "bg-teal-600 text-white font-extrabold"
+                      : "text-gray-400 hover:text-gray-200"
+                  )}
+                >
+                  {formatNum(num)}
+                </button>
+              ))}
+            </div>
+
+            <span className="text-xs font-black text-gray-500 dark:text-gray-400">
+              {lang === 'bn' ? 'ধাপ' : 'Cycle'} {formatNum(currentCycle)} / {formatNum(targetCycles)}
+            </span>
+          </div>
+        </div>
+
+        {/* Interactive Multi-Layer Synchronized Stage */}
+        <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center my-2 select-none">
+          
+          {/* SVG Ring with Smooth Sweep */}
+          <svg className="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none">
+            <defs>
+              <linearGradient id="deepCalmGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#10B981" />
+                <stop offset="50%" stopColor="#06B6D4" />
+                <stop offset="100%" stopColor="#3B82F6" />
+              </linearGradient>
+            </defs>
+            
+            <circle
+              cx="50%"
+              cy="50%"
+              r={radius}
+              className={cn(
+                "stroke-current transition-colors duration-300",
+                darkMode ? "text-white/10" : "text-black/10"
+              )}
+              strokeWidth="7"
+              fill="none"
+            />
+
+            {isActive && phase !== 'completed' && (
+              <circle
+                cx="50%"
+                cy="50%"
+                r={radius}
+                stroke="url(#deepCalmGradient)"
+                strokeWidth="9"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeOffset}
+                strokeLinecap="round"
+                fill="none"
+              />
+            )}
+          </svg>
+
+          {/* Synchronized Glowing Ripples */}
+          {isActive && (
+            <div 
+              className="absolute inset-0 rounded-full blur-lg opacity-35 pointer-events-none transition-transform duration-75 bg-gradient-to-tr"
+              style={{
+                transform: `scale(${visualScale * 1.15})`,
+                background: currentConfig.glowColor
+              }}
+            />
+          )}
+
+          {/* Central Interactive Breathing Orb */}
+          <div
+            onClick={handleStartPause}
+            style={{
+              transform: `scale(${visualScale})`,
+              boxShadow: `0 20px 40px ${currentConfig.glowColor}`,
+            }}
+            className={cn(
+              "w-44 h-44 sm:w-48 sm:h-48 rounded-full flex flex-col items-center justify-center transition-transform duration-75 ease-out relative cursor-pointer z-10 bg-gradient-to-tr text-white overflow-hidden group hover:brightness-110 active:scale-95",
+              currentConfig.colorClass
+            )}
+          >
+            {/* Interactive Click Ripples */}
+            {interactiveRipples.map((r) => (
+              <span
+                key={r.id}
+                style={{ left: r.x, top: r.y }}
+                className="absolute w-4 h-4 bg-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 animate-ping pointer-events-none"
+              />
+            ))}
+
+            {/* Glowing Orb Shimmer */}
+            <div className="absolute -top-12 -left-12 w-32 h-32 bg-white/20 rounded-full blur-xl pointer-events-none" />
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={phase}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                className="text-center p-3 flex flex-col items-center relative z-20 pointer-events-none"
+              >
+                <span className="text-[10px] font-black tracking-widest uppercase opacity-90 mb-0.5 text-teal-100">
+                  4-7-8 DEEP CALM
+                </span>
+                
+                <span className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-xs">
+                  {phase === 'idle' ? (lang === 'bn' ? 'শুরু করুন' : 'START') : currentConfig.title.toUpperCase()}
+                </span>
+
+                {phase !== 'completed' && isActive && (
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight font-mono mt-0.5 drop-shadow-md text-white">
+                    {formatNum(secondsRemaining)}s
+                  </span>
+                )}
+
+                {phase === 'completed' && (
+                  <CheckCircle size={36} className="text-white mt-1 animate-bounce" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Guided Phase Description */}
+        <div className="text-center max-w-md px-2 z-10">
+          <p className={cn(
+            "text-xs font-bold transition-all",
+            darkMode ? "text-gray-200" : "text-gray-800"
+          )}>
+            {isActive ? currentConfig.instructions : t.breatheClickTip}
+          </p>
+          <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+            {phase === 'inhale' && t.quietlyInhale}
+            {phase === 'hold' && t.realignCalm}
+            {phase === 'exhale' && t.slowWhooshPath}
+            {phase === 'completed' && t.oxygenOptimized}
+            {phase === 'idle' && (lang === 'bn' ? "বৃত্তে চাপ দিন বা প্লে বাটন প্রেস করুন" : "Tap the central orb or press play to start")}
+          </p>
+        </div>
+
+        {/* Primary Controls */}
+        <div className="flex items-center gap-3 z-10 w-full justify-center pt-1">
+          <button 
+            onClick={handleReset}
+            disabled={phase === 'idle'}
+            className={cn(
+              "p-3 rounded-xl border transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95",
+              darkMode ? "bg-white/5 border-white/10 hover:bg-white/10 text-white" : "bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700"
+            )}
+            title={lang === 'bn' ? "টাইমার রিসেট" : "Reset timer"}
+          >
+            <RotateCcw size={18} />
+          </button>
+
+          <button 
+            onClick={handleStartPause}
+            className={cn(
+              "px-8 py-3 rounded-xl text-sm font-black tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer hover:scale-102 active:scale-98",
+              isActive 
+                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/30" 
+                : "bg-teal-600 hover:bg-teal-500 text-white shadow-teal-600/30"
+            )}
+          >
+            {isActive ? (
+              <>
+                <Pause size={17} fill="currentColor" />
+                {t.breathePauseBtn}
+              </>
+            ) : (
+              <>
+                <Play size={17} fill="currentColor" />
+                {phase === 'completed' ? t.breatheStartOver : t.breatheStartBtn}
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Minimal 4-7-8 Breakdown Badges */}
+        <div className="w-full pt-4 border-t border-gray-200/20 dark:border-white/5 grid grid-cols-3 gap-2 sm:gap-3 text-center z-10">
+          <div className={cn(
+            "p-2.5 rounded-xl border transition-all",
+            phase === 'inhale' ? "border-emerald-500 bg-emerald-500/10 shadow-xs" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200/60")
+          )}>
+            <span className="text-sm font-black text-emerald-500">{formatNum(4)}s</span>
+            <p className="text-[10px] font-extrabold uppercase text-gray-700 dark:text-gray-300">{t.inhale}</p>
+          </div>
+
+          <div className={cn(
+            "p-2.5 rounded-xl border transition-all",
+            phase === 'hold' ? "border-sky-500 bg-sky-500/10 shadow-xs" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200/60")
+          )}>
+            <span className="text-sm font-black text-sky-500">{formatNum(7)}s</span>
+            <p className="text-[10px] font-extrabold uppercase text-gray-700 dark:text-gray-300">{t.hold}</p>
+          </div>
+
+          <div className={cn(
+            "p-2.5 rounded-xl border transition-all",
+            phase === 'exhale' ? "border-teal-500 bg-teal-500/10 shadow-xs" : (darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200/60")
+          )}>
+            <span className="text-sm font-black text-teal-500">{formatNum(8)}s</span>
+            <p className="text-[10px] font-extrabold uppercase text-gray-700 dark:text-gray-300">{t.exhale}</p>
+          </div>
+        </div>
+
+        {/* Minimal Health Tip Footer */}
+        <div className="w-full text-center z-10 pt-1">
+          <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1.5">
+            <Heart size={13} className="text-red-500 animate-pulse" />
+            <span>{t.clinicalFitnessTitle}: {t.clinicalFitnessText}</span>
+          </p>
         </div>
       </div>
     </div>
   );
-
-  function activeTabDots(index: number) {
-    if (phase === 'completed') {
-      return "bg-teal-500 w-6";
-    }
-    const idx = index + 1;
-    if (idx < currentCycle) {
-      return "bg-teal-500 w-6"; // Completed cycle
-    }
-    if (idx === currentCycle) {
-      if (isActive) {
-        if (phase === 'inhale') return "bg-emerald-500 w-7 animate-pulse";
-        if (phase === 'hold') return "bg-sky-500 w-7 animate-pulse";
-        if (phase === 'exhale') return "bg-teal-500 w-7 animate-pulse";
-      }
-      return "bg-teal-300 dark:bg-teal-800 w-5";
-    }
-    return "bg-gray-200 dark:bg-white/10 w-3";
-  }
 }
