@@ -347,11 +347,11 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'water'
-                  ? (darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-50 text-blue-700 shadow-sm")
+                  ? (darkMode ? "bg-blue-500/20 text-blue-400 font-bold" : "bg-blue-50 text-blue-800 font-bold shadow-sm")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
             >
-              <Droplet size={12} className="text-blue-400" />
+              <Droplet size={12} className="text-blue-500 fill-blue-400/30" />
               {t.tabWater}
             </button>
             <button
@@ -359,7 +359,7 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
                 activeTab === 'groceries'
-                  ? (darkMode ? "bg-sky-500/20 text-sky-400" : "bg-sky-50 text-sky-700 shadow-sm")
+                  ? (darkMode ? "bg-[#F04A00]/20 text-[#F04A00] font-bold" : "bg-[#F04A00]/10 text-[#F04A00] font-bold shadow-sm")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
             >
@@ -510,7 +510,7 @@ export default function App() {
                   value={birthdate}
                   onChange={(e) => setBirthdate(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                 />
@@ -522,7 +522,7 @@ export default function App() {
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder="25"
@@ -540,7 +540,7 @@ export default function App() {
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder={unit === 'metric' ? '70' : '154'}
@@ -555,7 +555,7 @@ export default function App() {
                   value={height}
                   onChange={(e) => setHeight(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder={unit === 'metric' ? '175' : '69'}
@@ -574,7 +574,7 @@ export default function App() {
                   value={waist}
                   onChange={(e) => setWaist(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder="80"
@@ -589,7 +589,7 @@ export default function App() {
                   value={neck}
                   onChange={(e) => setNeck(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder="38"
@@ -611,7 +611,7 @@ export default function App() {
                   value={hip}
                   onChange={(e) => setHip(e.target.value)}
                   className={cn(
-                    "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                    "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                   placeholder="95"
@@ -629,7 +629,7 @@ export default function App() {
                   value={activityLevel}
                   onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)}
                   className={cn(
-                    "w-full appearance-none border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer",
+                    "w-full appearance-none border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                   )}
                 >
@@ -1110,7 +1110,7 @@ export default function App() {
             onClick={() => setActiveTab('water')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'water' ? "text-blue-400 scale-105" : "text-gray-400 hover:text-gray-500"
+              activeTab === 'water' ? "text-blue-500 scale-105 font-bold" : "text-gray-400 hover:text-gray-500"
             )}
           >
             <Droplet size={18} />
@@ -1122,7 +1122,7 @@ export default function App() {
             onClick={() => setActiveTab('groceries')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'groceries' ? "text-sky-500 scale-105" : "text-gray-400 hover:text-gray-500"
+              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : "text-gray-400 hover:text-gray-500"
             )}
           >
             <ShoppingBag size={18} />

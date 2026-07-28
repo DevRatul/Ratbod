@@ -400,8 +400,8 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       {/* Header section */}
       <div className="flex items-center justify-between pb-2 border-b border-white/5">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-sky-500 flex items-center gap-2">
-            <ShoppingBag className="text-sky-500 animate-pulse" size={24} />
+          <h2 className="text-2xl font-bold tracking-tight text-[#F04A00] flex items-center gap-2">
+            <ShoppingBag className="text-[#F04A00] animate-pulse" size={24} />
             {labels.title}
           </h2>
         </div>
@@ -421,7 +421,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                 placeholder={labels.itemNamePlaceholder}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-transparent border border-gray-700/50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all placeholder:text-gray-600"
+                className="w-full bg-transparent border border-gray-700/50 rounded-xl px-4 py-3 text-base sm:text-sm focus:outline-none focus:border-[#F04A00] transition-all placeholder:text-gray-600"
               />
             </div>
 
@@ -434,7 +434,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                 <select
                   value={baseUnit}
                   onChange={(e) => setBaseUnit(e.target.value)}
-                  className="w-full bg-transparent border border-gray-700/50 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [&>option]:bg-neutral-900 [&>option]:text-white"
+                  className="w-full bg-transparent border border-gray-700/50 rounded-xl px-3 py-3 text-base sm:text-sm focus:outline-none focus:border-[#F04A00] transition-all [&>option]:bg-neutral-900 [&>option]:text-white"
                 >
                   <option value="kg">{labels.kg}</option>
                   <option value="g">{labels.g}</option>
@@ -460,7 +460,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                     required
                     value={pricePerUnit}
                     onChange={(e) => setPricePerUnit(e.target.value)}
-                    className="w-full bg-transparent border border-gray-700/50 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-transparent border border-gray-700/50 rounded-xl pl-4 pr-10 py-3 text-base sm:text-sm focus:outline-none focus:border-[#F04A00] transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">
                     {labels.bdtSuffix}
@@ -478,7 +478,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                 <select
                   value={desiredUnit}
                   onChange={(e) => setDesiredUnit(e.target.value)}
-                  className="w-full bg-transparent border border-gray-700/50 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [&>option]:bg-neutral-900 [&>option]:text-white"
+                  className="w-full bg-transparent border border-gray-700/50 rounded-xl px-3 py-3 text-base sm:text-sm focus:outline-none focus:border-[#F04A00] transition-all [&>option]:bg-neutral-900 [&>option]:text-white"
                 >
                   {getDesiredUnitOptions().map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -513,7 +513,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                         setDesiredPrice('');
                       }
                     }}
-                    className="w-full bg-transparent border border-gray-700/50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-transparent border border-gray-700/50 rounded-xl px-4 py-3 text-base sm:text-sm focus:outline-none focus:border-[#F04A00] transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
 
@@ -543,7 +543,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                           setDesiredQty('');
                         }
                       }}
-                      className="w-full bg-transparent border border-gray-700/50 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-sky-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full bg-transparent border border-gray-700/50 rounded-xl pl-4 pr-10 py-3 text-base sm:text-sm focus:outline-none focus:border-[#F04A00] transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">
                       {labels.bdtSuffix}
@@ -562,7 +562,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                   exit={{ opacity: 0, y: -10 }}
                   className={cn(
                     "p-4 rounded-2xl border flex items-center justify-between",
-                    darkMode ? "bg-sky-500/5 border-sky-500/20" : "bg-sky-500/10 border-sky-500/20"
+                    darkMode ? "bg-[#F04A00]/10 border-[#F04A00]/30" : "bg-[#F04A00]/10 border-[#F04A00]/20"
                   )}
                 >
                   <div>
@@ -574,10 +574,10 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-sky-500 block">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#F04A00] block">
                       {labels.exactPrice}
                     </span>
-                    <span className="text-xl font-bold tracking-tight text-sky-500">
+                    <span className="text-xl font-bold tracking-tight text-[#F04A00]">
                       {formatNum(currentCalcPrice)} {labels.bdtSuffix}
                     </span>
                   </div>
@@ -588,7 +588,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
             <button
               type="submit"
               disabled={!pricePerUnit || !desiredQty || parseFloat(pricePerUnit) <= 0 || parseFloat(desiredQty) <= 0}
-              className="w-full bg-sky-500 text-white py-3.5 rounded-xl font-bold hover:bg-sky-600 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-sky-500/10"
+              className="w-full bg-[#F04A00] text-white py-3.5 rounded-xl font-bold hover:bg-[#d84200] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-[#F04A00]/20"
             >
               <Plus size={18} />
               {labels.addBtn}
@@ -608,7 +608,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                   onClick={handleDownloadList}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
-                    darkMode ? "bg-sky-500/10 text-sky-400 hover:bg-sky-500/20" : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                    darkMode ? "bg-[#F04A00]/10 text-[#F04A00] hover:bg-[#F04A00]/20" : "bg-[#F04A00]/10 text-[#F04A00] hover:bg-[#F04A00]/20"
                   )}
                 >
                   <Download size={12} />
@@ -670,7 +670,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
 
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-sm font-bold tracking-tight text-sky-500">
+                        <span className="text-sm font-bold tracking-tight text-[#F04A00]">
                           {formatNum(item.calculatedPrice)} {labels.bdtSuffix}
                         </span>
                       </div>
@@ -709,7 +709,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-black tracking-tighter text-sky-500">
+                <span className="text-2xl font-black tracking-tighter text-[#F04A00]">
                   {formatNum(totalGroceryPrice)} {labels.bdtSuffix}
                 </span>
               </div>

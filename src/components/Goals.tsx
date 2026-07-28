@@ -170,7 +170,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                 value={targetWeight}
                 onChange={(e) => setTargetWeight(e.target.value)}
                 className={cn(
-                  "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                  "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                   darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                 )}
                 placeholder={unit === 'metric' ? '65' : '143'}
@@ -187,7 +187,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                 value={targetBodyFat}
                 onChange={(e) => setTargetBodyFat(e.target.value)}
                 className={cn(
-                  "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                  "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                   darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                 )}
                 placeholder="15"
@@ -203,7 +203,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                 value={dailyCalorieGoal}
                 onChange={(e) => setDailyCalorieGoal(e.target.value)}
                 className={cn(
-                  "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                  "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                   darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                 )}
                 placeholder="2000"
@@ -219,7 +219,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                 value={targetDate}
                 onChange={(e) => setTargetDate(e.target.value)}
                 className={cn(
-                  "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                  "w-full border rounded-xl px-4 py-3 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
                   darkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900"
                 )}
                 required
