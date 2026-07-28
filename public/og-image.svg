@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f12" />
+      <stop offset="50%" stop-color="#111c24" />
+      <stop offset="100%" stop-color="#071110" />
+    </linearGradient>
+
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="50%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.08)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.02)" />
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)" />
+
+  <!-- Ambient Glow Orbs -->
+  <circle cx="150" cy="120" r="250" fill="#10B981" opacity="0.15" filter="url(#glow)" />
+  <circle cx="1050" cy="500" r="300" fill="#06B6D4" opacity="0.15" filter="url(#glow)" />
+
+  <!-- Grid accent lines -->
+  <path d="M0,100 L1200,100 M0,200 L1200,200 M0,300 L1200,300 M0,400 L1200,400 M0,500 L1200,500" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+  <path d="M200,0 L200,630 M400,0 L400,630 M600,0 L600,630 M800,0 L800,630 M1000,0 L1000,630" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+
+  <!-- Main Card Container -->
+  <rect x="80" y="70" width="1040" height="490" rx="28" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
+
+  <!-- Header Brand Area -->
+  <g transform="translate(140, 140)">
+    <!-- Logo Badge Icon -->
+    <rect x="0" y="0" width="70" height="70" rx="20" fill="url(#primaryGrad)" />
+    <!-- Activity/Heart Icon in Logo -->
+    <path d="M20 35 L28 35 L33 22 L40 48 L46 30 L50 35 L55 35" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+
+    <!-- App Name -->
+    <text x="92" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="44" fill="#ffffff" letter-spacing="-1">Ratbo<tspan fill="#10B981">D</tspan></text>
+    <text x="92" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="16" fill="#06B6D4" letter-spacing="2">HEALTH &amp; METRICS SUITE</text>
+  </g>
+
+  <!-- Headline & Subtitle -->
+  <text x="140" y="275" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="38" fill="#ffffff" letter-spacing="-0.5">
+    Smart Body Metrics, Hydration &amp; Breathing Coach
+  </text>
+  <text x="140" y="315" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="20" fill="#9CA3AF">
+    Calculate BMI, BMR, TDEE, track water goals, grocery unit pricing, and 4-7-8 deep calm breathing.
+  </text>
+
+  <!-- Feature Cards Row -->
+  <!-- Card 1: BMI & Body Metrics -->
+  <g transform="translate(140, 360)">
+    <rect x="0" y="0" width="210" height="130" rx="18" fill="rgba(16, 185, 129, 0.1)" stroke="rgba(16, 185, 129, 0.3)" stroke-width="1.5" />
+    <circle cx="35" cy="35" r="16" fill="#10B981" opacity="0.2" />
+    <path d="M30 35 L40 35 M35 30 L35 40" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" />
+    <text x="35" y="75" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="18" fill="#ffffff">Body Metrics</text>
+    <text x="35" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="13" fill="#A7F3D0">BMI, BMR, TDEE &amp; Fat %</text>
+  </g>
+
+  <!-- Card 2: Water Tracker -->
+  <g transform="translate(370, 360)">
+    <rect x="0" y="0" width="210" height="130" rx="18" fill="rgba(6, 182, 212, 0.1)" stroke="rgba(6, 182, 212, 0.3)" stroke-width="1.5" />
+    <circle cx="35" cy="35" r="16" fill="#06B6D4" opacity="0.2" />
+    <path d="M35 25 C35 25 25 35 25 40 C25 45.5 29.5 50 35 50 C40.5 50 45 45.5 45 40 C45 35 35 25 35 25 Z" stroke="#06B6D4" stroke-width="2" stroke-linecap="round" fill="none" />
+    <text x="35" y="75" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="18" fill="#ffffff">Water Tracker</text>
+    <text x="35" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="13" fill="#A5F3FC">Hydration &amp; Daily Goals</text>
+  </g>
+
+  <!-- Card 3: 4-7-8 Breathing -->
+  <g transform="translate(600, 360)">
+    <rect x="0" y="0" width="210" height="130" rx="18" fill="rgba(59, 130, 246, 0.1)" stroke="rgba(59, 130, 246, 0.3)" stroke-width="1.5" />
+    <circle cx="35" cy="35" r="16" fill="#3B82F6" opacity="0.2" />
+    <circle cx="35" cy="35" r="10" stroke="#3B82F6" stroke-width="2" fill="none" />
+    <text x="35" y="75" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="18" fill="#ffffff">4-7-8 Breathing</text>
+    <text x="35" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="13" fill="#BFDBFE">Deep Calm Coach</text>
+  </g>
+
+  <!-- Card 4: Grocery Calculator -->
+  <g transform="translate(830, 360)">
+    <rect x="0" y="0" width="210" height="130" rx="18" fill="rgba(245, 158, 11, 0.1)" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1.5" />
+    <circle cx="35" cy="35" r="16" fill="#F59E0B" opacity="0.2" />
+    <path d="M27 28 L43 28 L41 44 L29 44 Z" stroke="#F59E0B" stroke-width="2" fill="none" />
+    <text x="35" y="75" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="18" fill="#ffffff">Grocery Calc</text>
+    <text x="35" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="13" fill="#FDE68A">Unit Price Comparison</text>
+  </g>
+</svg>

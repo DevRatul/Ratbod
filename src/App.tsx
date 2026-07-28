@@ -154,6 +154,40 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('ratbod_darkmode', darkMode.toString());
+    
+    // Toggle dark class on <html> element
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Set browser tab theme-color and iOS status bar style
+    const themeColor = darkMode ? '#000000' : '#ffffff';
+    const statusBar = darkMode ? 'black-translucent' : 'default';
+
+    // 1. Update <meta name="theme-color">
+    let themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeMeta) {
+      themeMeta = document.createElement('meta');
+      themeMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeMeta);
+    }
+    themeMeta.setAttribute('content', themeColor);
+
+    // 2. Update <meta name="apple-mobile-web-app-status-bar-style">
+    let statusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (!statusMeta) {
+      statusMeta = document.createElement('meta');
+      statusMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+      document.head.appendChild(statusMeta);
+    }
+    statusMeta.setAttribute('content', statusBar);
+
+    // 3. Set background color on documentElement and body for seamless browser window/tab integration
+    document.documentElement.style.backgroundColor = themeColor;
+    document.body.style.backgroundColor = themeColor;
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
   }, [darkMode]);
 
   useEffect(() => {
