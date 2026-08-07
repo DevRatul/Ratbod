@@ -41,6 +41,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [modalTotalMl, setModalTotalMl] = useState<string>('3900');
   const [modalGlassVolume, setModalGlassVolume] = useState<string>('325');
 
+  // Manual Hydration Timer state (30 min, 45 min, 50 min, 90 min presets)
+  const [timerMinutes, setTimerMinutes] = useState<number>(30);
+  const [timerSecondsLeft, setTimerSecondsLeft] = useState<number | null>(null);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+  const [showAlarmModal, setShowAlarmModal] = useState<boolean>(false);
+  const [customTimerInput, setCustomTimerInput] = useState<string>('');
+
   const goalMl = goalGlasses * glassVolumeMl;
 
   // Calculate total consumed today
@@ -93,6 +100,84 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       console.error("Failed to save water tracker data", e);
     }
   }, [goalGlasses, glassVolumeMl, entries, history, reminderActive]);
+
+  // Audio Alarm chime synthesizer
+  const playHydrationAlarmSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75].forEach((delay) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(delay % 0.5 === 0 ? 880 : 1046.5, ctx.currentTime + delay);
+        
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.2);
+      });
+    } catch (e) {
+      console.error("Failed to play alarm chime", e);
+    }
+  };
+
+  // Timer countdown effect
+  useEffect(() => {
+    let interval: any = null;
+    if (isTimerRunning && timerSecondsLeft !== null && timerSecondsLeft > 0) {
+      interval = setInterval(() => {
+        setTimerSecondsLeft(prev => {
+          if (prev === null || prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    } else if (isTimerRunning && timerSecondsLeft === 0) {
+      setIsTimerRunning(false);
+      setShowAlarmModal(true);
+      playHydrationAlarmSound();
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning, timerSecondsLeft]);
+
+  const handleStartTimer = (mins: number) => {
+    setTimerMinutes(mins);
+    setTimerSecondsLeft(mins * 60);
+    setIsTimerRunning(true);
+    setReminderActive(true);
+  };
+
+  const handleStopTimer = () => {
+    setIsTimerRunning(false);
+    setTimerSecondsLeft(null);
+  };
+
+  const formatTimerDisplay = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  // Continuous alarm chime effect while alarm modal is open
+  useEffect(() => {
+    let soundInterval: any = null;
+    if (showAlarmModal) {
+      playHydrationAlarmSound();
+      soundInterval = setInterval(() => {
+        playHydrationAlarmSound();
+      }, 2000);
+    }
+    return () => {
+      if (soundInterval) clearInterval(soundInterval);
+    };
+  }, [showAlarmModal]);
 
   // Labels for EN/BN
   const labels = {
@@ -384,30 +469,133 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto pb-6">
-      {/* Header Banner - Ultra Slim & Compact */}
+      {/* Reminder & Timer Card placed at TOP */}
       <div className={cn(
-        "px-3 py-2 sm:px-4 sm:py-2 rounded-xl border transition-all relative overflow-hidden",
-        darkMode
-          ? "bg-gradient-to-r from-blue-950/90 via-indigo-950/70 to-blue-900/80 border-blue-500/30 shadow-xs"
-          : "bg-gradient-to-r from-blue-500/15 via-sky-400/10 to-blue-600/15 border-blue-200/80 shadow-2xs"
+        "p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3",
+        darkMode ? "bg-blue-950/30 border-blue-500/20" : "bg-blue-50/80 border-blue-200"
       )}>
-        {/* Background glow circle */}
-        <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-blue-500/15 blur-2xl pointer-events-none" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
+              <Bell size={18} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                {labels.reminderTitle}
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
+                  {lang === 'bn' ? 'টাইমার' : 'Timer'}
+                </span>
+              </h4>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                {reminderActive 
+                  ? (isTimerRunning 
+                      ? (lang === 'bn' ? 'টাইমার চালূ আছে - এলার্ম বাজবে' : 'Countdown active - Alarm on') 
+                      : labels.reminderActiveMsg) 
+                  : labels.reminderOffMsg}
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2.5 relative z-10">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-tr from-blue-700 via-blue-500 to-sky-400 flex items-center justify-center text-white shadow-xs shadow-blue-500/30 shrink-0">
-            <Droplet size={17} className="animate-bounce" />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2.5 min-w-0">
-            <h2 className="text-sm sm:text-base font-black tracking-tight text-blue-600 dark:text-blue-400 whitespace-nowrap">
-              {labels.title}
-            </h2>
-            <span className="hidden sm:inline text-gray-400 dark:text-gray-600 text-xs">•</span>
-            <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
-              {labels.subtitle}
-            </p>
-          </div>
+          <button
+            onClick={() => {
+              const nextState = !reminderActive;
+              setReminderActive(nextState);
+              if (!nextState) handleStopTimer();
+            }}
+            className={cn(
+              "w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0",
+              reminderActive ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
+            )}
+          >
+            <div className={cn(
+              "w-5 h-5 rounded-full bg-white transition-transform shadow-xs",
+              reminderActive ? "translate-x-5" : "translate-x-0"
+            )} />
+          </button>
         </div>
+
+        {/* Manual Water Intake Timer Controls (When Reminder Active) */}
+        {reminderActive && (
+          <div className="pt-2 border-t border-blue-500/10 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400">
+                {lang === 'bn' ? 'পরবর্তী পানির সময় টাইমার:' : 'Set Upcoming Intake Timer:'}
+              </span>
+              {isTimerRunning && timerSecondsLeft !== null && (
+                <span className="text-xs font-black text-rose-500 dark:text-rose-400 animate-pulse font-mono bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
+                  ⏱️ {formatTimerDisplay(timerSecondsLeft)}
+                </span>
+              )}
+            </div>
+
+            {/* Preset Timer Buttons: 30 min, 45 min, 50 min, 90 min */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {[30, 45, 50, 90].map((mins) => {
+                const isSelected = timerMinutes === mins && isTimerRunning;
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => handleStartTimer(mins)}
+                    className={cn(
+                      "py-1.5 px-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer border text-center flex flex-col items-center justify-center",
+                      isSelected
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/30 scale-105"
+                        : (darkMode ? "bg-white/5 border-white/10 hover:bg-white/10 text-gray-300" : "bg-white border-blue-200 hover:bg-blue-100 text-gray-800")
+                    )}
+                    title={`Set alarm in ${mins} minutes`}
+                  >
+                    <span>{mins}m</span>
+                    <span className="text-[8px] font-medium opacity-80">{lang === 'bn' ? 'মিনিট' : 'min'}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Live Controls: Custom input or Reset Timer */}
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  min="1"
+                  max="300"
+                  placeholder={lang === 'bn' ? 'পছন্দমতো মিনিট' : 'Custom mins'}
+                  value={customTimerInput}
+                  onChange={(e) => setCustomTimerInput(e.target.value)}
+                  className={cn(
+                    "w-full rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-blue-500 border font-bold",
+                    darkMode ? "bg-black/30 border-white/10 text-white" : "bg-white border-blue-200 text-gray-900"
+                  )}
+                />
+              </div>
+
+              <button
+                type="button"
+                disabled={!customTimerInput || parseInt(customTimerInput) <= 0}
+                onClick={() => {
+                  const val = parseInt(customTimerInput);
+                  if (val > 0) {
+                    handleStartTimer(val);
+                    setCustomTimerInput('');
+                  }
+                }}
+                className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+              >
+                {lang === 'bn' ? 'শুরু' : 'Start'}
+              </button>
+
+              {isTimerRunning && (
+                <button
+                  type="button"
+                  onClick={handleStopTimer}
+                  className="px-2.5 py-1 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-500 text-xs font-bold transition-all cursor-pointer shrink-0 border border-red-500/30"
+                >
+                  {lang === 'bn' ? 'থামুন' : 'Stop'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Card 1 (Progress Display & Cup), Card 2 (Quick Actions & Input) */}
@@ -502,7 +690,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 type="button"
                 whileTap={{ scale: 0.92 }}
                 onClick={() => handleAddWater(400)}
-                title={lang === 'bn' ? ' ৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
+                title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
                 className={cn(
                   "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
                   darkMode
@@ -611,10 +799,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
 
           {/* Quick Presets Grid - Sea Water Blue Theme */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => handleAddWater(250)}
+              onClick={() => handleAddWater(100)}
               className={cn(
                 "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
                 darkMode
@@ -625,12 +813,14 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               <div className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/20 group-hover:rotate-12 transition-transform shrink-0">
                 <Droplet size={14} />
               </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">{labels.addGlass}</span>
+              <span className="text-[11px] font-bold text-center sm:text-left">
+                100 {labels.mlUnit}
+              </span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleAddWater(400)}
+              onClick={() => handleAddWater(300)}
               className={cn(
                 "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
                 darkMode
@@ -641,7 +831,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-500/20 group-hover:rotate-12 transition-transform shrink-0">
                 <Droplet size={15} className="fill-current" />
               </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">{labels.addGlass400}</span>
+              <span className="text-[11px] font-bold text-center sm:text-left">
+                300 {labels.mlUnit}
+              </span>
             </button>
 
             <button
@@ -655,28 +847,11 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               )}
             >
               <div className="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center shadow-xs shadow-blue-600/20 group-hover:rotate-12 transition-transform shrink-0">
-                <div className="flex -space-x-1">
-                  <Droplet size={11} />
-                  <Droplet size={11} />
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">{labels.addDoubleGlass}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAddWater(750)}
-              className={cn(
-                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
-                darkMode
-                  ? "bg-blue-800/10 border-blue-800/30 text-blue-300 hover:bg-blue-800/20"
-                  : "bg-blue-200/80 border-blue-300 text-blue-950 hover:bg-blue-300"
-              )}
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-800 text-white flex items-center justify-center shadow-xs shadow-blue-700/20 group-hover:rotate-12 transition-transform shrink-0">
                 <Droplet size={15} className="fill-current" />
               </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">{labels.addBottle}</span>
+              <span className="text-[11px] font-bold text-center sm:text-left">
+                500 {labels.mlUnit} ({lang === 'bn' ? 'বোতল' : 'bottle'})
+              </span>
             </button>
           </div>
 
@@ -846,61 +1021,6 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               <Target size={12} />
               <span>{lang === 'bn' ? 'লক্ষ্য নির্ধারণ' : 'Set Goal'}</span>
             </button>
-          </div>
-
-          {/* Reminder Card */}
-          <div className={cn(
-            "p-4 rounded-2xl border flex items-center justify-between gap-3 transition-all",
-            darkMode ? "bg-blue-950/30 border-blue-500/20" : "bg-blue-50/80 border-blue-200"
-          )}>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
-                <Bell size={18} />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                  {labels.reminderTitle}
-                </h4>
-                <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  {reminderActive ? labels.reminderActiveMsg : labels.reminderOffMsg}
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setReminderActive(!reminderActive)}
-              className={cn(
-                "w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0",
-                reminderActive ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
-              )}
-            >
-              <div className={cn(
-                "w-5 h-5 rounded-full bg-white transition-transform shadow-xs",
-                reminderActive ? "translate-x-5" : "translate-x-0"
-              )} />
-            </button>
-          </div>
-
-          {/* Hydration Tips Card */}
-          <div className={cn(
-            "p-4 rounded-2xl border space-y-2.5",
-            darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
-          )}>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
-              <Info size={13} />
-              {labels.hydrationTipsTitle}
-            </h4>
-            <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300">
-              <p className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-[11px] leading-snug">
-                {labels.tip1}
-              </p>
-              <p className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-[11px] leading-snug">
-                {labels.tip2}
-              </p>
-              <p className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-[11px] leading-snug">
-                {labels.tip3}
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -1078,6 +1198,78 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 >
                   <Check size={16} />
                   {labels.saveGoalBtn}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Hydration Alarm Popup Modal when countdown hits 0 */}
+      <AnimatePresence>
+        {showAlarmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              className={cn(
+                "w-full max-w-sm p-6 rounded-3xl border shadow-2xl text-center space-y-4 relative overflow-hidden",
+                darkMode ? "bg-[#0a1828] border-blue-500/40 text-white" : "bg-white border-blue-300 text-gray-900"
+              )}
+            >
+              <div className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/40 animate-bounce">
+                <Bell size={32} />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-blue-500 dark:text-blue-400 tracking-tight">
+                  {lang === 'bn' ? '⏰ পানি পানের সময় হয়েছে!' : '⏰ Time to Drink Water!'}
+                </h3>
+                <p className="text-xs text-gray-400 font-medium">
+                  {lang === 'bn'
+                    ? 'আপনার হাইড্রেশন টাইমার শেষ হয়েছে। এখনই এক গ্লাস পানি পান করুন ও সতেজ থাকুন!'
+                    : 'Your hydration timer ended! Drink a glass of water now to stay hydrated and energized.'
+                  }
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddWater(250);
+                      setShowAlarmModal(false);
+                    }}
+                    className="py-2.5 px-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md shadow-blue-500/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Droplet size={14} className="fill-current shrink-0" />
+                    <span>{lang === 'bn' ? '+২৫০ মিলি' : '+250 ml'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddWater(400);
+                      setShowAlarmModal(false);
+                    }}
+                    className="py-2.5 px-2 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs shadow-md shadow-sky-500/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Droplet size={14} className="fill-current shrink-0" />
+                    <span>{lang === 'bn' ? '+৪০০ মিলি' : '+400 ml'}</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAlarmModal(false)}
+                  className={cn(
+                    "w-full py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer border mt-1",
+                    darkMode ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
+                  )}
+                >
+                  {lang === 'bn' ? 'এলার্ম বন্ধ করুন (Dismiss)' : 'Dismiss Alarm'}
                 </button>
               </div>
             </motion.div>

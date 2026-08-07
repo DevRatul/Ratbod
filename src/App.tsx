@@ -23,7 +23,8 @@ import {
   ShoppingBag,
   UserCircle,
   Wind,
-  Droplet
+  Droplet,
+  Flame
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -46,6 +47,7 @@ import {
 import GroceryCalculator from './components/GroceryCalculator';
 import WaterTracker from './components/WaterTracker';
 import BreathingTimer from './components/BreathingTimer';
+import Habitor from './components/Habitor';
 import Goals from './components/Goals';
 import { translations } from './utils/translations';
 
@@ -369,12 +371,24 @@ export default function App() {
               onClick={() => setActiveTab('calculator')}
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
-                (activeTab === 'calculator' || activeTab === 'results')
+                activeTab === 'calculator'
                   ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
               )}
             >
               {t.tabMeasure}
+            </button>
+            <button
+              onClick={() => setActiveTab('results')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                activeTab === 'results'
+                  ? (darkMode ? "bg-rose-500/20 text-rose-400 font-bold" : "bg-rose-50 text-rose-700 font-bold shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900")
+              )}
+            >
+              <Flame size={12} className="text-rose-500" />
+              {t.tabResults}
             </button>
             <button
               onClick={() => setActiveTab('water')}
@@ -429,26 +443,28 @@ export default function App() {
               darkMode ? "bg-white/5" : "bg-gray-100"
             )}>
               <button 
-                onClick={() => setUnit('metric')}
+                onClick={() => setLang('en')}
                 className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all cursor-pointer",
-                  unit === 'metric' 
+                  "px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all cursor-pointer",
+                  lang === 'en' 
                     ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
                 )}
+                title="English"
               >
-                M<span className="hidden xs:inline">etric</span>
+                EN
               </button>
               <button 
-                onClick={() => setUnit('imperial')}
+                onClick={() => setLang('bn')}
                 className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-bold transition-all cursor-pointer",
-                  unit === 'imperial' 
+                  "px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all cursor-pointer",
+                  lang === 'bn' 
                     ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
                 )}
+                title="বাংলা"
               >
-                I<span className="hidden xs:inline">mperial</span>
+                বাং
               </button>
             </div>
           </div>
@@ -479,9 +495,17 @@ export default function App() {
         <WaterTracker darkMode={darkMode} lang={lang} />
       </div>
 
+      {/* Habitor Tab Content */}
+      <div className={cn(
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        activeTab === 'results' ? "block" : "hidden"
+      )}>
+        <Habitor darkMode={darkMode} lang={lang} />
+      </div>
+
       <main className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-12 overflow-x-hidden",
-        (activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "grid"
+        (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "grid"
       )}>
         {/* Input Section */}
         <section className={cn(
@@ -684,7 +708,7 @@ export default function App() {
         {/* Results Section */}
         <section className={cn(
           "lg:col-span-7 no-scrollbar",
-          activeTab === 'results' ? "block" : "hidden md:block"
+          activeTab === 'calculator' ? "block" : "hidden md:block"
         )}>
           <AnimatePresence mode="wait">
             {metrics ? (
@@ -726,17 +750,17 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Main Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Main Metrics Grid - Compressed 2x2 Layout */}
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                   {/* BMI Card */}
                   <div className={cn(
-                    "p-6 rounded-3xl border shadow-sm space-y-4 transition-colors",
+                    "p-3 sm:p-4 rounded-2xl border shadow-2xs space-y-2 transition-colors",
                     darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
                   )}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআই (BMI)' : 'BMI'}</span>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 truncate">{lang === 'bn' ? 'বিএমআই (BMI)' : 'BMI'}</span>
                       <span className={cn(
-                        "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        "px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0",
                         metrics.category === 'Normal weight' 
                           ? (darkMode ? "bg-primary/20 text-primary" : "bg-primary-light text-primary-dark") 
                           : (darkMode ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-700")
@@ -745,8 +769,8 @@ export default function App() {
                       </span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-light tracking-tighter">{formatNum(metrics.bmi.toFixed(1))}</span>
-                      <span className="text-sm text-gray-500 font-bold">{lang === 'bn' ? 'কেজি/মি²' : 'kg/m²'}</span>
+                      <span className="text-2xl sm:text-3xl font-bold tracking-tight">{formatNum(metrics.bmi.toFixed(1))}</span>
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-bold">{lang === 'bn' ? 'কেজি/মি²' : 'kg/m²'}</span>
                     </div>
                     <div className={cn("h-1.5 w-full rounded-full overflow-hidden", darkMode ? "bg-white/5" : "bg-gray-200")}>
                       <div 
@@ -758,194 +782,181 @@ export default function App() {
 
                   {/* Body Fat Card */}
                   <div className={cn(
-                    "p-6 rounded-3xl border shadow-sm space-y-4 transition-colors",
+                    "p-3 sm:p-4 rounded-2xl border shadow-2xs space-y-2 transition-colors",
                     darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
                   )}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.bodyFat}</span>
-                      <Info size={14} className="text-gray-400" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">{t.bodyFat}</span>
+                      <Info size={13} className="text-gray-400" />
                     </div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-light tracking-tighter">{formatNum(metrics.bodyFat.toFixed(1))}</span>
-                      <span className="text-sm text-gray-500 font-bold">%</span>
+                      <span className="text-2xl sm:text-3xl font-bold tracking-tight">{formatNum(metrics.bodyFat.toFixed(1))}</span>
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-bold">%</span>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-primary/80">
-                      <span>{lang === 'bn' ? 'আদর্শ সীমা' : 'Ideal'}: {formatNum(metrics.idealFatRange.min)}-{formatNum(metrics.idealFatRange.max)}%</span>
+                    <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary/80 truncate">
+                      <span>{lang === 'bn' ? 'আদর্শ' : 'Ideal'}: {formatNum(metrics.idealFatRange.min)}-{formatNum(metrics.idealFatRange.max)}%</span>
                     </div>
                   </div>
 
                   {/* BMR Card */}
                   <div className={cn(
-                    "p-6 rounded-3xl border shadow-sm space-y-4 transition-colors",
-                    darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-[#F5F5F5] border-black/5"
+                    "p-3 sm:p-4 rounded-2xl border shadow-2xs space-y-1.5 transition-colors",
+                    darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-[#F8F9FA] border-black/5"
                   )}>
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.bmr}</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">{t.bmr}</span>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-light tracking-tighter">{formatNum(Math.round(metrics.bmr))}</span>
-                      <span className="text-sm text-gray-500 font-bold">{lang === 'bn' ? 'ক্যালোরি/দিন' : 'kcal/day'}</span>
+                      <span className="text-2xl sm:text-3xl font-bold tracking-tight">{formatNum(Math.round(metrics.bmr))}</span>
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-bold">{lang === 'bn' ? 'ক্যালোরি' : 'kcal/d'}</span>
                     </div>
-                    <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'সম্পূর্ণ বিশ্রামের সময়ে পোড়ানো ক্যালোরি' : 'Calories burned at complete rest'}</p>
+                    <p className="text-[10px] text-gray-500 font-medium leading-tight line-clamp-1">{lang === 'bn' ? 'সম্পূর্ণ বিশ্রামের সময়ে' : 'Resting burn'}</p>
                   </div>
 
                   {/* TDEE Card */}
                   <div className={cn(
-                    "p-6 rounded-3xl border shadow-sm space-y-4 transition-colors",
+                    "p-3 sm:p-4 rounded-2xl border shadow-2xs space-y-1.5 transition-colors",
                     darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
                   )}>
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.tdee}</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">{t.tdee}</span>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-light tracking-tighter text-primary">{formatNum(Math.round(metrics.tdee))}</span>
-                      <span className="text-sm text-gray-500 font-bold">{lang === 'bn' ? 'ক্যালোরি/দিন' : 'kcal/day'}</span>
+                      <span className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">{formatNum(Math.round(metrics.tdee))}</span>
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-bold">{lang === 'bn' ? 'ক্যালোরি' : 'kcal/d'}</span>
                     </div>
-                    <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বর্তমান ওজন বজায় রাখার জন্য প্রয়োজনীয় ক্যালোরি' : 'Calories to maintain current weight'}</p>
+                    <p className="text-[10px] text-gray-500 font-medium leading-tight line-clamp-1">{lang === 'bn' ? 'ওজন বজায় রাখার প্রয়োজনীয়' : 'Daily maintenance'}</p>
                   </div>
                 </div>
 
-                {/* Goal Section */}
+                {/* Goal Section - Compressed */}
                 <div className={cn(
-                  "p-8 rounded-3xl border shadow-lg transition-all relative overflow-hidden",
+                  "p-3.5 sm:p-5 rounded-2xl border shadow-md transition-all relative overflow-hidden",
                   metrics.weightDiff.type === 'lose' ? (darkMode ? "bg-red-500/5 border-red-500/20" : "bg-red-50/50 border-red-200") : 
                   metrics.weightDiff.type === 'gain' ? (darkMode ? "bg-blue-500/5 border-blue-500/20" : "bg-blue-50/50 border-blue-200") : 
                   (darkMode ? "bg-primary/5 border-primary/20" : "bg-primary-light/50 border-primary/20")
                 )}>
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
+                  <div className="relative z-10 space-y-2">
+                    <div className="flex items-center gap-2">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                        "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
                         metrics.weightDiff.type === 'lose' ? "bg-red-500/10 text-red-500" : 
                         metrics.weightDiff.type === 'gain' ? "bg-blue-500/10 text-blue-500" : 
                         "bg-primary/10 text-primary"
                       )}>
-                        <Activity size={20} />
+                        <Activity size={16} />
                       </div>
-                      <h3 className={cn("text-lg font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>{t.goalsTitle}</h3>
+                      <h3 className={cn("text-sm sm:text-base font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>{t.goalsTitle}</h3>
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-6">
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{lang === 'bn' ? 'লক্ষ্য অর্জন পদক্ষেপ' : 'Target Action'}</p>
+                    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                      <div>
                         <span className={cn(
-                          "text-4xl font-black tracking-tighter uppercase block",
+                          "text-xl sm:text-2xl font-black tracking-tight uppercase block",
                           metrics.weightDiff.type === 'lose' ? "text-red-500" : 
                           metrics.weightDiff.type === 'gain' ? "text-blue-500" : 
                           "text-primary"
                         )}>
-                          {metrics.weightDiff.type === 'maintain' ? (lang === 'bn' ? 'ওজন বজায় রাখুন' : 'Maintain') : 
+                          {metrics.weightDiff.type === 'maintain' ? (lang === 'bn' ? 'ওজন বজায় রাখুন' : 'Maintain Weight') : 
                            metrics.weightDiff.type === 'lose' ? (lang === 'bn' ? 'ওজন হ্রাস করুন' : 'Lose Weight') : (lang === 'bn' ? 'ওজন বৃদ্ধি করুন' : 'Gain Weight')}
                         </span>
                       </div>
 
                       {metrics.weightDiff.type !== 'maintain' && (
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{lang === 'bn' ? 'ওজনের পার্থক্য' : 'Weight Difference'}</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className={cn("text-4xl font-black tracking-tighter", darkMode ? "text-white" : "text-gray-900")}>
-                              {formatNum(metrics.weightDiff.kg.toFixed(1))}
-                            </span>
-                            <span className="text-xl font-bold opacity-40">{lang === 'bn' ? 'কেজি' : 'kg'}</span>
-                            <span className="text-sm font-bold opacity-20 ml-2">/ {formatNum(metrics.weightDiff.lb.toFixed(1))} {lang === 'bn' ? 'পাউন্ড' : 'lb'}</span>
-                          </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className={cn("text-xl sm:text-2xl font-black tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
+                            {formatNum(metrics.weightDiff.kg.toFixed(1))}
+                          </span>
+                          <span className="text-xs font-bold text-gray-500">{lang === 'bn' ? 'কেজি' : 'kg'}</span>
+                          <span className="text-[11px] font-bold text-gray-400">({formatNum(metrics.weightDiff.lb.toFixed(1))} {lang === 'bn' ? 'পাউন্ড' : 'lb'})</span>
                         </div>
                       )}
                     </div>
 
                     <div className={cn(
-                      "mt-6 p-4 rounded-2xl font-bold text-sm",
-                      darkMode ? "bg-white/5 text-gray-300" : "bg-white/80 text-gray-700 shadow-sm"
+                      "p-2.5 rounded-xl font-medium text-xs leading-snug",
+                      darkMode ? "bg-white/5 text-gray-300" : "bg-white/90 text-gray-700 shadow-2xs"
                     )}>
                       {metrics.weightDiff.type === 'maintain' 
-                        ? (lang === 'bn' ? 'চমৎকার! আপনি বর্তমানে আপনার আদর্শ ওজনে আছেন। সুস্থ অভ্যাসগুলো বজায় রাখার চেষ্টা করুন।' : 'Excellent! You are currently at your ideal body weight. Focus on maintaining your healthy habits.')
+                        ? (lang === 'bn' ? 'চমৎকার! আপনি বর্তমানে আপনার আদর্শ ওজনে আছেন।' : 'Excellent! You are currently at your ideal body weight.')
                         : (lang === 'bn' 
-                            ? `আপনার আদর্শ ওজন ${formatNum(metrics.idealWeight.kg.toFixed(1))} কেজিতে পৌঁছাতে হলে, আপনার লক্ষণীয় লক্ষ্য হওয়া উচিত আরো ${formatNum(metrics.weightDiff.kg.toFixed(1))} কেজি ${metrics.weightDiff.type === 'lose' ? 'কমানো' : 'বাড়ানো'}।`
-                            : `To reach your ideal body weight of ${metrics.idealWeight.kg.toFixed(1)}kg, you should aim to ${metrics.weightDiff.type === 'lose' ? 'lose' : 'gain'} ${metrics.weightDiff.kg.toFixed(1)}kg.`)}
+                            ? `আদর্শ ওজন ${formatNum(metrics.idealWeight.kg.toFixed(1))} কেজিতে পৌঁছাতে আরো ${formatNum(metrics.weightDiff.kg.toFixed(1))} কেজি ${metrics.weightDiff.type === 'lose' ? 'কমানো' : 'বাড়ানো'} প্রয়োজন।`
+                            : `To reach your ideal weight of ${metrics.idealWeight.kg.toFixed(1)}kg, aim to ${metrics.weightDiff.type === 'lose' ? 'lose' : 'gain'} ${metrics.weightDiff.kg.toFixed(1)}kg.`)}
                     </div>
                   </div>
-                  {/* Decorative background accent */}
-                  <div className={cn(
-                    "absolute -right-4 -top-4 w-32 h-32 rounded-full blur-3xl opacity-10",
-                    metrics.weightDiff.type === 'lose' ? "bg-red-500" : 
-                    metrics.weightDiff.type === 'gain' ? "bg-blue-500" : 
-                    "bg-primary"
-                  )} />
                 </div>
 
-                  {/* Ideal Weight Section (Accordion) */}
-                  <div className={cn(
-                    "rounded-2xl shadow-xl relative overflow-hidden border transition-all duration-500",
-                    darkMode ? "bg-[#0A0A0A] border-white/10" : "bg-[#1A2B3C] border-white/10"
-                  )}>
-                    <button 
-                      onClick={() => setIsIdealWeightOpen(!isIdealWeightOpen)}
-                      className="w-full px-8 py-6 flex items-center justify-between group transition-colors hover:bg-white/5 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "p-3 rounded-xl transition-colors",
-                          darkMode ? "bg-blue-500/10 text-blue-400" : "bg-blue-400/10 text-blue-300"
-                        )}>
-                          <Scale size={20} />
-                        </div>
-                        <div className="text-left">
-                          <h3 className={cn("text-xl font-serif font-bold tracking-tight", darkMode ? "text-white" : "text-blue-50")}>{t.idealWeight}</h3>
-                          <p className={cn("text-xs font-medium opacity-60", darkMode ? "text-gray-400" : "text-blue-200")}>{lang === 'bn' ? 'ডিভাইন ফর্মুলা' : 'Devine Formula'} ({gender === 'male' ? (lang === 'bn' ? 'পুরুষ' : 'Male') : (lang === 'bn' ? 'নারী' : 'Female')})</p>
-                        </div>
+                {/* Ideal Weight Section (Accordion) - Compressed */}
+                <div className={cn(
+                  "rounded-2xl shadow-md relative overflow-hidden border transition-all duration-300",
+                  darkMode ? "bg-[#0A0A0A] border-white/10" : "bg-[#1A2B3C] border-white/10"
+                )}>
+                  <button 
+                    onClick={() => setIsIdealWeightOpen(!isIdealWeightOpen)}
+                    className="w-full px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between group transition-colors hover:bg-white/5 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "p-2 rounded-lg shrink-0",
+                        darkMode ? "bg-blue-500/10 text-blue-400" : "bg-blue-400/10 text-blue-300"
+                      )}>
+                        <Scale size={17} />
                       </div>
-                      <motion.div
-                        animate={{ rotate: isIdealWeightOpen ? 180 : 0 }}
-                        transition={{ duration: 0.4, ease: "backOut" }}
-                        className={cn(darkMode ? "text-gray-500" : "text-blue-300/50")}
-                      >
-                        <ChevronDown size={24} />
-                      </motion.div>
-                    </button>
+                      <div className="text-left min-w-0">
+                        <h3 className={cn("text-sm sm:text-base font-serif font-bold tracking-tight truncate", darkMode ? "text-white" : "text-blue-50")}>{t.idealWeight}</h3>
+                        <p className={cn("text-[10px] font-medium opacity-60 truncate", darkMode ? "text-gray-400" : "text-blue-200")}>{lang === 'bn' ? 'ডিভাইন ফর্মুলা' : 'Devine Formula'} ({gender === 'male' ? (lang === 'bn' ? 'পুরুষ' : 'Male') : (lang === 'bn' ? 'নারী' : 'Female')})</p>
+                      </div>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: isIdealWeightOpen ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={cn(darkMode ? "text-gray-500" : "text-blue-300/50")}
+                    >
+                      <ChevronDown size={20} />
+                    </motion.div>
+                  </button>
 
-                    <AnimatePresence>
-                      {isIdealWeightOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.4, ease: "easeInOut" }}
-                        >
-                          <div className="px-8 pb-8 pt-2 border-t border-white/5">
-                            <div className="grid grid-cols-2 gap-6">
-                              <div className={cn(
-                                "p-5 rounded-2xl border transition-colors",
-                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/30 border-blue-800/30"
-                              )}>
-                                <span className={cn("text-[10px] uppercase font-black tracking-widest block mb-2", darkMode ? "text-white/40" : "text-blue-300/40")}>{lang === 'bn' ? 'মেট্রিক' : 'Metric'}</span>
-                                <p className="text-3xl font-serif font-bold tracking-tighter text-primary">
-                                  {formatNum(metrics.idealWeight.kg.toFixed(1))}
-                                  <span className={cn("text-sm opacity-40 ml-1 font-sans font-medium", darkMode ? "text-white" : "text-blue-50")}>{lang === 'bn' ? ' কেজি' : 'kg'}</span>
-                                </p>
-                              </div>
-                              <div className={cn(
-                                "p-5 rounded-2xl border transition-colors",
-                                darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/30 border-blue-800/30"
-                              )}>
-                                <span className={cn("text-[10px] uppercase font-black tracking-widest block mb-2", darkMode ? "text-white/40" : "text-blue-300/40")}>{lang === 'bn' ? 'ইম্পেরিয়াল' : 'Imperial'}</span>
-                                <p className="text-3xl font-serif font-bold tracking-tighter text-primary">
-                                  {formatNum(metrics.idealWeight.lb.toFixed(1))}
-                                  <span className={cn("text-sm opacity-40 ml-1 font-sans font-medium", darkMode ? "text-white" : "text-blue-50")}>{lang === 'bn' ? ' পাউন্ড' : 'lb'}</span>
-                                </p>
-                              </div>
-                            </div>
-                            
+                  <AnimatePresence>
+                    {isIdealWeightOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="px-4 pb-4 pt-1.5 sm:px-6 sm:pb-5 border-t border-white/5 space-y-3">
+                          <div className="grid grid-cols-2 gap-2.5">
                             <div className={cn(
-                              "mt-6 p-4 rounded-xl text-xs leading-relaxed font-medium",
-                              darkMode ? "bg-blue-500/10 text-blue-200/80 border border-blue-500/20" : "bg-blue-400/10 text-blue-100/80 border border-blue-400/20"
+                              "p-3 rounded-xl border transition-colors",
+                              darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/30 border-blue-800/30"
                             )}>
-                              {lang === 'bn' 
-                                ? 'ডিভাইন সূত্রটি উচ্চতা এবং লিঙ্গের ভিত্তিতে আদর্শ ওজনের আনুমানিক হিসাব বের করার জন্য বহুল ব্যবহৃত একটি প্রচলিত পদ্ধতি। এটি স্বাস্থ্যকর ওজনের লক্ষ্য নির্দেশ করে।' 
-                                : 'The Devine formula is a widely used method for estimating ideal body weight based on height and gender. It provides a healthy target weight for medical and nutritional purposes.'}
+                              <span className={cn("text-[9px] uppercase font-extrabold tracking-wider block mb-1", darkMode ? "text-white/40" : "text-blue-300/40")}>{lang === 'bn' ? 'মেট্রিক' : 'Metric'}</span>
+                              <p className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-primary">
+                                {formatNum(metrics.idealWeight.kg.toFixed(1))}
+                                <span className={cn("text-xs opacity-60 ml-1 font-sans font-medium", darkMode ? "text-white" : "text-blue-50")}>{lang === 'bn' ? ' কেজি' : 'kg'}</span>
+                              </p>
+                            </div>
+                            <div className={cn(
+                              "p-3 rounded-xl border transition-colors",
+                              darkMode ? "bg-white/5 border-white/10" : "bg-blue-900/30 border-blue-800/30"
+                            )}>
+                              <span className={cn("text-[9px] uppercase font-extrabold tracking-wider block mb-1", darkMode ? "text-white/40" : "text-blue-300/40")}>{lang === 'bn' ? 'ইম্পেরিয়াল' : 'Imperial'}</span>
+                              <p className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-primary">
+                                {formatNum(metrics.idealWeight.lb.toFixed(1))}
+                                <span className={cn("text-xs opacity-60 ml-1 font-sans font-medium", darkMode ? "text-white" : "text-blue-50")}>{lang === 'bn' ? ' পাউন্ড' : 'lb'}</span>
+                              </p>
                             </div>
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    
-                    <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-blue-500 rounded-full blur-[60px] opacity-10 pointer-events-none" />
-                  </div>
+                          
+                          <div className={cn(
+                            "p-2.5 rounded-lg text-[11px] leading-normal font-medium",
+                            darkMode ? "bg-blue-500/10 text-blue-200/80 border border-blue-500/20" : "bg-blue-400/10 text-blue-100/80 border border-blue-400/20"
+                          )}>
+                            {lang === 'bn' 
+                              ? 'ডিভাইন সূত্রটি উচ্চতা এবং লিঙ্গের ভিত্তিতে আদর্শ ওজনের আনুমানিক হিসাব বের করার জন্য প্রচলিত একটি পদ্ধতি।' 
+                              : 'The Devine formula is a widely used method for estimating ideal body weight based on height and gender.'}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Hidden Report for PDF Generation (Off-screen) */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
@@ -1035,7 +1046,7 @@ export default function App() {
       {/* Health Goals Section */}
       <div className={cn(
         "max-w-5xl mx-auto px-6 pb-12",
-        (activeTab === 'calculator' || activeTab === 'results') ? "block" : "hidden"
+        activeTab === 'calculator' ? "block" : "hidden"
       )}>
         <Goals 
           darkMode={darkMode} 
@@ -1048,59 +1059,62 @@ export default function App() {
 
       {/* Footer */}
       <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-8 border-t transition-colors",
+        "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
         darkMode ? "border-white/5" : "border-black/5"
       )}>
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2 opacity-40">
+        <div className="flex flex-col items-center justify-center gap-3 text-center">
+          {/* Logo */}
+          <div className="flex items-center gap-1.5 opacity-60">
             <Activity size={14} className="text-[#b4a8a8]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#b4a8a8]">RatboD</span>
+            <span className="text-xs font-black uppercase tracking-widest text-[#b4a8a8]">RATBOD</span>
           </div>
 
-          {/* Multi-Language Switcher in Footer */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{lang === 'bn' ? 'ভাষা:' : 'Lang:'}</span>
+          {/* UNIT Switcher Pill (Replaces LANG) */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">UNIT:</span>
             <div className={cn(
-              "flex p-0.5 rounded-lg transition-colors border",
-              darkMode ? "bg-white/5 border-white/10" : "bg-gray-100 border-black/5"
+              "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
             )}>
               <button 
-                onClick={() => setLang('en')}
+                onClick={() => setUnit('metric')}
                 className={cn(
-                  "px-2 py-0.5 rounded-md text-[9px] font-black transition-all cursor-pointer",
-                  lang === 'en' 
-                    ? (darkMode ? "bg-sky-500 text-white" : "bg-white shadow-sm text-sky-700") 
-                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-800")
+                  "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                  unit === 'metric' 
+                    ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                    : "text-gray-400 hover:text-gray-200"
                 )}
-                title="English"
+                title="Metric System"
               >
-                EN
+                M
               </button>
               <button 
-                onClick={() => setLang('bn')}
+                onClick={() => setUnit('imperial')}
                 className={cn(
-                  "px-2 py-0.5 rounded-md text-[9px] font-black transition-all cursor-pointer",
-                  lang === 'bn' 
-                    ? (darkMode ? "bg-sky-500 text-white" : "bg-white shadow-sm text-sky-700") 
-                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-800")
+                  "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                  unit === 'imperial' 
+                    ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                    : "text-gray-400 hover:text-gray-200"
                 )}
-                title="বাংলা"
+                title="Imperial System"
               >
-                বাং
+                I
               </button>
             </div>
           </div>
 
-          <div className="flex gap-6">
-            <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Terms of Service</a>
-            <a href="#" className="text-[10px] text-[#b4a8a8] hover:text-primary transition-colors">Contact Support</a>
+          {/* Policy Links */}
+          <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-400">
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
           </div>
+
+          {/* Copyright */}
           <p className={cn(
-            "text-[10px] uppercase tracking-widest transition-colors",
-            darkMode ? "text-[#201e1e]" : "text-[#cacaca]"
+            "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
+            darkMode ? "text-gray-500" : "text-gray-400"
           )}>
-            © 2026 Crafted By <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Ratul Bin Zahangir</a>
+            © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
           </p>
         </div>
       </footer>
@@ -1129,14 +1143,11 @@ export default function App() {
             onClick={() => setActiveTab('results')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1.5 transition-all relative",
-              activeTab === 'results' ? "text-primary scale-105" : "text-gray-400 hover:text-gray-500"
+              activeTab === 'results' ? "text-rose-500 scale-105 font-bold" : "text-gray-400 hover:text-gray-500"
             )}
           >
-            <Scale size={18} />
+            <Flame size={18} />
             <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabResults}</span>
-            {metrics && activeTab !== 'results' && (
-              <span className="absolute top-1 right-1/3 w-2 h-2 bg-primary rounded-full animate-pulse" />
-            )}
           </button>
 
           <button 
