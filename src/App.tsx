@@ -114,34 +114,45 @@ export default function App() {
       }
 
       if (!loadedFromDb) {
-        const savedName = localStorage.getItem('ratbod_name') || '';
-        const savedGender = localStorage.getItem('ratbod_gender') as Gender || 'male';
-        const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
-        const savedAge = localStorage.getItem('ratbod_age') || '';
-        const savedHeight = localStorage.getItem('ratbod_height') || '';
-        const savedWeight = localStorage.getItem('ratbod_weight') || '';
-        const savedWaist = localStorage.getItem('ratbod_waist') || '';
-        const savedNeck = localStorage.getItem('ratbod_neck') || '';
-        const savedHip = localStorage.getItem('ratbod_hip') || '';
-        const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
-        const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
-        const rawDarkMode = localStorage.getItem('ratbod_darkmode');
-        const savedDarkMode = rawDarkMode === null ? true : rawDarkMode === 'true';
-        const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
+        // Do not fallback to local storage if user is signed in to prevent local leak over to new account
+        if (user) {
+          // Keep fields empty for new user
+          setDarkMode(true);
+          setLang('en');
+          setGender('male');
+          setActivityLevel('sedentary');
+          setUnit('metric');
+        } else {
+          // If no user (which shouldn't happen with auth guard, but just in case) load local
+          const savedName = localStorage.getItem('ratbod_name') || '';
+          const savedGender = localStorage.getItem('ratbod_gender') as Gender || 'male';
+          const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
+          const savedAge = localStorage.getItem('ratbod_age') || '';
+          const savedHeight = localStorage.getItem('ratbod_height') || '';
+          const savedWeight = localStorage.getItem('ratbod_weight') || '';
+          const savedWaist = localStorage.getItem('ratbod_waist') || '';
+          const savedNeck = localStorage.getItem('ratbod_neck') || '';
+          const savedHip = localStorage.getItem('ratbod_hip') || '';
+          const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
+          const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
+          const rawDarkMode = localStorage.getItem('ratbod_darkmode');
+          const savedDarkMode = rawDarkMode === null ? true : rawDarkMode === 'true';
+          const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
 
-        setName(savedName);
-        setGender(savedGender);
-        setBirthdate(savedBirthdate);
-        setAge(savedAge);
-        setHeight(savedHeight);
-        setWeight(savedWeight);
-        setWaist(savedWaist);
-        setNeck(savedNeck);
-        setHip(savedHip);
-        setActivityLevel(savedActivity);
-        setUnit(savedUnit);
-        setDarkMode(savedDarkMode);
-        setLang(savedLang);
+          setName(savedName);
+          setGender(savedGender);
+          setBirthdate(savedBirthdate);
+          setAge(savedAge);
+          setHeight(savedHeight);
+          setWeight(savedWeight);
+          setWaist(savedWaist);
+          setNeck(savedNeck);
+          setHip(savedHip);
+          setActivityLevel(savedActivity);
+          setUnit(savedUnit);
+          setDarkMode(savedDarkMode);
+          setLang(savedLang);
+        }
       }
       setIsLoaded(true);
     };
@@ -281,6 +292,11 @@ export default function App() {
     const existing = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
     existing.push(entry);
     localStorage.setItem('ratbod_history', JSON.stringify(existing));
+    
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setDoc(doc(db, 'users', currentUser.uid, 'appData', 'history'), { history: existing }, { merge: true }).catch(e => {});
+    }
 
     setHistoryRefreshTrigger(prev => prev + 1);
     alert(t.savedAlert);

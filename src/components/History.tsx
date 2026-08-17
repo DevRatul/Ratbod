@@ -47,8 +47,25 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
-      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      const sorted = localData.sort((a: any, b: any) => 
+      let data = null;
+      const user = auth.currentUser;
+      
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid, 'appData', 'history');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            data = docSnap.data().history;
+          }
+        } catch (e) {}
+      }
+
+      if (!data) {
+        const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+        data = localData;
+      }
+      
+      const sorted = data.sort((a: any, b: any) => 
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setHistory(sorted);
@@ -60,12 +77,16 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     }
   };
 
-  const clearLocalHistory = () => {
+  const clearLocalHistory = async () => {
     const confirmMsg = lang === 'bn' 
       ? 'আপনি কি নিশ্চিত যে আপনি আপনার সম্পূর্ণ ইতিহাস ডিলিট করতে চান?' 
       : 'Are you sure you want to clear your local history?';
     if (window.confirm(confirmMsg)) {
       localStorage.removeItem('ratbod_history');
+      const user = auth.currentUser;
+      if (user) {
+        await setDoc(doc(db, 'users', user.uid, 'appData', 'history'), { history: [] }, { merge: true }).catch(e => {});
+      }
       fetchHistory();
     }
   };
@@ -77,9 +98,13 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      const filteredLocal = localData.filter((entry: MetricEntry) => entry.id !== id);
-      localStorage.setItem('ratbod_history', JSON.stringify(filteredLocal));
+      let data = history.filter((entry: MetricEntry) => entry.id !== id);
+      localStorage.setItem('ratbod_history', JSON.stringify(data));
+      
+      const user = auth.currentUser;
+      if (user) {
+        await setDoc(doc(db, 'users', user.uid, 'appData', 'history'), { history: data }, { merge: true }).catch(e => {});
+      }
 
       // Refresh history
       fetchHistory();

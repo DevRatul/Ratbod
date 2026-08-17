@@ -8,6 +8,8 @@ import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, Sparkles, CheckCi
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Language, translations } from '../utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -187,13 +189,43 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
   useEffect(() => {
     localStorage.setItem('ratbod_sound_mode', soundMode);
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'breathing'), { soundMode }, { merge: true }).catch(e => {});
+    }
   }, [soundMode]);
 
   useEffect(() => {
-    const savedCount = localStorage.getItem('ratbod_breathing_sessions');
-    if (savedCount) {
-      setCompletedSessionsCount(parseInt(savedCount, 10));
-    }
+    const loadData = async () => {
+      let loadedSessions = null;
+      let loadedSoundMode = null;
+      
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid, 'appData', 'breathing');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.completedSessionsCount !== undefined) loadedSessions = data.completedSessionsCount;
+            if (data.soundMode !== undefined) loadedSoundMode = data.soundMode;
+          }
+        } catch (e) {}
+      }
+      
+      if (loadedSessions === null) {
+        const savedCount = localStorage.getItem('ratbod_breathing_sessions');
+        if (savedCount) loadedSessions = parseInt(savedCount, 10);
+      }
+      if (loadedSessions !== null) {
+        setCompletedSessionsCount(loadedSessions);
+      }
+      
+      if (loadedSoundMode) {
+        setSoundMode(loadedSoundMode);
+      }
+    };
+    loadData();
   }, []);
 
   // Main High-Precision Sync Animation Loop
@@ -303,6 +335,10 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     const newCount = completedSessionsCount + 1;
     setCompletedSessionsCount(newCount);
     localStorage.setItem('ratbod_breathing_sessions', newCount.toString());
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'breathing'), { completedSessionsCount: newCount }, { merge: true }).catch(e => {});
+    }
   };
 
   const handleStartPause = (e?: React.MouseEvent) => {

@@ -28,6 +28,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -291,14 +293,52 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   const dhakaInfo = useMemo(() => getDhakaLogicalDateKey(), []);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(dhakaInfo.dateKey);
 
-  // Sync state to localStorage
+  // Sync state to localStorage & Firestore
   useEffect(() => {
     localStorage.setItem('ratbod_habits_v1', JSON.stringify(habits));
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits }, { merge: true }).catch(e => {});
+    }
   }, [habits]);
 
   useEffect(() => {
     localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(completedLogs));
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs }, { merge: true }).catch(e => {});
+    }
   }, [completedLogs]);
+
+  // Initial load from Firestore
+  useEffect(() => {
+    const loadFirestoreData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        // Load Habits
+        const habitsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habits'));
+        if (habitsDoc.exists()) {
+          const data = habitsDoc.data();
+          if (data.habits && Array.isArray(data.habits)) {
+            setHabits(data.habits);
+          }
+        }
+        
+        // Load Logs
+        const logsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'));
+        if (logsDoc.exists()) {
+          const data = logsDoc.data();
+          if (data.completedLogs) {
+            setCompletedLogs(data.completedLogs);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load habits from firestore", e);
+      }
+    };
+    loadFirestoreData();
+  }, []);
 
   // Week Days Saturday to Friday
   const { weekDays, weekNum, year } = useMemo(() => getSaturdayToFridayWeek(selectedDateKey), [selectedDateKey]);

@@ -3,6 +3,8 @@ import { ShoppingBag, Trash2, Plus, RefreshCw, HelpCircle, Download } from 'luci
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,23 +37,47 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
   const [desiredUnit, setDesiredUnit] = useState('kg');
   const [lastModified, setLastModified] = useState<'qty' | 'price'>('qty');
 
-  // Load items from localStorage on mount
+  // Load items from localStorage & Firestore on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('ratbod_grocery_items');
-      if (stored) {
-        setItems(JSON.parse(stored));
+    const loadItems = async () => {
+      try {
+        let loadedItems = null;
+        const user = auth.currentUser;
+        
+        if (user) {
+          try {
+            const docRef = doc(db, 'users', user.uid, 'appData', 'grocery');
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              loadedItems = docSnap.data().items;
+            }
+          } catch (e) {}
+        }
+
+        if (!loadedItems) {
+          const stored = localStorage.getItem('ratbod_grocery_items');
+          if (stored) loadedItems = JSON.parse(stored);
+        }
+
+        if (loadedItems) {
+          setItems(loadedItems);
+        }
+      } catch (e) {
+        console.error('Failed to load grocery items:', e);
       }
-    } catch (e) {
-      console.error('Failed to parse grocery items:', e);
-    }
+    };
+    loadItems();
   }, []);
 
-  // Save items to localStorage whenever they change
+  // Save items to localStorage & Firestore whenever they change
   const saveItems = (updatedItems: GroceryItem[]) => {
     setItems(updatedItems);
     try {
       localStorage.setItem('ratbod_grocery_items', JSON.stringify(updatedItems));
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'grocery'), { items: updatedItems }, { merge: true }).catch(e => {});
+      }
     } catch (e) {
       console.error('Failed to save grocery items:', e);
     }

@@ -3,6 +3,8 @@ import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -55,35 +57,54 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const totalGlasses = totalConsumedMl / (glassVolumeMl || 250);
   const progressPercent = Math.min(100, Math.round((totalConsumedMl / (goalMl || 1)) * 100));
 
-  // Load from LocalStorage
+  // Load from Firestore & LocalStorage
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem('ratbod_water_tracker_data');
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
-        if (parsed.glassVolumeMl) setGlassVolumeMl(parsed.glassVolumeMl);
-        if (parsed.todayEntries && parsed.todayDate === new Date().toISOString().split('T')[0]) {
-          setEntries(parsed.todayEntries);
-        } else if (parsed.todayEntries && parsed.todayDate) {
-          // Store yesterday into history before resetting
-          const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + c.amountMl, 0);
-          setHistory(prev => [{
-            date: parsed.todayDate,
-            consumedMl: oldTotal,
-            goalMl: (parsed.goalGlasses || 12) * (parsed.glassVolumeMl || 250)
-          }, ...prev].slice(0, 7));
-          setEntries([]);
+    const loadData = async () => {
+      try {
+        let parsed = null;
+        const user = auth.currentUser;
+        
+        if (user) {
+          try {
+            const docRef = doc(db, 'users', user.uid, 'appData', 'waterTracker');
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              parsed = docSnap.data();
+            }
+          } catch (e) {}
         }
-        if (parsed.history) setHistory(parsed.history);
-        if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
+
+        if (!parsed) {
+          const savedData = localStorage.getItem('ratbod_water_tracker_data');
+          if (savedData) parsed = JSON.parse(savedData);
+        }
+
+        if (parsed) {
+          if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
+          if (parsed.glassVolumeMl) setGlassVolumeMl(parsed.glassVolumeMl);
+          if (parsed.todayEntries && parsed.todayDate === new Date().toISOString().split('T')[0]) {
+            setEntries(parsed.todayEntries);
+          } else if (parsed.todayEntries && parsed.todayDate) {
+            // Store yesterday into history before resetting
+            const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + c.amountMl, 0);
+            setHistory(prev => [{
+              date: parsed.todayDate,
+              consumedMl: oldTotal,
+              goalMl: (parsed.goalGlasses || 12) * (parsed.glassVolumeMl || 250)
+            }, ...prev].slice(0, 7));
+            setEntries([]);
+          }
+          if (parsed.history) setHistory(parsed.history);
+          if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
+        }
+      } catch (e) {
+        console.error("Failed to load water tracker data", e);
       }
-    } catch (e) {
-      console.error("Failed to load water tracker data", e);
-    }
+    };
+    loadData();
   }, []);
 
-  // Save to LocalStorage
+  // Save to Firestore & LocalStorage
   useEffect(() => {
     try {
       const todayDate = new Date().toISOString().split('T')[0];
@@ -95,7 +116,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         history,
         reminderActive
       };
+      
       localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(dataToSave));
+      
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), dataToSave, { merge: true }).catch(e => {});
+      }
     } catch (e) {
       console.error("Failed to save water tracker data", e);
     }
@@ -743,47 +770,6 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 {formatNum(Math.max(0, goalMl - totalConsumedMl))} {labels.mlUnit}
               </span>
             </div>
-          </div>
-
-          {/* Message Status Banner */}
-          <div className={cn(
-            "w-full text-center p-2 rounded-xl text-xs font-bold flex items-center justify-between gap-1.5 border px-3",
-            progressPercent >= 100
-              ? (darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200")
-              : progressPercent >= 50
-              ? (darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200")
-              : (darkMode ? "bg-blue-600/10 text-blue-400 border-blue-600/20" : "bg-blue-50 text-blue-700 border-blue-200")
-          )}>
-            <div className="flex items-center justify-center gap-1.5 mx-auto">
-              {progressPercent >= 100 ? (
-                <>
-                  <Award size={14} className="text-emerald-500 shrink-0" />
-                  <span>{labels.hydrationStatusGoalReached}</span>
-                </>
-              ) : progressPercent >= 50 ? (
-                <>
-                  <Sparkles size={14} className="text-blue-500 shrink-0" />
-                  <span>{labels.hydrationStatusAlmost}</span>
-                </>
-              ) : (
-                <>
-                  <Droplet size={14} className="text-blue-500 shrink-0" />
-                  <span>{labels.hydrationStatusStart}</span>
-                </>
-              )}
-            </div>
-
-            {progressPercent >= 100 && (
-              <button
-                type="button"
-                onClick={playVictorySound}
-                title={lang === 'bn' ? 'সাফল্যের শব্দ শুনুন' : 'Play victory sound'}
-                className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-300 transition-all cursor-pointer shrink-0 flex items-center gap-1 text-[10px] font-bold"
-              >
-                <Volume2 size={13} />
-                <span className="hidden sm:inline">{lang === 'bn' ? 'শব্দ' : 'Sound'}</span>
-              </button>
-            )}
           </div>
         </div>
 

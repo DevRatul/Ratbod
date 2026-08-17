@@ -8,6 +8,8 @@ import { Target, Trophy, Calendar, ArrowRight, Save, RefreshCw, TrendingDown, Tr
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -67,9 +69,25 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
   const fetchGoal = async () => {
     setIsLoading(true);
     try {
-      const savedGoalJson = localStorage.getItem('ratbod_goals');
-      if (savedGoalJson) {
-        const data = JSON.parse(savedGoalJson);
+      let data = null;
+      const user = auth.currentUser;
+      
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid, 'appData', 'goals');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            data = docSnap.data().goal;
+          }
+        } catch (e) {}
+      }
+
+      if (!data) {
+        const savedGoalJson = localStorage.getItem('ratbod_goals');
+        if (savedGoalJson) data = JSON.parse(savedGoalJson);
+      }
+
+      if (data) {
         setGoal(data);
         setTargetWeight(unit === 'metric' ? data.targetWeight.toString() : (data.targetWeight * 2.20462).toFixed(1));
         setTargetBodyFat(data.targetBodyFat.toString());
@@ -99,6 +117,12 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
 
     try {
       localStorage.setItem('ratbod_goals', JSON.stringify(goalData));
+      
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'goals'), { goal: goalData }, { merge: true }).catch(e => {});
+      }
+
       setGoal(goalData as Goal);
       setIsEditing(false);
       if (onGoalUpdate) onGoalUpdate();

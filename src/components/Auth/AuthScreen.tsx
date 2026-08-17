@@ -174,10 +174,6 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
             {isLogin ? 'Sign Up' : 'Sign In'}
           </button>
         </p>
-
-        <div className="mt-6 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs font-medium text-orange-600 dark:text-orange-400">
-          <strong>Note:</strong> To use Email/Password sign in, ensure it is enabled in your Firebase Console under Authentication &gt; Sign-in method.
-        </div>
       </div>
     </div>
   );
