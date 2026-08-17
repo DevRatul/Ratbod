@@ -44,11 +44,14 @@ import {
   type ActivityLevel,
   type BodyData
 } from './utils/calculations';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import GroceryCalculator from './components/GroceryCalculator';
 import WaterTracker from './components/WaterTracker';
 import BreathingTimer from './components/BreathingTimer';
 import Habitor from './components/Habitor';
 import Goals from './components/Goals';
+import ProfileModal from './components/ProfileModal';
 import { translations } from './utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -75,88 +78,94 @@ export default function App() {
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>('water');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // Load from localStorage on mount
+  // Load from Firestore (fallback to localStorage) on mount
   useEffect(() => {
-    const savedName = localStorage.getItem('ratbod_name') || '';
-    const savedGender = localStorage.getItem('ratbod_gender') as Gender || 'male';
-    const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
-    const savedAge = localStorage.getItem('ratbod_age') || '';
-    const savedHeight = localStorage.getItem('ratbod_height') || '';
-    const savedWeight = localStorage.getItem('ratbod_weight') || '';
-    const savedWaist = localStorage.getItem('ratbod_waist') || '';
-    const savedNeck = localStorage.getItem('ratbod_neck') || '';
-    const savedHip = localStorage.getItem('ratbod_hip') || '';
-    const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
-    const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
-    const rawDarkMode = localStorage.getItem('ratbod_darkmode');
-    const savedDarkMode = rawDarkMode === null ? true : rawDarkMode === 'true';
-    const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
+    const loadProfile = async () => {
+      let loadedFromDb = false;
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.name) setName(data.name);
+            if (data.gender) setGender(data.gender);
+            if (data.birthdate) setBirthdate(data.birthdate);
+            if (data.age) setAge(data.age);
+            if (data.height) setHeight(data.height);
+            if (data.weight) setWeight(data.weight);
+            if (data.waist) setWaist(data.waist);
+            if (data.neck) setNeck(data.neck);
+            if (data.hip) setHip(data.hip);
+            if (data.activityLevel) setActivityLevel(data.activityLevel);
+            if (data.unit) setUnit(data.unit);
+            if (data.darkMode !== undefined) setDarkMode(data.darkMode);
+            if (data.lang) setLang(data.lang);
+            loadedFromDb = true;
+          }
+        } catch (e) {
+          console.error('Error loading profile:', e);
+        }
+      }
 
-    setName(savedName);
-    setGender(savedGender);
-    setBirthdate(savedBirthdate);
-    setAge(savedAge);
-    setHeight(savedHeight);
-    setWeight(savedWeight);
-    setWaist(savedWaist);
-    setNeck(savedNeck);
-    setHip(savedHip);
-    setActivityLevel(savedActivity);
-    setUnit(savedUnit);
-    setDarkMode(savedDarkMode);
-    setLang(savedLang);
+      if (!loadedFromDb) {
+        const savedName = localStorage.getItem('ratbod_name') || '';
+        const savedGender = localStorage.getItem('ratbod_gender') as Gender || 'male';
+        const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
+        const savedAge = localStorage.getItem('ratbod_age') || '';
+        const savedHeight = localStorage.getItem('ratbod_height') || '';
+        const savedWeight = localStorage.getItem('ratbod_weight') || '';
+        const savedWaist = localStorage.getItem('ratbod_waist') || '';
+        const savedNeck = localStorage.getItem('ratbod_neck') || '';
+        const savedHip = localStorage.getItem('ratbod_hip') || '';
+        const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
+        const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
+        const rawDarkMode = localStorage.getItem('ratbod_darkmode');
+        const savedDarkMode = rawDarkMode === null ? true : rawDarkMode === 'true';
+        const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
+
+        setName(savedName);
+        setGender(savedGender);
+        setBirthdate(savedBirthdate);
+        setAge(savedAge);
+        setHeight(savedHeight);
+        setWeight(savedWeight);
+        setWaist(savedWaist);
+        setNeck(savedNeck);
+        setHip(savedHip);
+        setActivityLevel(savedActivity);
+        setUnit(savedUnit);
+        setDarkMode(savedDarkMode);
+        setLang(savedLang);
+      }
+      setIsLoaded(true);
+    };
+    loadProfile();
   }, []);
 
-  // Sync back to localStorage
+  // Sync back to localStorage & Firestore
   useEffect(() => {
+    if (!isLoaded) return;
+
     localStorage.setItem('ratbod_name', name);
-  }, [name]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_gender', gender);
-  }, [gender]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_birthdate', birthdate);
-  }, [birthdate]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_age', age);
-  }, [age]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_height', height);
-  }, [height]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_weight', weight);
-  }, [weight]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_waist', waist);
-  }, [waist]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_neck', neck);
-  }, [neck]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_hip', hip);
-  }, [hip]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_activity', activityLevel);
-  }, [activityLevel]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_unit', unit);
-  }, [unit]);
-
-  useEffect(() => {
     localStorage.setItem('ratbod_darkmode', darkMode.toString());
-    
+    localStorage.setItem('ratbod_lang', lang);
+
     // Toggle dark class on <html> element
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -177,6 +186,36 @@ export default function App() {
     }
     themeMeta.setAttribute('content', themeColor);
 
+    // Sync to Firestore
+    const user = auth.currentUser;
+    if (user) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        name,
+        gender,
+        birthdate,
+        age,
+        height,
+        weight,
+        waist,
+        neck,
+        hip,
+        activityLevel,
+        unit,
+        darkMode,
+        lang,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(e => {
+        console.error("Failed to sync profile to Firestore", e);
+      });
+    }
+  }, [name, gender, birthdate, age, height, weight, waist, neck, hip, activityLevel, unit, darkMode, lang, isLoaded]);
+
+  useEffect(() => {
+    // Set browser tab theme-color and iOS status bar style
+    const themeColor = darkMode ? '#000000' : '#ffffff';
+    const statusBar = darkMode ? 'black-translucent' : 'default';
+
     // 2. Update <meta name="apple-mobile-web-app-status-bar-style">
     let statusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (!statusMeta) {
@@ -191,10 +230,6 @@ export default function App() {
     document.body.style.backgroundColor = themeColor;
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
   }, [darkMode]);
-
-  useEffect(() => {
-    localStorage.setItem('ratbod_lang', lang);
-  }, [lang]);
 
   // Calculate age when birthdate changes
   useEffect(() => {
@@ -467,6 +502,21 @@ export default function App() {
                 বাং
               </button>
             </div>
+
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all cursor-pointer overflow-hidden",
+                darkMode ? "border-white/10 hover:border-white/30 bg-white/5" : "border-black/5 hover:border-black/20 bg-black/5"
+              )}
+              title="Profile"
+            >
+              {auth.currentUser?.photoURL ? (
+                <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon size={14} className={darkMode ? "text-white/70" : "text-black/50"} />
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -1187,6 +1237,21 @@ export default function App() {
           </button>
         </div>
       </div>
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        darkMode={darkMode}
+        name={name}
+        setName={setName}
+        gender={gender}
+        setGender={setGender}
+        birthdate={birthdate}
+        setBirthdate={setBirthdate}
+        height={height}
+        setHeight={setHeight}
+        unit={unit}
+      />
     </div>
   );
 }

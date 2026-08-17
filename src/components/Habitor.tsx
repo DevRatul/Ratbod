@@ -34,7 +34,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Plays a pleasant clinky chime/tick sound on habit check
+ * Plays a mechanical click sound on habit check
  */
 function playHabitCheckSound() {
   try {
@@ -42,30 +42,22 @@ function playHabitCheckSound() {
     if (!AudioContext) return;
     const ctx = new AudioContext();
     
-    // Dual high-frequency oscillators for a crisp, clinky, metallic click
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
+    // Crisp, sharp "click" sound
+    const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     
-    osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(2200, ctx.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(3100, ctx.currentTime + 0.04);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.015);
 
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1400, ctx.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(1900, ctx.currentTime + 0.04);
+    gain.gain.setValueAtTime(0.6, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.015);
 
-    gain.gain.setValueAtTime(0.28, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
+    osc.connect(gain);
     gain.connect(ctx.destination);
 
-    osc1.start();
-    osc2.start();
-    osc1.stop(ctx.currentTime + 0.05);
-    osc2.stop(ctx.currentTime + 0.05);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.02);
   } catch (e) {
     // Audio context fallback
   }
@@ -86,15 +78,21 @@ export interface HabitorProps {
 
 // Default initial habits matching screenshot
 const DEFAULT_HABITS: HabitItem[] = [
-  { id: 'h1', title: 'Post-Maghrib Dinner', subtitle: 'Within 6-7 Pm', emoji: '🍲', createdAt: new Date().toISOString() },
+  { id: 'h1', title: 'Post-Maghrib Dinner', subtitle: 'Within 6-7 Pm', emoji: '🥗', createdAt: new Date().toISOString() },
   { id: 'h2', title: 'Esa Jamat', subtitle: 'With Witr / Tarawee', emoji: '🤲', createdAt: new Date().toISOString() },
   { id: 'h3', title: 'Drink Mineral Water', subtitle: '13 Glass ( 3-4 Ltr ) Detox, Alkaline', emoji: '💧', createdAt: new Date().toISOString() },
   { id: 'h4', title: 'PlanNextDay', subtitle: 'Before Sleep', emoji: '📝', createdAt: new Date().toISOString() },
   { id: 'h5', title: 'Read a Book', subtitle: '10 Pages', emoji: '📗', createdAt: new Date().toISOString() },
-  { id: 'h6', title: 'Avoid Hjobs', subtitle: 'Mindful Focus & Clean Habit', emoji: '🏃', createdAt: new Date().toISOString() },
+  { id: 'h6', title: 'Avoid Hjobs', subtitle: '', emoji: '🍌', createdAt: new Date().toISOString() },
   { id: 'h7', title: 'Sleep Early', subtitle: '@ 9pm | Do Sleep Ritual |', emoji: '🛌', createdAt: new Date().toISOString() },
-  { id: 'h8', title: 'Tahajjud/ Suhur', subtitle: 'Night & Dawn Ritual', emoji: '🧘', createdAt: new Date().toISOString() },
-  { id: 'h9', title: 'Fazr Jamat', subtitle: 'Morning Prayer', emoji: '🤲', createdAt: new Date().toISOString() },
+  { id: 'h8', title: 'Tahajjud/ Suhur', subtitle: '', emoji: '🧎', createdAt: new Date().toISOString() },
+  { id: 'h9', title: 'Fazr Jamat', subtitle: '', emoji: '🤲', createdAt: new Date().toISOString() },
+  { id: 'h10', title: 'Quran Recitation', subtitle: '30 Min', emoji: '📖', createdAt: new Date().toISOString() },
+  { id: 'h11', title: 'Zikr Adhkar', subtitle: 'Before Sunrise & Sunset', emoji: '📿', createdAt: new Date().toISOString() },
+  { id: 'h12', title: 'Deep Work', subtitle: '4 Focused Hrs ( 8-13 Pm )', emoji: '👨‍💻', createdAt: new Date().toISOString() },
+  { id: 'h13', title: 'Dhikr - Walk', subtitle: '10,000 Steps (Sun & Grass)', emoji: '🚶', createdAt: new Date().toISOString() },
+  { id: 'h14', title: 'Strength Exercise', subtitle: 'Resistance / Dumbbell Strength Full Body', emoji: '🏋️', createdAt: new Date().toISOString() },
+  { id: 'h15', title: 'Breathing With Dhikr', subtitle: 'Wim Hoff, 4:7:8, Humming', emoji: '🫁', createdAt: new Date().toISOString() },
 ];
 
 /**
@@ -252,7 +250,28 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          let needsUpdate = false;
+          const migratedParsed = parsed.map(h => {
+            if ((h.id === 'h6' || h.id === 'h8' || h.id === 'h9') && h.subtitle !== '') {
+              needsUpdate = true;
+              return { ...h, subtitle: '' };
+            }
+            return h;
+          });
+
+          // Merge missing default habits if we have fewer than 15
+          const existingIds = new Set(migratedParsed.map(h => h.id));
+          const missingDefaults = DEFAULT_HABITS.filter(h => !existingIds.has(h.id));
+          
+          if (missingDefaults.length > 0 || needsUpdate) {
+            const merged = [...migratedParsed, ...missingDefaults];
+            localStorage.setItem('ratbod_habits_v1', JSON.stringify(merged));
+            return merged;
+          }
+          
+          return migratedParsed;
+        }
       } catch (e) {}
     }
     return DEFAULT_HABITS;

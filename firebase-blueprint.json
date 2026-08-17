@@ -1,67 +1,131 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "User profile information",
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile and body metrics",
       "type": "object",
       "properties": {
-        "username": { "type": "string", "description": "Unique username" },
-        "password": { "type": "string", "description": "Hashed password" },
-        "name": { "type": "string", "description": "Display name" },
-        "profilePic": { "type": "string", "description": "URL to profile picture" },
-        "birthdate": { "type": "string", "format": "date", "description": "Date of birth" },
-        "gender": { "type": "string", "enum": ["male", "female"], "description": "User gender" }
+        "name": { "type": "string", "maxLength": 100 },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "birthdate": { "type": "string", "maxLength": 20 },
+        "age": { "type": "string", "maxLength": 5 },
+        "height": { "type": "string", "maxLength": 10 },
+        "weight": { "type": "string", "maxLength": 10 },
+        "waist": { "type": "string", "maxLength": 10 },
+        "neck": { "type": "string", "maxLength": 10 },
+        "hip": { "type": "string", "maxLength": 10 },
+        "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active", "extra_active"] },
+        "unit": { "type": "string", "enum": ["metric", "imperial"] },
+        "darkMode": { "type": "boolean" },
+        "lang": { "type": "string", "enum": ["en", "bn"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
       },
-      "required": ["username", "password"]
+      "required": ["updatedAt"]
     },
-    "Metric": {
-      "title": "Metric",
-      "description": "Body measurement record",
+    "HistoryEntry": {
+      "title": "History Entry",
+      "description": "Historical measurement log",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "ID of the user who owns this metric" },
-        "date": { "type": "string", "format": "date-time", "description": "Date of measurement" },
-        "gender": { "type": "string" },
-        "age": { "type": "number" },
-        "height": { "type": "number" },
-        "weight": { "type": "number" },
-        "waist": { "type": "number" },
-        "neck": { "type": "number" },
-        "hip": { "type": "number" },
-        "activityLevel": { "type": "string" },
-        "bmi": { "type": "number" },
-        "bmr": { "type": "number" },
-        "tdee": { "type": "number" },
-        "bodyFat": { "type": "number" }
+        "id": { "type": "string", "maxLength": 64 },
+        "date": { "type": "string", "maxLength": 64 },
+        "metrics": {
+          "type": "object"
+        },
+        "createdAt": { "type": "number" }
       },
-      "required": ["userId", "date"]
+      "required": ["id", "date", "metrics"]
     },
-    "Goal": {
-      "title": "Goal",
-      "description": "User health goal",
+    "HabitItem": {
+      "title": "Habit Item",
+      "description": "User habit tracking",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "ID of the user who owns this goal" },
+        "id": { "type": "string", "maxLength": 64 },
+        "text": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "text"]
+    },
+    "HabitLog": {
+      "title": "Habit Log",
+      "description": "Completed habit log",
+      "type": "object",
+      "properties": {
+        "completedIds": { "type": "array" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["updatedAt"]
+    },
+    "WaterTracker": {
+      "title": "Water Tracker",
+      "description": "Daily water tracking",
+      "type": "object",
+      "properties": {
+        "intake": { "type": "number" },
+        "goal": { "type": "number" },
+        "reminderActive": { "type": "boolean" },
+        "timerMinutes": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["intake", "goal", "updatedAt"]
+    },
+    "GoalData": {
+      "title": "Goal Data",
+      "description": "User goal settings",
+      "type": "object",
+      "properties": {
         "targetWeight": { "type": "number" },
-        "targetBodyFat": { "type": "number" },
-        "dailyCalorieGoal": { "type": "number" },
-        "targetDate": { "type": "string", "format": "date" }
+        "targetDate": { "type": "string", "maxLength": 20 },
+        "pace": { "type": "number" },
+        "updatedAt": { "type": "number" }
       },
-      "required": ["userId"]
+      "required": ["updatedAt"]
+    },
+    "GroceryItem": {
+      "title": "Grocery Item",
+      "description": "Item in grocery list",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 100 },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "checked": { "type": "boolean" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "name", "quantity", "price", "checked", "updatedAt"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profiles"
+    "users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Main user document storing preferences and profile data"
     },
-    "/metrics/{metricId}": {
-      "schema": "Metric",
-      "description": "Body measurement history"
+    "users/{userId}/history/{entryId}": {
+      "schema": "HistoryEntry",
+      "description": "Historical measurement logs"
     },
-    "/goals/{goalId}": {
-      "schema": "Goal",
-      "description": "User goals"
+    "users/{userId}/habits/{habitId}": {
+      "schema": "HabitItem",
+      "description": "User habits"
+    },
+    "users/{userId}/habitLogs/{dateKey}": {
+      "schema": "HabitLog",
+      "description": "Completed habits per day"
+    },
+    "users/{userId}/waterTracker/{dateKey}": {
+      "schema": "WaterTracker",
+      "description": "Water tracker data per day"
+    },
+    "users/{userId}/goals/current": {
+      "schema": "GoalData",
+      "description": "User goal settings"
+    },
+    "users/{userId}/groceries/{itemId}": {
+      "schema": "GroceryItem",
+      "description": "User grocery list items"
     }
   }
 }

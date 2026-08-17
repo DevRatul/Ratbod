@@ -27,9 +27,9 @@ interface WaterTrackerProps {
 }
 
 export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
-  // Goal state in glasses and glass size (default 12 glasses = 3900 ml = 3.9 Liters)
-  const [goalGlasses, setGoalGlasses] = useState<number>(12);
-  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(325); // 12 glasses * 325ml = 3900ml (3.9 Liters)
+  // Goal state in glasses and glass size (default 10 glasses = 4000 ml = 4.0 Liters)
+  const [goalGlasses, setGoalGlasses] = useState<number>(10);
+  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(400); // 10 glasses * 400ml = 4000ml (4.0 Liters)
   const [entries, setEntries] = useState<WaterEntry[]>([]);
   const [history, setHistory] = useState<DayHistory[]>([]);
   const [reminderActive, setReminderActive] = useState<boolean>(false);
@@ -37,9 +37,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
 
   // Modal custom goal state
-  const [modalGlasses, setModalGlasses] = useState<string>('12');
-  const [modalTotalMl, setModalTotalMl] = useState<string>('3900');
-  const [modalGlassVolume, setModalGlassVolume] = useState<string>('325');
+  const [modalGlasses, setModalGlasses] = useState<string>('10');
+  const [modalTotalMl, setModalTotalMl] = useState<string>('4000');
+  const [modalGlassVolume, setModalGlassVolume] = useState<string>('400');
 
   // Manual Hydration Timer state (30 min, 45 min, 50 min, 90 min presets)
   const [timerMinutes, setTimerMinutes] = useState<number>(30);
@@ -130,21 +130,25 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   // Timer countdown effect
   useEffect(() => {
     let interval: any = null;
-    if (isTimerRunning && timerSecondsLeft !== null && timerSecondsLeft > 0) {
+    if (isTimerRunning) {
       interval = setInterval(() => {
         setTimerSecondsLeft(prev => {
           if (prev === null || prev <= 1) return 0;
           return prev - 1;
         });
       }, 1000);
-    } else if (isTimerRunning && timerSecondsLeft === 0) {
-      setIsTimerRunning(false);
-      setShowAlarmModal(true);
-      playHydrationAlarmSound();
     }
     return () => {
       if (interval) clearInterval(interval);
     };
+  }, [isTimerRunning]);
+
+  useEffect(() => {
+    if (isTimerRunning && timerSecondsLeft === 0) {
+      setIsTimerRunning(false);
+      setShowAlarmModal(true);
+      playHydrationAlarmSound();
+    }
   }, [isTimerRunning, timerSecondsLeft]);
 
   const handleStartTimer = (mins: number) => {
@@ -620,24 +624,24 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           {/* Glass Cup with Liquid Fill, Left (250ml) & Right (400ml) Quick Glass Buttons */}
           <div className="relative my-1 flex flex-col items-center justify-center w-full">
             <div className="flex items-center justify-center gap-2.5 sm:gap-4 w-full">
-              {/* Left Side: 250 ml Glass Button */}
+              {/* Left Side: 400 ml Glass Button */}
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.92 }}
-                onClick={() => handleAddWater(250)}
-                title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
+                onClick={() => handleAddWater(400)}
+                title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
                 className={cn(
                   "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
                   darkMode
-                    ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
-                    : "bg-blue-50/90 border-blue-200 text-blue-800 hover:bg-blue-100"
+                    ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
+                    : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
                 )}
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                  <Droplet size={15} className="fill-current" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-600/30 group-hover:scale-110 transition-transform">
+                  <Droplet size={16} className="fill-current" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
-                  250 {labels.mlUnit}
+                  400 {labels.mlUnit}
                 </span>
               </motion.button>
 
@@ -685,24 +689,24 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 </div>
               </div>
 
-              {/* Right Side: 400 ml Glass Button */}
+              {/* Right Side: 250 ml Glass Button */}
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.92 }}
-                onClick={() => handleAddWater(400)}
-                title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
+                onClick={() => handleAddWater(250)}
+                title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
                 className={cn(
                   "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
                   darkMode
-                    ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
-                    : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                    : "bg-blue-50/90 border-blue-200 text-blue-800 hover:bg-blue-100"
                 )}
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-600/30 group-hover:scale-110 transition-transform">
-                  <Droplet size={16} className="fill-current" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                  <Droplet size={15} className="fill-current" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
-                  400 {labels.mlUnit}
+                  250 {labels.mlUnit}
                 </span>
               </motion.button>
             </div>
