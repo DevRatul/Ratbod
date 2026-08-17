@@ -51,11 +51,11 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [customTimerInput, setCustomTimerInput] = useState<string>('');
 
   const goalMl = goalGlasses * glassVolumeMl;
-
-  // Calculate total consumed today
   const totalConsumedMl = entries.reduce((acc, curr) => acc + curr.amountMl, 0);
   const totalGlasses = totalConsumedMl / (glassVolumeMl || 250);
   const progressPercent = Math.min(100, Math.round((totalConsumedMl / (goalMl || 1)) * 100));
+
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from Firestore & LocalStorage
   useEffect(() => {
@@ -100,12 +100,14 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       } catch (e) {
         console.error("Failed to load water tracker data", e);
       }
+      setIsLoaded(true);
     };
     loadData();
   }, []);
 
   // Save to Firestore & LocalStorage
   useEffect(() => {
+    if (!isLoaded) return;
     try {
       const todayDate = new Date().toISOString().split('T')[0];
       const dataToSave = {

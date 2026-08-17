@@ -293,28 +293,35 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   const dhakaInfo = useMemo(() => getDhakaLogicalDateKey(), []);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(dhakaInfo.dateKey);
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   // Sync state to localStorage & Firestore
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('ratbod_habits_v1', JSON.stringify(habits));
     const user = auth.currentUser;
     if (user) {
       setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits }, { merge: true }).catch(e => {});
     }
-  }, [habits]);
+  }, [habits, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(completedLogs));
     const user = auth.currentUser;
     if (user) {
       setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs }, { merge: true }).catch(e => {});
     }
-  }, [completedLogs]);
+  }, [completedLogs, isLoaded]);
 
   // Initial load from Firestore
   useEffect(() => {
     const loadFirestoreData = async () => {
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user) {
+        setIsLoaded(true);
+        return;
+      }
       try {
         // Load Habits
         const habitsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habits'));
@@ -336,6 +343,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       } catch (e) {
         console.error("Failed to load habits from firestore", e);
       }
+      setIsLoaded(true);
     };
     loadFirestoreData();
   }, []);

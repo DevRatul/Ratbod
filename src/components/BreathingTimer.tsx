@@ -187,13 +187,16 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     speakText(voiceText, lang);
   }, [soundMode, lang]);
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('ratbod_sound_mode', soundMode);
     const user = auth.currentUser;
     if (user) {
       setDoc(doc(db, 'users', user.uid, 'appData', 'breathing'), { soundMode }, { merge: true }).catch(e => {});
     }
-  }, [soundMode]);
+  }, [soundMode, isLoaded]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -224,6 +227,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
       if (loadedSoundMode) {
         setSoundMode(loadedSoundMode);
       }
+      setIsLoaded(true);
     };
     loadData();
   }, []);
