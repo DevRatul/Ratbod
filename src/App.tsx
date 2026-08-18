@@ -62,7 +62,6 @@ import Habitor from './components/Habitor';
 import Goals from './components/Goals';
 import History from './components/History';
 import ProfileModal from './components/ProfileModal';
-import PullToRefresh from './components/PullToRefresh';
 import { translations } from './utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -508,7 +507,7 @@ export default function App() {
 
   return (
     <>
-    <PullToRefresh darkMode={darkMode}><div className={cn(
+    <div className={cn(
       "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden pb-24 md:pb-0",
       darkMode ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
@@ -942,7 +941,6 @@ export default function App() {
                 unit={unit}
       />
     </div>
-    </PullToRefresh>
 {/* Mobile Sticky Tab Navigation */}
       <div className={cn(
         "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-lg transition-colors duration-300",

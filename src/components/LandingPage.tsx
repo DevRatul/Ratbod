@@ -83,7 +83,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/20 blur-[100px] rounded-full pointer-events-none" />
                <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
 
-               <div className="grid grid-cols-2 gap-4 relative z-20 absolute top-1/2 -translate-y-1/2 right-0 w-full max-w-lg origin-center rotate-2 hover:rotate-0 transition-transform duration-700">
+               <div className="grid grid-cols-2 gap-4 absolute z-20 top-1/2 -translate-y-1/2 right-0 w-full max-w-lg origin-center rotate-2 hover:rotate-0 transition-transform duration-700">
                   
                   {/* Tool 1: Health Tracker */}
                   <div className="col-span-2 p-5 rounded-3xl border bg-[#0F0F0F] border-white/10 shadow-2xl shadow-black/50">
