@@ -70,7 +70,11 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const currentHour = new Date().getHours();
+    const isDaytime = currentHour >= 6 && currentHour < 18;
+    return !isDaytime;
+  });
   const [lang, setLang] = useState<'en' | 'bn'>('en');
   const t = translations[lang];
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
@@ -146,7 +150,9 @@ export default function App() {
           const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
           const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
           const rawDarkMode = localStorage.getItem('ratbod_darkmode');
-          const savedDarkMode = rawDarkMode === null ? true : rawDarkMode === 'true';
+          const currentHour = new Date().getHours();
+          const isDaytime = currentHour >= 6 && currentHour < 18;
+          const savedDarkMode = rawDarkMode === null ? !isDaytime : rawDarkMode === 'true';
           const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
 
           setName(savedName);
@@ -793,7 +799,7 @@ export default function App() {
             </button>
 
             {/* Health Analytics Accordion */}
-            <div className="mt-6 border rounded-2xl overflow-hidden shadow-sm">
+            <div className="mt-6 border border-transparent rounded-2xl overflow-hidden shadow-sm">
               <button 
                 onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
                 className={cn(
@@ -819,19 +825,19 @@ export default function App() {
                      <div className="w-full space-y-4">
                        <Activity size={32} className="mx-auto text-emerald-500" />
                        <div className="grid grid-cols-2 gap-4 mt-4 text-left">
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
                            <div className="text-lg font-black text-primary">{formatNum(metrics.bmr)} <span className="text-[10px] text-gray-500">kcal</span></div>
                          </div>
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
                            <div className="text-lg font-black text-blue-500">{formatNum(metrics.tdee)} <span className="text-[10px] text-gray-500">kcal</span></div>
                          </div>
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t.bodyFat}</div>
                            <div className="text-lg font-black text-amber-500">{formatNum(metrics.bodyFat.toFixed(1))}%</div>
                          </div>
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
                            <div className="text-lg font-black text-rose-500">{formatNum(metrics.bmi.toFixed(1))}</div>
                          </div>
@@ -920,7 +926,24 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Mobile Sticky Tab Navigation */}
+      
+    <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        darkMode={darkMode}
+        name={name}
+        setName={setName}
+        gender={gender}
+        setGender={setGender}
+        birthdate={birthdate}
+        setBirthdate={setBirthdate}
+        height={height}
+        setHeight={setHeight}
+                unit={unit}
+      />
+    </div>
+    </PullToRefresh>
+{/* Mobile Sticky Tab Navigation */}
       <div className={cn(
         "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-lg transition-colors duration-300",
         darkMode ? "bg-[#0F0F0F]/90 border-white/10 text-white" : "bg-white/90 border-black/5 text-gray-900",
@@ -988,22 +1011,6 @@ export default function App() {
           </button>
         </div>
       </div>
-    <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        darkMode={darkMode}
-        name={name}
-        setName={setName}
-        gender={gender}
-        setGender={setGender}
-        birthdate={birthdate}
-        setBirthdate={setBirthdate}
-        height={height}
-        setHeight={setHeight}
-                unit={unit}
-      />
-    </div>
-    </PullToRefresh>
     </>
   );
 }

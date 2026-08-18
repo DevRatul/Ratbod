@@ -58,7 +58,7 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
   };
 
   return (
-    <div className={cn("min-h-screen flex items-center justify-center p-4 transition-colors relative", darkMode ? "bg-[#050505] text-white" : "bg-gray-50 text-gray-900")}>
+    <div className={cn("fixed inset-0 overflow-y-auto flex flex-col sm:justify-center items-center p-4 pt-20 sm:pt-4 transition-colors", darkMode ? "bg-[#050505] text-white" : "bg-gray-50 text-gray-900")}>
       {onBack && (
         <button 
           onClick={onBack}

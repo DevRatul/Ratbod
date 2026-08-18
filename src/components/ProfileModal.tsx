@@ -35,10 +35,10 @@ export default function ProfileModal({
   const email = user?.email;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] overflow-y-auto flex flex-col sm:justify-center items-center p-4 pt-20 sm:pt-4 transition-colors">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className={cn(
-        "relative w-full max-w-md p-6 rounded-3xl shadow-2xl flex flex-col m-auto",
+        "relative w-full max-w-md p-8 rounded-3xl shadow-2xl flex flex-col z-10",
         darkMode ? "bg-[#0F0F0F] border border-white/10" : "bg-white border border-black/5"
       )}>
         <button 

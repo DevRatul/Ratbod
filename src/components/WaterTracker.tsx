@@ -942,7 +942,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               {labels.emptyLogs}
             </div>
           ) : (
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-2">
               <AnimatePresence>
                 {entries.map((item) => (
                   <motion.div
