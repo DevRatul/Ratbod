@@ -62,6 +62,7 @@ import Habitor from './components/Habitor';
 import Goals from './components/Goals';
 import History from './components/History';
 import ProfileModal from './components/ProfileModal';
+import PullToRefresh from './components/PullToRefresh';
 import { translations } from './utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -85,6 +86,7 @@ export default function App() {
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('sedentary');
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const [authUser, setAuthUser] = useState(auth.currentUser);
@@ -397,7 +399,10 @@ export default function App() {
       history = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
     } catch (e) {}
     
-    const cw = parseFloat(weight) || 0;
+    let cw = parseFloat(weight) || 0;
+    if (!cw && history.length > 0) {
+      cw = unit === 'metric' ? history[history.length - 1].weight : history[history.length - 1].weight * 2.20462;
+    }
         let goalData = null;
     try {
       const savedGoals = localStorage.getItem('ratbod_goals');
@@ -481,8 +486,23 @@ export default function App() {
     { value: 'extra_active', label: t.extra_active, desc: t.extra_activeDesc },
   ], [t]);
 
+
+  // Calculate dashboard display metrics based on input OR latest history
+  const latestHistoryEntry = useMemo(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      if (history.length > 0) return history[history.length - 1];
+    } catch (e) {}
+    return null;
+  }, [historyRefreshTrigger]);
+
+  const displayWeight = metricData.weight || (latestHistoryEntry ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) : 0);
+  const displayBmi = metrics ? metrics.bmi : (latestHistoryEntry ? latestHistoryEntry.bmi : null);
+  const displayCategory = metrics ? metrics.category : (latestHistoryEntry ? getBMICategory(latestHistoryEntry.bmi) : null);
+
   return (
-    <div className={cn(
+    <>
+    <PullToRefresh darkMode={darkMode}><div className={cn(
       "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden pb-24 md:pb-0",
       darkMode ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
@@ -664,10 +684,10 @@ export default function App() {
             </div>
             <div>
               <div className={cn("text-2xl font-black", darkMode ? "text-white" : "text-gray-900")}>
-                {metricData.weight ? formatNum(metricData.weight) : '--'} <span className="text-base font-bold text-gray-500">{unit === 'metric' ? 'kg' : 'lb'}</span>
+                {displayWeight ? formatNum(displayWeight) : '--'} <span className="text-base font-bold text-gray-500">{unit === 'metric' ? 'kg' : 'lb'}</span>
               </div>
               <div className="text-xs font-bold text-gray-500 mt-1">
-                {metricData.weight ? (lang === 'bn' ? 'আজ' : 'Today') : (lang === 'bn' ? 'কোনো ডেটা নেই' : 'No data')}
+                {displayWeight ? (lang === 'bn' ? 'আজ' : 'Today') : (lang === 'bn' ? 'কোনো ডেটা নেই' : 'No data')}
               </div>
             </div>
           </div>
@@ -675,14 +695,14 @@ export default function App() {
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-500">
               <div className="flex items-center gap-1"><Heart size={12} className="text-rose-500" />{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</div> 
-              <div className={cn("w-2.5 h-2.5 rounded-full", metrics ? (metrics.category === 'Normal' ? "bg-emerald-500" : (metrics.category === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
+              <div className={cn("w-2.5 h-2.5 rounded-full", displayCategory ? (displayCategory === 'Normal' ? "bg-emerald-500" : (displayCategory === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
             </div>
             <div>
               <div className={cn("text-xl font-black capitalize", darkMode ? "text-white" : "text-gray-900")}>
-                {metrics ? translateCategory(metrics.category) : '--'}
+                {displayCategory ? translateCategory(displayCategory) : '--'}
               </div>
               <div className="text-xs font-bold text-gray-500 mt-1">
-                BMI: {metrics ? formatNum(metrics.bmi.toFixed(1)) : '--'}
+                BMI: {displayBmi ? formatNum(displayBmi.toFixed(1)) : '--'}
               </div>
             </div>
           </div>
@@ -693,15 +713,15 @@ export default function App() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-2xl font-black text-emerald-500">
-                {metrics ? `${goalProgress.percent}%` : '--'}
-                {metrics && goalProgress.trend === 'down' && <TrendingDown size={20} className="text-emerald-500" />}
-                {metrics && goalProgress.trend === 'up' && <TrendingUp size={20} className="text-emerald-500" />}
-                {metrics && goalProgress.trend === 'none' && <Minus size={20} className="text-emerald-500" />}
+                {(metrics || latestHistoryEntry) ? `${goalProgress.percent}%` : '--'}
+                {(metrics || latestHistoryEntry) && goalProgress.trend === 'down' && <TrendingDown size={20} className="text-emerald-500" />}
+                {(metrics || latestHistoryEntry) && goalProgress.trend === 'up' && <TrendingUp size={20} className="text-emerald-500" />}
+                {(metrics || latestHistoryEntry) && goalProgress.trend === 'none' && <Minus size={20} className="text-emerald-500" />}
               </div>
               <div className={cn("h-2 w-full rounded-full overflow-hidden", darkMode ? "bg-white/10" : "bg-gray-100")}>
-                 <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${metrics ? goalProgress.percent : 0}%` }} />
+                 <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(metrics || latestHistoryEntry) ? goalProgress.percent : 0}%` }} />
               </div>
-              <div className="text-[10px] text-gray-500 font-bold mt-1">Goal: {metrics ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</div>
+              <div className="text-[10px] text-gray-500 font-bold mt-1">Goal: {(metrics || latestHistoryEntry) ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</div>
             </div>
           </div>
         </div>
@@ -712,8 +732,8 @@ export default function App() {
             <Scale size={20} className="opacity-70" /> {lang === 'bn' ? 'দ্রুত পরিমাপ' : 'Quick Measurement'}
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* LEFT: Inputs */}
+          <div>
+            {/* Inputs */}
             <div className="space-y-5">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.weight} *</label>
@@ -756,58 +776,78 @@ export default function App() {
               </div>
             </div>
 
-            {/* RIGHT: Analysis Box */}
-            <div className={cn("p-6 rounded-2xl border flex flex-col items-center justify-center text-center transition-all", darkMode ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200")}>
-              {metrics ? (
-                 <div className="w-full space-y-4">
-                   <Activity size={32} className="mx-auto text-emerald-500" />
-                   <h4 className="font-bold text-lg">{lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ' : 'Health Analysis'}</h4>
-                   <div className="grid grid-cols-2 gap-4 mt-4 text-left">
-                     <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-white shadow-sm border")}>
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
-                       <div className="text-lg font-black text-primary">{formatNum(metrics.bmr)} <span className="text-[10px] text-gray-500">kcal</span></div>
-                     </div>
-                     <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-white shadow-sm border")}>
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
-                       <div className="text-lg font-black text-blue-500">{formatNum(metrics.tdee)} <span className="text-[10px] text-gray-500">kcal</span></div>
-                     </div>
-                     <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-white shadow-sm border")}>
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t.bodyFat}</div>
-                       <div className="text-lg font-black text-amber-500">{formatNum(metrics.bodyFat.toFixed(1))}%</div>
-                     </div>
-                     <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-white shadow-sm border")}>
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
-                       <div className="text-lg font-black text-rose-500">{formatNum(metrics.bmi.toFixed(1))}</div>
-                     </div>
-                   </div>
-                 </div>
-              ) : (
-                 <div className="space-y-3 opacity-60">
-                   <Activity size={32} className="mx-auto text-gray-400" />
-                   <p className="text-sm font-bold text-gray-400">
-                     {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ দেখতে আপনার পরিমাপ দিন' : 'Enter your measurements to see health analysis'}
-                   </p>
-                   <p className="text-xs text-gray-500">
-                     {lang === 'bn' ? 'ওজন, উচ্চতা এবং বয়স প্রয়োজন' : 'Weight, height, and age are required'}
-                   </p>
-                 </div>
-              )}
             </div>
-          </div>
-          
-          <button 
-            onClick={handleSaveMetrics} 
-            disabled={!metrics}
-            className={cn(
-              "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
-              !metrics
-                ? "bg-gray-500/20 text-gray-400 cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
-            )}
-          >
-            <Save size={18} />
-            {lang === 'bn' ? 'পরিমাপ সংরক্ষণ করুন' : 'Save Measurement'}
-          </button>
+            
+            <button 
+              onClick={handleSaveMetrics} 
+              disabled={!metrics}
+              className={cn(
+                "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                !metrics 
+                  ? "bg-gray-500/20 text-gray-400 cursor-not-allowed" 
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+              )}
+            >
+              <Save size={18} />
+              {lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save'}
+            </button>
+
+            {/* Health Analytics Accordion */}
+            <div className="mt-6 border rounded-2xl overflow-hidden shadow-sm">
+              <button 
+                onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+                className={cn(
+                  "w-full px-6 py-4 flex items-center justify-between font-bold transition-colors",
+                  darkMode ? "bg-[#111] hover:bg-[#1A1A1A] text-white border-white/5" : "bg-gray-50 hover:bg-gray-100 text-gray-900 border-black/5"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Activity size={18} className="text-emerald-500" />
+                  {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ' : 'Health Analytics'}
+                </div>
+                <div className={cn("transition-transform duration-300", isAnalyticsOpen ? "rotate-180" : "")}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+              </button>
+              
+              <div className={cn(
+                "transition-all duration-300 ease-in-out origin-top",
+                isAnalyticsOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+              )}>
+                <div className={cn("p-6 flex flex-col items-center justify-center text-center transition-all", darkMode ? "bg-[#0F0F0F]" : "bg-white")}>
+                  {metrics ? (
+                     <div className="w-full space-y-4">
+                       <Activity size={32} className="mx-auto text-emerald-500" />
+                       <div className="grid grid-cols-2 gap-4 mt-4 text-left">
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
+                           <div className="text-lg font-black text-primary">{formatNum(metrics.bmr)} <span className="text-[10px] text-gray-500">kcal</span></div>
+                         </div>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
+                           <div className="text-lg font-black text-blue-500">{formatNum(metrics.tdee)} <span className="text-[10px] text-gray-500">kcal</span></div>
+                         </div>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t.bodyFat}</div>
+                           <div className="text-lg font-black text-amber-500">{formatNum(metrics.bodyFat.toFixed(1))}%</div>
+                         </div>
+                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border")}>
+                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
+                           <div className="text-lg font-black text-rose-500">{formatNum(metrics.bmi.toFixed(1))}</div>
+                         </div>
+                       </div>
+                     </div>
+                  ) : (
+                     <div className="space-y-3 opacity-60 py-6">
+                       <Activity size={32} className="mx-auto text-gray-400" />
+                       <p className="text-sm font-bold text-gray-400">
+                         {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ দেখতে আপনার পরিমাপ দিন' : 'Enter your measurements to see health analysis'}
+                       </p>
+                     </div>
+                  )}
+                </div>
+              </div>
+            </div>
         </div>
 
         {/* History */}
@@ -948,8 +988,7 @@ export default function App() {
           </button>
         </div>
       </div>
-
-      <ProfileModal
+    <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         darkMode={darkMode}
@@ -964,5 +1003,7 @@ export default function App() {
                 unit={unit}
       />
     </div>
+    </PullToRefresh>
+    </>
   );
 }
