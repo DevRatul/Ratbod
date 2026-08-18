@@ -92,7 +92,7 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           <div className="space-y-1.5">
             <label className={cn("text-xs font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Email</label>
             <div className="relative">
-              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
               <input
                 type="email"
                 required
@@ -110,7 +110,7 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           <div className="space-y-1.5">
             <label className={cn("text-xs font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Password</label>
             <div className="relative">
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
               <input
                 type="password"
                 required

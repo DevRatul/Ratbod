@@ -475,7 +475,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
               <h2 className="text-sm sm:text-base font-black tracking-tight text-teal-600 dark:text-teal-400 whitespace-nowrap">
                 {lang === 'bn' ? '৪-৭-৮ গভীর শ্বাসের ব্যায়াম' : '4-7-8 Deep Breathing'}
               </h2>
-              <span className="hidden sm:inline text-gray-400 dark:text-gray-600 text-xs">•</span>
+              <span className="hidden sm:inline text-gray-500 dark:text-gray-400 dark:text-gray-600 text-xs">•</span>
               <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
                 {lang === 'bn' ? 'গভীর ঘুম ও প্রশান্তির জন্য বৈজ্ঞানিক চর্চা' : 'Clinical relaxation method for deep calm'}
               </p>
@@ -572,7 +572,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
               "flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-bold",
               darkMode ? "bg-white/5 border-white/10 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"
             )}>
-              <span className="text-gray-400 font-normal">{lang === 'bn' ? 'সেট:' : 'Sets:'}</span>
+              <span className="text-gray-500 dark:text-gray-400 font-normal">{lang === 'bn' ? 'সেট:' : 'Sets:'}</span>
               {[2, 4, 8].map((num) => (
                 <button
                   key={num}
@@ -711,7 +711,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
           )}>
             {isActive ? currentConfig.instructions : t.breatheClickTip}
           </p>
-          <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">
             {phase === 'inhale' && t.quietlyInhale}
             {phase === 'hold' && t.realignCalm}
             {phase === 'exhale' && t.slowWhooshPath}
@@ -786,7 +786,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
         {/* Minimal Health Tip Footer */}
         <div className="w-full text-center z-10 pt-1">
-          <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1.5">
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1.5">
             <Heart size={13} className="text-red-500 animate-pulse" />
             <span>{t.clinicalFitnessTitle}: {t.clinicalFitnessText}</span>
           </p>

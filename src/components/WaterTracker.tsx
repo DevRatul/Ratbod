@@ -30,8 +30,8 @@ interface WaterTrackerProps {
 
 export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   // Goal state in glasses and glass size (default 10 glasses = 4000 ml = 4.0 Liters)
-  const [goalGlasses, setGoalGlasses] = useState<number>(10);
-  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(400); // 10 glasses * 400ml = 4000ml (4.0 Liters)
+  const [goalGlasses, setGoalGlasses] = useState<number>(16);
+  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(250); // 10 glasses * 400ml = 4000ml (4.0 Liters)
   const [entries, setEntries] = useState<WaterEntry[]>([]);
   const [history, setHistory] = useState<DayHistory[]>([]);
   const [reminderActive, setReminderActive] = useState<boolean>(false);
@@ -39,9 +39,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
 
   // Modal custom goal state
-  const [modalGlasses, setModalGlasses] = useState<string>('10');
+  const [modalGlasses, setModalGlasses] = useState<string>('16');
   const [modalTotalMl, setModalTotalMl] = useState<string>('4000');
-  const [modalGlassVolume, setModalGlassVolume] = useState<string>('400');
+  const [modalGlassVolume, setModalGlassVolume] = useState<string>('250');
 
   // Manual Hydration Timer state (30 min, 45 min, 50 min, 90 min presets)
   const [timerMinutes, setTimerMinutes] = useState<number>(30);
@@ -80,8 +80,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         }
 
         if (parsed) {
-          if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
-          if (parsed.glassVolumeMl) setGlassVolumeMl(parsed.glassVolumeMl);
+          if (parsed.goalGlasses === 10 && parsed.glassVolumeMl === 400) {
+            setGoalGlasses(16);
+            setGlassVolumeMl(250);
+          } else {
+            if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
+            if (parsed.glassVolumeMl) setGlassVolumeMl(parsed.glassVolumeMl);
+          }
           if (parsed.todayEntries && parsed.todayDate === new Date().toISOString().split('T')[0]) {
             setEntries(parsed.todayEntries);
           } else if (parsed.todayEntries && parsed.todayDate) {
@@ -502,6 +507,290 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto pb-6">
+
+      {/* Main Grid: Card 1 (Progress Display & Cup), Card 2 (Quick Actions & Input) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+        
+        {/* Progress & Interactive Radial Hydration Ring Card */}
+        <div className={cn(
+          "lg:col-span-5 p-4 sm:p-5 rounded-2xl border flex flex-col items-center justify-between gap-3 relative overflow-hidden transition-all",
+          darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
+        )}>
+          {/* Header: Consumed Label + Percentage Badge */}
+          <div className="w-full flex items-center justify-between border-b pb-2.5 border-gray-200/20 dark:border-white/5">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-400 flex items-center gap-1.5">
+              <Droplet size={15} className="text-blue-500 fill-blue-500/20" />
+              {labels.consumed}
+            </span>
+            <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+              {formatNum(progressPercent)}% {labels.percentDone}
+            </span>
+          </div>
+
+          {/* Glass Cup with Liquid Fill, Left (250ml) & Right (400ml) Quick Glass Buttons */}
+          <div className="relative my-1 flex flex-col items-center justify-center w-full">
+            <div className="flex items-center justify-center gap-2.5 sm:gap-4 w-full">
+              {/* Left Side: 400 ml Glass Button */}
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => handleAddWater(400)}
+                title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
+                  darkMode
+                    ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
+                    : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
+                )}
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-600/30 group-hover:scale-110 transition-transform">
+                  <Droplet size={16} className="fill-current" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
+                  400 {labels.mlUnit}
+                </span>
+              </motion.button>
+
+              {/* Glass Tumbler Container with Liquid Water Fill (Display Only) */}
+              <div className={cn(
+                "relative w-28 h-36 sm:w-32 sm:h-40 rounded-b-[2.2rem] rounded-t-md border-x-4 border-b-4 border-t-2 border-blue-400/80 dark:border-blue-500/70 flex items-center justify-center shadow-xl shadow-blue-500/20 overflow-hidden transition-all shrink-0",
+                darkMode ? "bg-slate-950/90" : "bg-blue-50/90"
+              )}>
+                {/* Vertical Glass Shine Reflection */}
+                <div className="absolute left-2 top-2 bottom-4 w-1.5 bg-gradient-to-b from-white/50 via-white/20 to-transparent rounded-full z-20 pointer-events-none" />
+
+                {/* Measurement Notch Lines on Right Side */}
+                <div className="absolute right-1.5 top-4 bottom-4 flex flex-col justify-between z-20 pointer-events-none opacity-50">
+                  <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                  <div className="w-2.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                  <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                  <div className="w-3 h-0.5 bg-blue-500 dark:bg-blue-300" />
+                </div>
+
+                {/* Liquid Water Level Fill (Sea Water Gradient) */}
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-blue-800 via-blue-600 to-sky-400 pointer-events-none"
+                  initial={{ height: 0 }}
+                  animate={{ height: `${Math.min(100, progressPercent)}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                  {/* Wave effect at top of water surface */}
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/50 animate-pulse" />
+                </motion.div>
+
+                {/* Center Display Overlay */}
+                <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md text-blue-600 dark:text-blue-200 flex items-center justify-center mb-0.5 shadow-2xs">
+                    <Droplet size={13} className="fill-current animate-pulse" />
+                  </div>
+                  <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
+                    {formatNum(totalGlasses, 1)}
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs">
+                    / {formatNum(goalGlasses)} {labels.glassesUnit}
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-semibold text-slate-700 dark:text-blue-100 mt-0.5 drop-shadow-2xs">
+                    {formatNum(totalConsumedMl)} {labels.mlUnit}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Side: 250 ml Glass Button */}
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => handleAddWater(250)}
+                title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
+                  darkMode
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                    : "bg-blue-50/90 border-blue-200 text-blue-800 hover:bg-blue-100"
+                )}
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                  <Droplet size={15} className="fill-current" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
+                  250 {labels.mlUnit}
+                </span>
+              </motion.button>
+            </div>
+
+            {/* Hydration Status Label */}
+            <span className="text-[10px] text-gray-700 dark:text-gray-400 mt-2 font-medium flex items-center gap-1">
+              <Sparkles size={11} className="text-blue-400 animate-pulse" />
+              {lang === 'bn' ? 'দৈনিক হাইড্রেশন গ্লাস' : 'Daily Hydration Glass'}
+            </span>
+          </div>
+
+          {/* Consumed & Remaining Stats Bar */}
+          <div className="w-full grid grid-cols-2 gap-2 text-center">
+            <div className={cn(
+              "p-2 rounded-xl border flex flex-col items-center justify-center",
+              darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
+            )}>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-400">
+                {lang === 'bn' ? 'পান করা হয়েছে' : 'Consumed'}
+              </span>
+              <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
+                {formatNum(totalConsumedMl)} {labels.mlUnit}
+              </span>
+            </div>
+
+            <div className={cn(
+              "p-2 rounded-xl border flex flex-col items-center justify-center",
+              darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+            )}>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-400">
+                {lang === 'bn' ? 'বাকি আছে' : 'Remaining'}
+              </span>
+              <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 mt-0.5">
+                {formatNum(Math.max(0, goalMl - totalConsumedMl))} {labels.mlUnit}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Add Buttons & Controls - Compressed Card */}
+        <div className={cn(
+          "lg:col-span-7 p-4 sm:p-5 rounded-2xl border space-y-4 flex flex-col justify-between",
+          darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
+        )}>
+          <div>
+            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+              <Plus size={16} className="text-blue-500" />
+              {lang === 'bn' ? 'পানি পান ট্র্যাকিং বাটন' : 'Quick Water Logging'}
+            </h3>
+            <p className="text-[11px] text-gray-700 mt-0.5">
+              {lang === 'bn' ? 'প্রতিবার পানি পান করার পর নিচের যেকোনো বাটনে ট্যাপ করুন' : 'Tap any button whenever you drink water'}
+            </p>
+          </div>
+
+          {/* Quick Presets Grid - Sea Water Blue Theme */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleAddWater(100)}
+              className={cn(
+                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
+                darkMode
+                  ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                  : "bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100"
+              )}
+            >
+              <div className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/20 group-hover:rotate-12 transition-transform shrink-0">
+                <Droplet size={14} />
+              </div>
+              <span className="text-[11px] font-bold text-center sm:text-left">
+                100 {labels.mlUnit}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleAddWater(300)}
+              className={cn(
+                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
+                darkMode
+                  ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
+                  : "bg-blue-100/80 border-blue-300 text-blue-900 hover:bg-blue-200"
+              )}
+            >
+              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-500/20 group-hover:rotate-12 transition-transform shrink-0">
+                <Droplet size={15} className="fill-current" />
+              </div>
+              <span className="text-[11px] font-bold text-center sm:text-left">
+                300 {labels.mlUnit}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleAddWater(500)}
+              className={cn(
+                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
+                darkMode
+                  ? "bg-blue-700/10 border-blue-700/30 text-blue-300 hover:bg-blue-700/20"
+                  : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
+              )}
+            >
+              <div className="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center shadow-xs shadow-blue-600/20 group-hover:rotate-12 transition-transform shrink-0">
+                <Droplet size={15} className="fill-current" />
+              </div>
+              <span className="text-[11px] font-bold text-center sm:text-left">
+                500 {labels.mlUnit} ({lang === 'bn' ? 'বোতল' : 'bottle'})
+              </span>
+            </button>
+          </div>
+
+          {/* Custom Amount Form - Sea Water Blue */}
+          <form onSubmit={handleCustomAdd} className="space-y-1.5 pt-2 border-t border-gray-200/20 dark:border-white/5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+              {labels.addCustom} ({labels.mlUnit})
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  placeholder="e.g. 150"
+                  value={customMlInput}
+                  onChange={(e) => setCustomMlInput(e.target.value)}
+                  className={cn(
+                    "w-full rounded-xl px-3 py-2 text-base sm:text-xs focus:outline-none focus:border-blue-500 transition-all border",
+                    darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+                  )}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-700 dark:text-gray-400">
+                  {labels.mlUnit}
+                </span>
+              </div>
+              <button
+                type="submit"
+                disabled={!customMlInput || parseFloat(customMlInput) <= 0}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shrink-0 shadow-xs shadow-blue-500/30"
+              >
+                <Plus size={14} />
+                {labels.addBtn}
+              </button>
+            </div>
+          </form>
+
+          {/* Control Actions Row */}
+          <div className="flex items-center justify-between pt-1">
+            <button
+              onClick={() => {
+                if (entries.length > 0) {
+                  handleDeleteEntry(entries[0].id);
+                }
+              }}
+              disabled={entries.length === 0}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              )}
+            >
+              <RotateCcw size={13} />
+              <span>{labels.undo}</span>
+            </button>
+
+            <button
+              onClick={handleResetToday}
+              disabled={entries.length === 0}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
+              )}
+            >
+              <Trash2 size={13} />
+              <span>{labels.resetToday}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Reminder & Timer Card placed at TOP */}
       <div className={cn(
         "p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3",
@@ -519,7 +808,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   {lang === 'bn' ? 'টাইমার' : 'Timer'}
                 </span>
               </h4>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-[10px] text-gray-700 dark:text-gray-400 mt-0.5">
                 {reminderActive 
                   ? (isTimerRunning 
                       ? (lang === 'bn' ? 'টাইমার চালূ আছে - এলার্ম বাজবে' : 'Countdown active - Alarm on') 
@@ -630,290 +919,6 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
         )}
       </div>
-
-      {/* Main Grid: Card 1 (Progress Display & Cup), Card 2 (Quick Actions & Input) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-        
-        {/* Progress & Interactive Radial Hydration Ring Card */}
-        <div className={cn(
-          "lg:col-span-5 p-4 sm:p-5 rounded-2xl border flex flex-col items-center justify-between gap-3 relative overflow-hidden transition-all",
-          darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
-        )}>
-          {/* Header: Consumed Label + Percentage Badge */}
-          <div className="w-full flex items-center justify-between border-b pb-2.5 border-gray-200/20 dark:border-white/5">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              <Droplet size={15} className="text-blue-500 fill-blue-500/20" />
-              {labels.consumed}
-            </span>
-            <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
-              {formatNum(progressPercent)}% {labels.percentDone}
-            </span>
-          </div>
-
-          {/* Glass Cup with Liquid Fill, Left (250ml) & Right (400ml) Quick Glass Buttons */}
-          <div className="relative my-1 flex flex-col items-center justify-center w-full">
-            <div className="flex items-center justify-center gap-2.5 sm:gap-4 w-full">
-              {/* Left Side: 400 ml Glass Button */}
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.92 }}
-                onClick={() => handleAddWater(400)}
-                title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
-                className={cn(
-                  "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
-                  darkMode
-                    ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
-                    : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
-                )}
-              >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-600/30 group-hover:scale-110 transition-transform">
-                  <Droplet size={16} className="fill-current" />
-                </div>
-                <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
-                  400 {labels.mlUnit}
-                </span>
-              </motion.button>
-
-              {/* Glass Tumbler Container with Liquid Water Fill (Display Only) */}
-              <div className={cn(
-                "relative w-28 h-36 sm:w-32 sm:h-40 rounded-b-[2.2rem] rounded-t-md border-x-4 border-b-4 border-t-2 border-blue-400/80 dark:border-blue-500/70 flex items-center justify-center shadow-xl shadow-blue-500/20 overflow-hidden transition-all shrink-0",
-                darkMode ? "bg-slate-950/90" : "bg-blue-50/90"
-              )}>
-                {/* Vertical Glass Shine Reflection */}
-                <div className="absolute left-2 top-2 bottom-4 w-1.5 bg-gradient-to-b from-white/50 via-white/20 to-transparent rounded-full z-20 pointer-events-none" />
-
-                {/* Measurement Notch Lines on Right Side */}
-                <div className="absolute right-1.5 top-4 bottom-4 flex flex-col justify-between z-20 pointer-events-none opacity-50">
-                  <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                  <div className="w-2.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                  <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                  <div className="w-3 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                </div>
-
-                {/* Liquid Water Level Fill (Sea Water Gradient) */}
-                <motion.div
-                  className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-blue-800 via-blue-600 to-sky-400 pointer-events-none"
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.min(100, progressPercent)}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                >
-                  {/* Wave effect at top of water surface */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/50 animate-pulse" />
-                </motion.div>
-
-                {/* Center Display Overlay */}
-                <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md text-blue-600 dark:text-blue-200 flex items-center justify-center mb-0.5 shadow-2xs">
-                    <Droplet size={13} className="fill-current animate-pulse" />
-                  </div>
-                  <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
-                    {formatNum(totalGlasses, 1)}
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs">
-                    / {formatNum(goalGlasses)} {labels.glassesUnit}
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] font-semibold text-slate-700 dark:text-blue-100 mt-0.5 drop-shadow-2xs">
-                    {formatNum(totalConsumedMl)} {labels.mlUnit}
-                  </span>
-                </div>
-              </div>
-
-              {/* Right Side: 250 ml Glass Button */}
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.92 }}
-                onClick={() => handleAddWater(250)}
-                title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
-                className={cn(
-                  "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer group shadow-2xs shrink-0",
-                  darkMode
-                    ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
-                    : "bg-blue-50/90 border-blue-200 text-blue-800 hover:bg-blue-100"
-                )}
-              >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                  <Droplet size={15} className="fill-current" />
-                </div>
-                <span className="text-[10px] sm:text-[11px] font-extrabold mt-1 text-center whitespace-nowrap">
-                  250 {labels.mlUnit}
-                </span>
-              </motion.button>
-            </div>
-
-            {/* Hydration Status Label */}
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 font-medium flex items-center gap-1">
-              <Sparkles size={11} className="text-blue-400 animate-pulse" />
-              {lang === 'bn' ? 'দৈনিক হাইড্রেশন গ্লাস' : 'Daily Hydration Glass'}
-            </span>
-          </div>
-
-          {/* Consumed & Remaining Stats Bar */}
-          <div className="w-full grid grid-cols-2 gap-2 text-center">
-            <div className={cn(
-              "p-2 rounded-xl border flex flex-col items-center justify-center",
-              darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
-            )}>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {lang === 'bn' ? 'পান করা হয়েছে' : 'Consumed'}
-              </span>
-              <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
-                {formatNum(totalConsumedMl)} {labels.mlUnit}
-              </span>
-            </div>
-
-            <div className={cn(
-              "p-2 rounded-xl border flex flex-col items-center justify-center",
-              darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-            )}>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {lang === 'bn' ? 'বাকি আছে' : 'Remaining'}
-              </span>
-              <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 mt-0.5">
-                {formatNum(Math.max(0, goalMl - totalConsumedMl))} {labels.mlUnit}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Add Buttons & Controls - Compressed Card */}
-        <div className={cn(
-          "lg:col-span-7 p-4 sm:p-5 rounded-2xl border space-y-4 flex flex-col justify-between",
-          darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
-        )}>
-          <div>
-            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
-              <Plus size={16} className="text-blue-500" />
-              {lang === 'bn' ? 'পানি পান ট্র্যাকিং বাটন' : 'Quick Water Logging'}
-            </h3>
-            <p className="text-[11px] text-gray-500 mt-0.5">
-              {lang === 'bn' ? 'প্রতিবার পানি পান করার পর নিচের যেকোনো বাটনে ট্যাপ করুন' : 'Tap any button whenever you drink water'}
-            </p>
-          </div>
-
-          {/* Quick Presets Grid - Sea Water Blue Theme */}
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleAddWater(100)}
-              className={cn(
-                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
-                darkMode
-                  ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
-                  : "bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100"
-              )}
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/20 group-hover:rotate-12 transition-transform shrink-0">
-                <Droplet size={14} />
-              </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">
-                100 {labels.mlUnit}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAddWater(300)}
-              className={cn(
-                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
-                darkMode
-                  ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
-                  : "bg-blue-100/80 border-blue-300 text-blue-900 hover:bg-blue-200"
-              )}
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-500/20 group-hover:rotate-12 transition-transform shrink-0">
-                <Droplet size={15} className="fill-current" />
-              </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">
-                300 {labels.mlUnit}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAddWater(500)}
-              className={cn(
-                "p-2.5 rounded-xl border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98]",
-                darkMode
-                  ? "bg-blue-700/10 border-blue-700/30 text-blue-300 hover:bg-blue-700/20"
-                  : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
-              )}
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center shadow-xs shadow-blue-600/20 group-hover:rotate-12 transition-transform shrink-0">
-                <Droplet size={15} className="fill-current" />
-              </div>
-              <span className="text-[11px] font-bold text-center sm:text-left">
-                500 {labels.mlUnit} ({lang === 'bn' ? 'বোতল' : 'bottle'})
-              </span>
-            </button>
-          </div>
-
-          {/* Custom Amount Form - Sea Water Blue */}
-          <form onSubmit={handleCustomAdd} className="space-y-1.5 pt-2 border-t border-gray-200/20 dark:border-white/5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-              {labels.addCustom} ({labels.mlUnit})
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  min="1"
-                  step="any"
-                  placeholder="e.g. 150"
-                  value={customMlInput}
-                  onChange={(e) => setCustomMlInput(e.target.value)}
-                  className={cn(
-                    "w-full rounded-xl px-3 py-2 text-base sm:text-xs focus:outline-none focus:border-blue-500 transition-all border",
-                    darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
-                  )}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">
-                  {labels.mlUnit}
-                </span>
-              </div>
-              <button
-                type="submit"
-                disabled={!customMlInput || parseFloat(customMlInput) <= 0}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shrink-0 shadow-xs shadow-blue-500/30"
-              >
-                <Plus size={14} />
-                {labels.addBtn}
-              </button>
-            </div>
-          </form>
-
-          {/* Control Actions Row */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              onClick={() => {
-                if (entries.length > 0) {
-                  handleDeleteEntry(entries[0].id);
-                }
-              }}
-              disabled={entries.length === 0}
-              className={cn(
-                "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
-                darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              )}
-            >
-              <RotateCcw size={13} />
-              <span>{labels.undo}</span>
-            </button>
-
-            <button
-              onClick={handleResetToday}
-              disabled={entries.length === 0}
-              className={cn(
-                "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
-                darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
-              )}
-            >
-              <Trash2 size={13} />
-              <span>{labels.resetToday}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Intake Logs & Reminder Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
         
@@ -933,7 +938,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
 
           {entries.length === 0 ? (
-            <div className="py-6 text-center text-xs text-gray-500 font-medium">
+            <div className="py-6 text-center text-xs text-gray-700 font-medium">
               {labels.emptyLogs}
             </div>
           ) : (
@@ -958,7 +963,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
                           +{formatNum(item.amountMl)} {labels.mlUnit} ({formatNum(item.glasses, 1)} {labels.glassesUnit})
                         </span>
-                        <span className="text-[10px] text-gray-400 font-medium">
+                        <span className="text-[10px] text-gray-700 dark:text-gray-400 font-medium">
                           {item.timestamp}
                         </span>
                       </div>
@@ -966,7 +971,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                     <button
                       onClick={() => handleDeleteEntry(item.id)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-gray-700 dark:text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                       title="Delete entry"
                     >
                       <Trash2 size={13} />
@@ -1039,7 +1044,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <button
                   type="button"
                   onClick={() => setShowGoalModal(false)}
-                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                  className="p-1 rounded-lg text-gray-700 dark:text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
                 >
                   ✕
                 </button>
@@ -1047,7 +1052,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
               {/* Scrollable Content Body */}
               <div className="overflow-y-auto space-y-4 pr-1 py-2 my-1 shrink text-xs">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-700 dark:text-gray-400">
                   {labels.selectGoalTip}
                 </p>
 
@@ -1092,7 +1097,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Number of Glasses */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-400">
                         {labels.customGlassesLabel}
                       </label>
                       <div className="relative">
@@ -1108,7 +1113,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                             darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                           )}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-700 dark:text-gray-400">
                           {labels.glassesUnit}
                         </span>
                       </div>
@@ -1116,7 +1121,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                     {/* Total Water Target (ml) */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-400">
                         {labels.customTotalMlLabel}
                       </label>
                       <div className="relative">
@@ -1131,7 +1136,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                             darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                           )}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-700 dark:text-gray-400">
                           {labels.mlUnit}
                         </span>
                       </div>
@@ -1140,7 +1145,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                   {/* Glass Size / Volume */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                    <label className="text-[11px] font-bold text-gray-700 dark:text-gray-400">
                       {labels.customGlassSizeLabel}
                     </label>
                     <div className="relative">
@@ -1155,7 +1160,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                           darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                         )}
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-700 dark:text-gray-400">
                         {labels.mlUnit} / glass
                       </span>
                     </div>
@@ -1179,7 +1184,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <button
                   type="button"
                   onClick={() => setShowGoalModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
                 >
                   {labels.cancelBtn}
                 </button>
@@ -1218,7 +1223,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <h3 className="text-xl font-black text-blue-500 dark:text-blue-400 tracking-tight">
                   {lang === 'bn' ? '⏰ পানি পানের সময় হয়েছে!' : '⏰ Time to Drink Water!'}
                 </h3>
-                <p className="text-xs text-gray-400 font-medium">
+                <p className="text-xs text-gray-700 dark:text-gray-400 font-medium">
                   {lang === 'bn'
                     ? 'আপনার হাইড্রেশন টাইমার শেষ হয়েছে। এখনই এক গ্লাস পানি পান করুন ও সতেজ থাকুন!'
                     : 'Your hydration timer ended! Drink a glass of water now to stay hydrated and energized.'

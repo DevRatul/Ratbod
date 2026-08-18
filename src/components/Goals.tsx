@@ -88,7 +88,9 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
       }
 
       if (data) {
+        localStorage.setItem('ratbod_goals', JSON.stringify(data));
         setGoal(data);
+        if (onGoalUpdate) onGoalUpdate();
         setTargetWeight(unit === 'metric' ? data.targetWeight.toString() : (data.targetWeight * 2.20462).toFixed(1));
         setTargetBodyFat(data.targetBodyFat.toString());
         setDailyCalorieGoal(data.dailyCalorieGoal.toString());
@@ -296,7 +298,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                   <div className="flex items-center justify-end gap-1">
                     {weightProgress === 'down' ? <TrendingDown className="text-primary" size={16} /> : 
                      weightProgress === 'up' ? <TrendingUp className="text-red-500" size={16} /> : 
-                     <Minus className="text-gray-400" size={16} />}
+                     <Minus className="text-gray-500 dark:text-gray-400" size={16} />}
                     <span className={cn(
                       "text-xl font-bold tracking-tighter",
                       weightProgress === 'down' ? "text-primary" : weightProgress === 'up' ? "text-red-500" : "text-gray-400"
@@ -332,7 +334,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                   <div className="flex items-center justify-end gap-1">
                     {bodyFatProgress === 'down' ? <TrendingDown className="text-primary" size={16} /> : 
                      bodyFatProgress === 'up' ? <TrendingUp className="text-red-500" size={16} /> : 
-                     <Minus className="text-gray-400" size={16} />}
+                     <Minus className="text-gray-500 dark:text-gray-400" size={16} />}
                     <span className={cn(
                       "text-xl font-bold tracking-tighter",
                       bodyFatProgress === 'down' ? "text-primary" : bodyFatProgress === 'up' ? "text-red-500" : "text-gray-400"
@@ -366,7 +368,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           )}>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'লক্ষ্যের শেষ তারিখ' : 'Target Date'}</span>
-              <Calendar className="text-gray-400" size={16} />
+              <Calendar className="text-gray-500 dark:text-gray-400" size={16} />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight">

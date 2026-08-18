@@ -605,7 +605,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                       {labels.priceSummary}
                     </span>
-                    <p className="text-xs font-medium text-gray-400 mt-1">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
                       {formatNum(desiredQty)} {translateUnit(desiredUnit)} @ {formatNum(pricePerUnit)} {labels.bdtSuffix}/{translateUnit(baseUnit)}
                     </p>
                   </div>
@@ -676,7 +676,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                   exit={{ opacity: 0 }}
                   className="h-full flex flex-col items-center justify-center text-center space-y-2 py-10"
                 >
-                  <div className="p-3 bg-gray-500/10 rounded-full text-gray-400">
+                  <div className="p-3 bg-gray-500/10 rounded-full text-gray-500 dark:text-gray-400">
                     <ShoppingBag size={24} />
                   </div>
                   <p className="text-sm font-medium text-gray-500">
@@ -740,7 +740,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   {labels.totalPrice}
                 </span>
-                <p className="text-xs text-gray-400 font-medium mt-0.5">
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
                   {formatNum(items.length, 0)} {lang === 'bn' ? 'টি পণ্য' : 'items'}
                 </p>
               </div>

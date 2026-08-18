@@ -682,7 +682,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
         darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
       )}>
         <div className="flex items-center justify-between text-xs font-bold">
-          <span className="text-gray-400 uppercase tracking-widest text-[10px]">Progress</span>
+          <span className="text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[10px]">Progress</span>
           <span className="text-rose-500 dark:text-rose-400 font-extrabold text-xs">
             {completedCount}/{totalCount}
           </span>
@@ -733,7 +733,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 )}
               >
                 {/* Left Grip Handle & Menu Dots */}
-                <div className="flex items-center gap-1 shrink-0 text-gray-400 dark:text-gray-600">
+                <div className="flex items-center gap-1 shrink-0 text-gray-500 dark:text-gray-400 dark:text-gray-600">
                   <GripVertical size={16} className="cursor-grab active:cursor-grabbing hover:text-gray-300" />
                   
                   <div className="relative">
@@ -800,7 +800,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                       )}>
                         {habit.title}
                       </h3>
-                      <BarChart2 size={13} className="text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity shrink-0" />
+                      <BarChart2 size={13} className="text-gray-500 dark:text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity shrink-0" />
                     </div>
                     {habit.subtitle && (
                       <p className={cn(
@@ -877,7 +877,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white"
+                  className="p-1 rounded-lg hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-white"
                 >
                   <X size={18} />
                 </button>
@@ -886,7 +886,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
               <form onSubmit={handleAddHabit} className="space-y-3">
                 <div className="flex gap-2">
                   <div className="w-16">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                    <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
                       Emoji
                     </label>
                     <input
@@ -901,7 +901,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                   </div>
 
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                    <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
                       {lang === 'bn' ? 'হ্যাবিটের নাম' : 'Habit Title'}
                     </label>
                     <input
@@ -919,7 +919,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                  <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
                     {lang === 'bn' ? 'নোট / সময় (ঐচ্ছিক)' : 'Subtitle / Schedule (Optional)'}
                   </label>
                   <input
@@ -976,7 +976,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 <button
                   type="button"
                   onClick={() => setEditingHabit(null)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white"
+                  className="p-1 rounded-lg hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-white"
                 >
                   <X size={18} />
                 </button>
@@ -985,7 +985,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
               <form onSubmit={handleUpdateHabit} className="space-y-3">
                 <div className="flex gap-2">
                   <div className="w-16">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                    <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
                       Emoji
                     </label>
                     <input
@@ -1000,7 +1000,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                   </div>
 
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                    <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
                       {lang === 'bn' ? 'হ্যাবিটের নাম' : 'Habit Title'}
                     </label>
                     <input
@@ -1017,7 +1017,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                  <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
                     {lang === 'bn' ? 'নোট / সময় (ঐচ্ছিক)' : 'Subtitle / Schedule'}
                   </label>
                   <input
@@ -1076,7 +1076,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                       {analyticsHabit.title}
                     </h3>
                     {analyticsHabit.subtitle && (
-                      <p className="text-xs text-gray-400 font-medium truncate">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                         {analyticsHabit.subtitle}
                       </p>
                     )}
@@ -1086,7 +1086,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 <button
                   type="button"
                   onClick={() => setAnalyticsHabit(null)}
-                  className="p-1.5 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-xl hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-white transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -1099,7 +1099,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                   darkMode ? "bg-white/5 border-white/5" : "bg-rose-50/50 border-rose-100"
                 )}>
                   <Award size={18} className="text-amber-400 mb-1" />
-                  <span className="text-xs text-gray-400 font-semibold">{lang === 'bn' ? 'মোট সম্পন্ন' : 'Total Done'}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{lang === 'bn' ? 'মোট সম্পন্ন' : 'Total Done'}</span>
                   <span className="text-base sm:text-lg font-black text-rose-500 mt-0.5">
                     {analyticsData.totalCompletions} {lang === 'bn' ? 'দিন' : 'days'}
                   </span>
@@ -1110,7 +1110,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                   darkMode ? "bg-white/5 border-white/5" : "bg-amber-50/50 border-amber-100"
                 )}>
                   <Flame size={18} className="text-rose-500 mb-1" />
-                  <span className="text-xs text-gray-400 font-semibold">{lang === 'bn' ? 'বর্তমান স্ট্রিক' : 'Streak'}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{lang === 'bn' ? 'বর্তমান স্ট্রিক' : 'Streak'}</span>
                   <span className="text-base sm:text-lg font-black text-amber-500 mt-0.5">
                     {analyticsData.currentStreak} {lang === 'bn' ? 'দিন' : 'days'}
                   </span>
@@ -1121,7 +1121,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                   darkMode ? "bg-white/5 border-white/5" : "bg-emerald-50/50 border-emerald-100"
                 )}>
                   <Zap size={18} className="text-emerald-400 mb-1" />
-                  <span className="text-xs text-gray-400 font-semibold">{lang === 'bn' ? 'সেরা স্ট্রিক' : 'Best Streak'}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{lang === 'bn' ? 'সেরা স্ট্রিক' : 'Best Streak'}</span>
                   <span className="text-base sm:text-lg font-black text-emerald-500 mt-0.5">
                     {analyticsData.bestStreak} {lang === 'bn' ? 'দিন' : 'days'}
                   </span>
@@ -1149,7 +1149,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
               {/* TAB 1: WEEKLY VIEW */}
               {analyticsViewTab === 'weekly' && (
                 <div className="space-y-3 pt-1">
-                  <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
                     <span>{lang === 'bn' ? 'চলতি সপ্তাহ (শনিবার - শুক্রবার)' : 'Current Week (Sat - Fri)'}</span>
                     <span className="text-rose-500 font-extrabold">Week {weekNum}</span>
                   </div>
@@ -1181,7 +1181,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                       );
                     })}
                   </div>
-                  <p className="text-[10px] text-gray-400 text-center italic">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 text-center italic">
                     {lang === 'bn' ? 'যেকোনো দিনে ক্লিক করে টিক/আনটিক করুন' : 'Tap any day to toggle completion state'}
                   </p>
                 </div>
@@ -1195,7 +1195,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                       <Calendar size={14} />
                       {analyticsData.curMonthName}
                     </span>
-                    <span className="text-gray-400 font-medium text-[11px]">
+                    <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px]">
                       {analyticsData.monthlyDays.filter(d => d.isCompleted).length} / {analyticsData.monthlyDays.length} {lang === 'bn' ? 'দিন সম্পন্ন' : 'days completed'}
                     </span>
                   </div>
@@ -1206,11 +1206,11 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                     <div className="grid grid-cols-8 gap-1 text-center text-[10px] font-black uppercase pb-1 border-b border-white/10">
                       <span className="text-gray-500 py-0.5">WN</span>
                       <span className="text-rose-400 bg-rose-500/10 rounded-md py-0.5" title="Weekly Off">SAT (OFF)</span>
-                      <span className="text-gray-400 py-0.5">SUN</span>
-                      <span className="text-gray-400 py-0.5">MON</span>
-                      <span className="text-gray-400 py-0.5">TUE</span>
-                      <span className="text-gray-400 py-0.5">WED</span>
-                      <span className="text-gray-400 py-0.5">THU</span>
+                      <span className="text-gray-500 dark:text-gray-400 py-0.5">SUN</span>
+                      <span className="text-gray-500 dark:text-gray-400 py-0.5">MON</span>
+                      <span className="text-gray-500 dark:text-gray-400 py-0.5">TUE</span>
+                      <span className="text-gray-500 dark:text-gray-400 py-0.5">WED</span>
+                      <span className="text-gray-500 dark:text-gray-400 py-0.5">THU</span>
                       <span className="text-rose-400 bg-rose-500/10 rounded-md py-0.5" title="Weekly Off">FRI (OFF)</span>
                     </div>
 
@@ -1258,7 +1258,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between text-[10px] text-gray-400 px-1 pt-0.5">
+                  <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 px-1 pt-0.5">
                     <span className="flex items-center gap-1 text-amber-400 font-semibold">
                       <span className="w-2 h-2 rounded-full bg-amber-500/40 border border-amber-500 inline-block" />
                       Saturday & Friday: Weekly Off
@@ -1271,7 +1271,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
               {/* TAB 3: YEARLY OVERVIEW */}
               {analyticsViewTab === 'yearly' && (
                 <div className="space-y-3 pt-1">
-                  <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
                     <span>{lang === 'bn' ? 'বাৎসরিক ওভারভিউ' : 'Annual Overview'} ({analyticsData.curYear})</span>
                     <span className="text-rose-500 font-black">{analyticsData.totalCompletions} {lang === 'bn' ? 'মোট দিন' : 'Total Days'}</span>
                   </div>
@@ -1329,7 +1329,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 <h3 className="text-base font-black text-red-500 dark:text-red-400">
                   {lang === 'bn' ? 'হ্যাবিট মুছে ফেলবেন?' : 'Delete Habit?'}
                 </h3>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {lang === 'bn' 
                     ? `আপনি কি নিশ্চিত যে "${deletingHabit.title}" হ্যাবিটটি মুছে ফেলতে চান? আপনার সকল রেকর্ড ও স্ট্রাইক হারিয়ে যাবে।`
                     : `Are you sure you want to delete "${deletingHabit.title}"? This will permanently erase its completion logs and streak history.`

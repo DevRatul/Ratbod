@@ -22,11 +22,13 @@ interface ProfileModalProps {
   height: string;
   setHeight: (h: string) => void;
   unit: 'metric' | 'imperial';
+  targetWeight?: string;
+  setTargetWeight?: (w: string) => void;
 }
 
 export default function ProfileModal({
   isOpen, onClose, darkMode,
-  name, setName, gender, setGender, birthdate, setBirthdate, height, setHeight, unit
+  name, setName, gender, setGender, birthdate, setBirthdate, height, setHeight, unit, targetWeight, setTargetWeight
 }: ProfileModalProps) {
   if (!isOpen) return null;
 
@@ -138,9 +140,6 @@ export default function ProfileModal({
               placeholder="e.g. 175"
             />
           </div>
-
-          
-
         </div>
         
         <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-3">
