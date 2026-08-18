@@ -185,7 +185,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
           )}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
                 {lang === 'bn' ? 'লক্ষ্যিত ওজন' : 'Target Weight'} ({unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')})
@@ -275,7 +275,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           </div>
         </motion.form>
       ) : goal ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6">
           {/* Weight Goal Card */}
           <div className={cn(
             "p-6 rounded-3xl border space-y-4",

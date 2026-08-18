@@ -30,6 +30,7 @@ interface HistoryProps {
 export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, lang = 'en' }: HistoryProps) {
   const [history, setHistory] = useState<MetricEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
 
   const formatNum = (num: number | string | undefined | null) => {
@@ -81,19 +82,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     }
   };
 
-  const clearLocalHistory = async () => {
-    const confirmMsg = lang === 'bn' 
-      ? 'আপনি কি নিশ্চিত যে আপনি আপনার সম্পূর্ণ ইতিহাস ডিলিট করতে চান?' 
-      : 'Are you sure you want to clear your local history?';
-    if (window.confirm(confirmMsg)) {
-      localStorage.removeItem('ratbod_history');
-      const user = auth.currentUser;
-      if (user) {
-        await setDoc(doc(db, 'users', user.uid, 'appData', 'history'), { history: [] }, { merge: true }).catch(e => {});
-      }
-      fetchHistory();
-    }
-  };
+
 
   const deleteEntry = (id: string | number) => {
     setDeleteConfirmId(id);
@@ -177,18 +166,22 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
           </span>
         </div>
         
-        {history.length > 0 && (
+        {history.length > 5 && (
           <button
-            onClick={clearLocalHistory}
+            onClick={() => setShowAll(!showAll)}
             className={cn("text-xs font-bold transition-all cursor-pointer flex items-center gap-1", darkMode ? "text-emerald-500 hover:text-emerald-400" : "text-emerald-600 hover:text-emerald-500")}
           >
-            {lang === 'bn' ? 'সব দেখুন' : 'View All'} &rarr;
+            {showAll 
+              ? (lang === 'bn' ? 'কম দেখুন' : 'Show Less') 
+              : (lang === 'bn' ? 'সব দেখুন' : 'View All')} 
+            {showAll ? '↑' : '↓'}
           </button>
         )}
       </div>
 
       <div className="space-y-2">
-        {history.map((entry, index) => {
+        {(showAll ? history : history.slice(0, 5)).map((entry, idx) => {
+          const index = history.findIndex(h => h.id === entry.id);
           const prevEntry = history[index + 1];
           const weightDiff = prevEntry ? entry.weight - prevEntry.weight : 0;
           const displayDiff = unit === 'metric' ? weightDiff : weightDiff * 2.20462;

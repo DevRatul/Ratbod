@@ -309,10 +309,15 @@ export default function App() {
     }
 
     setHistoryRefreshTrigger(prev => prev + 1);
-    alert(t.savedAlert);
     
-    // Keep active tab on results since history tab is replaced with groceries
-    setActiveTab('groceries');
+    // Custom logic to show alert, switch tab, and reset quick measurement fields
+    
+    
+    // Reset quick measurement fields
+    setWeight('');
+    setWaist('');
+    setNeck('');
+    setHip('');
   };
 
   // Convert inputs to metric for calculations
