@@ -1027,6 +1027,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         {showGoalModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
+              key="goal-modal"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1207,6 +1208,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         {showAlarmModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
             <motion.div
+              key="alarm-modal"
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}

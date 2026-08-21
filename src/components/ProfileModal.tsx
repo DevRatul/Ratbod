@@ -148,17 +148,7 @@ export default function ProfileModal({
             onClick={onClose}
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
           >
-            Save & Close
-          </button>
-          
-          <button
-            onClick={() => auth.signOut()}
-            className={cn(
-              "w-full py-3 rounded-xl font-bold transition-all cursor-pointer text-sm",
-              darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
-            )}
-          >
-            Sign Out
+            Save & Exit
           </button>
         </div>
       </div>

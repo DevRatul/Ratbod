@@ -1,0 +1,131 @@
+   320	          </div>
+   321	        </motion.form>
+   322	      ) : goal ? (
+   323	        <div className="space-y-6">
+   324	          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+   325	            {/* Weight Goal Card */}
+   326	            <div className={cn(
+   327	              "p-6 rounded-3xl border space-y-4",
+   328	              darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+   329	            )}>
+   330	            <div className="flex items-center justify-between">
+   331	              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'ওজন লক্ষ্য' : 'Weight Goal'}</span>
+   332	              <Trophy className="text-yellow-500" size={16} />
+   333	            </div>
+   334	            <div className="flex items-center justify-between">
+   335	              <div className="space-y-1">
+   336	                <p className="text-3xl font-light tracking-tighter">
+   337	                  {formatNum(unit === 'metric' ? goal.targetWeight.toFixed(1) : (goal.targetWeight * 2.20462).toFixed(1))}
+   338	                  <span className="text-sm text-gray-500 font-bold ml-1">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+   339	                </p>
+   340	                <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যিত ওজন' : 'Target Weight'}</p>
+   341	              </div>
+   342	              {currentWeight && (
+   343	                <div className="text-right space-y-1">
+   344	                  <div className="flex items-center justify-end gap-1">
+   345	                    {weightProgress === 'down' ? <TrendingDown className="text-primary" size={16} /> : 
+   346	                     weightProgress === 'up' ? <TrendingUp className="text-red-500" size={16} /> : 
+   347	                     <Minus className="text-gray-500 dark:text-gray-400" size={16} />}
+   348	                    <span className={cn(
+   349	                      "text-xl font-bold tracking-tighter",
+   350	                      weightProgress === 'down' ? "text-primary" : weightProgress === 'up' ? "text-red-500" : "text-gray-400"
+   351	                    )}>
+   352	                      {formatNum(Math.abs(currentWeight - goal.targetWeight).toFixed(1))}
+   353	                    </span>
+   354	                  </div>
+   355	                  <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বাকি আছে' : 'To Go'}</p>
+   356	                </div>
+   357	              )}
+   358	            </div>
+   359	          </div>
+   360	
+   361	          {/* Body Fat Goal Card */}
+   362	          <div className={cn(
+   363	            "p-6 rounded-3xl border space-y-4",
+   364	            darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+   365	          )}>
+   366	            <div className="flex items-center justify-between">
+   367	              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'চর্বির লক্ষ্য' : 'Body Fat Goal'}</span>
+   368	              <Target className="text-primary" size={16} />
+   369	            </div>
+   370	            <div className="flex items-center justify-between">
+   371	              <div className="space-y-1">
+   372	                <p className="text-3xl font-light tracking-tighter">
+   373	                  {formatNum(goal.targetBodyFat.toFixed(1))}
+   374	                  <span className="text-sm text-gray-500 font-bold ml-1">%</span>
+   375	                </p>
+   376	                <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যিত চর্বি %' : 'Target Fat %'}</p>
+   377	              </div>
+   378	              {currentBodyFat && (
+   379	                <div className="text-right space-y-1">
+   380	                  <div className="flex items-center justify-end gap-1">
+   381	                    {bodyFatProgress === 'down' ? <TrendingDown className="text-primary" size={16} /> : 
+   382	                     bodyFatProgress === 'up' ? <TrendingUp className="text-red-500" size={16} /> : 
+   383	                     <Minus className="text-gray-500 dark:text-gray-400" size={16} />}
+   384	                    <span className={cn(
+   385	                      "text-xl font-bold tracking-tighter",
+   386	                      bodyFatProgress === 'down' ? "text-primary" : bodyFatProgress === 'up' ? "text-red-500" : "text-gray-400"
+   387	                    )}>
+   388	                      {formatNum(Math.abs(currentBodyFat - goal.targetBodyFat).toFixed(1))}%
+   389	                    </span>
+   390	                  </div>
+   391	                  <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বাকি আছে' : 'To Go'}</p>
+   392	                </div>
+   393	              )}
+   394	            </div>
+   395	          </div>
+   396	
+   397	          {/* Calories Goal Card */}
+   398	          <div className={cn(
+   399	            "p-6 rounded-3xl border space-y-4",
+   400	            darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+   401	          )}>
+   402	            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'দৈনিক ক্যালরি বরাদ্দ' : 'Daily Calorie Budget'}</span>
+   403	            <div className="flex items-baseline gap-1">
+   404	              <span className="text-3xl font-light tracking-tighter text-primary">{formatNum(goal.dailyCalorieGoal)}</span>
+   405	              <span className="text-sm text-gray-500 font-bold">{lang === 'bn' ? 'ক্যালোরি' : 'kcal'}</span>
+   406	            </div>
+   407	            <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যে পৌঁছাতে দৈনিক ক্যালোরি গ্রহণ' : 'Daily intake to reach goal'}</p>
+   408	          </div>
+   409	
+   410	          {/* Timeframe Card */}
+   411	          <div className={cn(
+   412	            "p-6 rounded-3xl border space-y-4",
+   413	            darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+   414	          )}>
+   415	            <div className="flex items-center justify-between">
+   416	              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'লক্ষ্যের শেষ তারিখ' : 'Target Date'}</span>
+   417	              <Calendar className="text-gray-500 dark:text-gray-400" size={16} />
+   418	            </div>
+   419	            <div className="flex items-baseline gap-2">
+   420	              <span className="text-2xl font-bold tracking-tight">
+   421	                {formatNum(new Date(goal.targetDate).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'long', day: 'numeric', year: 'numeric' }))}
+   422	              </span>
+   423	            </div>
+   424	            <p className="text-xs text-gray-500 font-medium">
+   425	              {lang === 'bn' 
+   426	                ? `${formatNum(Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} দিন বাকি আছে`
+   427	                : `${Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining`}
+   428	            </p>
+   429	          </div>
+   430	
+   431	          {/* Weekly Steps Goal Card */}
+   432	          {goal.weeklyStepsGoal && goal.weeklyStepsGoal > 0 ? (
+   433	            <div className={cn(
+   434	              "p-6 rounded-3xl border space-y-4",
+   435	              darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+   436	            )}>
+   437	              <div className="flex items-center justify-between">
+   438	                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'সাপ্তাহিক পদক্ষেপ লক্ষ্য' : 'Weekly Steps Target'}</span>
+   439	                <Footprints className="text-blue-500" size={16} />
+   440	              </div>
+   441	              <div className="flex items-baseline gap-1">
+   442	                <span className="text-3xl font-light tracking-tighter text-blue-500">{formatNum(goal.weeklyStepsGoal)}</span>
+   443	                <span className="text-sm text-gray-500 font-bold">{lang === 'bn' ? 'পদক্ষেপ/সপ্তাহ' : 'steps/week'}</span>
+   444	              </div>
+   445	              <p className="text-xs text-gray-500 font-medium">{lang === 'bn' ? 'আপনার সাপ্তাহিক হাঁটার লক্ষ্য' : 'Your weekly walking objective'}</p>
+   446	            </div>
+   447	          ) : null}
+   448	          </div>
+   449	          
+   450	          <button

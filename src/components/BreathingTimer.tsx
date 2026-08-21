@@ -473,7 +473,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2.5 min-w-0">
               <h2 className="text-sm sm:text-base font-black tracking-tight text-teal-600 dark:text-teal-400 whitespace-nowrap">
-                {lang === 'bn' ? '৪-৭-৮ গভীর শ্বাসের ব্যায়াম' : '4-7-8 Deep Breathing'}
+                {lang === 'bn' ? 'গভীর শ্বাসের ব্যায়াম' : 'Deep Breathing'}
               </h2>
               <span className="hidden sm:inline text-gray-500 dark:text-gray-400 dark:text-gray-600 text-xs">•</span>
               <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
@@ -682,7 +682,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
                 className="text-center p-3 flex flex-col items-center relative z-20 pointer-events-none"
               >
                 <span className="text-[10px] font-black tracking-widest uppercase opacity-90 mb-0.5 text-teal-100">
-                  4-7-8 DEEP CALM
+                  DEEP CALM
                 </span>
                 
                 <span className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-xs">
@@ -757,7 +757,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
           </button>
         </div>
 
-        {/* Minimal 4-7-8 Breakdown Badges */}
+        {/* Minimal Breakdown Badges */}
         <div className="w-full pt-4 border-t border-gray-200/20 dark:border-white/5 grid grid-cols-3 gap-2 sm:gap-3 text-center z-10">
           <div className={cn(
             "p-2.5 rounded-xl border transition-all",

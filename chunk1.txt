@@ -1,0 +1,36 @@
+   323	        <div className="space-y-6">
+   324	          <div className="grid grid-cols-2 gap-3 sm:gap-6">
+   325	            {/* Weight Goal Card */}
+   326	            <div className={cn(
+   327	              "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
+   328	              darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+   329	            )}>
+   330	            <div className="flex items-center justify-between">
+   331	              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'ওজন লক্ষ্য' : 'Weight Goal'}</span>
+   332	              <Trophy className="text-yellow-500" size={16} />
+   333	            </div>
+   334	            <div className="flex items-center justify-between">
+   335	              <div className="space-y-1">
+   336	                <p className="text-2xl sm:text-3xl font-light tracking-tighter">
+   337	                  {formatNum(unit === 'metric' ? goal.targetWeight.toFixed(1) : (goal.targetWeight * 2.20462).toFixed(1))}
+   338	                  <span className="text-xs sm:text-sm text-gray-500 font-bold ml-1">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+   339	                </p>
+   340	                <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যিত ওজন' : 'Target Weight'}</p>
+   341	              </div>
+   342	              {currentWeight && (
+   343	                <div className="text-right space-y-1">
+   344	                  <div className="flex items-center justify-end gap-1">
+   345	                    {weightProgress === 'down' ? <TrendingDown className="text-primary" size={14} /> : 
+   346	                     weightProgress === 'up' ? <TrendingUp className="text-red-500" size={14} /> : 
+   347	                     <Minus className="text-gray-500 dark:text-gray-400" size={14} />}
+   348	                    <span className={cn(
+   349	                      "text-lg sm:text-xl font-bold tracking-tighter",
+   350	                      weightProgress === 'down' ? "text-primary" : weightProgress === 'up' ? "text-red-500" : "text-gray-400"
+   351	                    )}>
+   352	                      {formatNum(Math.abs(currentWeight - goal.targetWeight).toFixed(1))}
+   353	                    </span>
+   354	                  </div>
+   355	                  <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বাকি আছে' : 'To Go'}</p>
+   356	                </div>
+   357	              )}
+   358	            </div>

@@ -32,7 +32,8 @@ import {
   Save,
   TrendingDown,
   TrendingUp,
-  Minus
+  Minus,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -61,6 +62,7 @@ import BreathingTimer from './components/BreathingTimer';
 import Habitor from './components/Habitor';
 import Goals from './components/Goals';
 import History from './components/History';
+import QuickSteps from './components/QuickSteps';
 import ProfileModal from './components/ProfileModal';
 import { translations } from './utils/translations';
 
@@ -95,6 +97,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState(auth.currentUser);
   const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>('water');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -104,30 +107,37 @@ export default function App() {
       setAuthUser(user);
       
       let loadedFromDb = false;
+      let readFailed = false;
       if (user) {
         try {
           const docRef = doc(db, 'users', user.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data();
-            if (data.name) setName(data.name);
-            if (data.gender) setGender(data.gender);
-            if (data.birthdate) setBirthdate(data.birthdate);
-            if (data.age) setAge(data.age);
-            if (data.height) setHeight(data.height);
-            if (data.weight) setWeight(data.weight);
-            if (data.waist) setWaist(data.waist);
-            if (data.neck) setNeck(data.neck);
-            if (data.hip) setHip(data.hip);
-            if (data.activityLevel) setActivityLevel(data.activityLevel);
-            if (data.unit) setUnit(data.unit);
+            if (data.name !== undefined) setName(data.name || '');
+            if (data.gender !== undefined) setGender(data.gender || 'male');
+            if (data.birthdate !== undefined) setBirthdate(data.birthdate || '');
+            if (data.age !== undefined) setAge(data.age || '');
+            if (data.height !== undefined) setHeight(data.height || '');
+            if (data.weight !== undefined) setWeight(data.weight || '');
+            if (data.waist !== undefined) setWaist(data.waist || '');
+            if (data.neck !== undefined) setNeck(data.neck || '');
+            if (data.hip !== undefined) setHip(data.hip || '');
+            if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
+            if (data.unit !== undefined) setUnit(data.unit || 'metric');
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
-            if (data.lang) setLang(data.lang);
+            if (data.lang !== undefined) setLang(data.lang || 'en');
             loadedFromDb = true;
           }
         } catch (e) {
           console.error('Error loading profile:', e);
+          readFailed = true;
         }
+      }
+
+      if (readFailed) {
+        // Stop here to prevent overwriting db with empty states
+        return;
       }
 
       if (!loadedFromDb) {
@@ -425,6 +435,13 @@ export default function App() {
     // Wait, if it's the exact same target in the Goals tab, we should use it exactly as it is there.
     
     const target = goalTargetWeight ? (unit === 'metric' ? goalTargetWeight : goalTargetWeight * 2.20462) : (unit === 'metric' ? metrics?.idealWeight?.kg : metrics?.idealWeight?.lb);
+    
+    const targetDate = goalData && goalData.targetDate ? goalData.targetDate : null;
+    let daysRemaining = null;
+    if (targetDate) {
+      daysRemaining = Math.ceil((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    }
+
     let initialWeight = cw;
     let previousWeight = cw;
 
@@ -439,7 +456,7 @@ export default function App() {
       }
     }
 
-    if (!target || !cw || initialWeight === target) return { percent: 0, target, trend: 'none' };
+    if (!target || !cw || initialWeight === target) return { percent: 0, target, trend: 'none', daysRemaining };
     
     const totalDiff = Math.abs(initialWeight - target);
     const currentDiff = Math.abs(initialWeight - cw);
@@ -455,7 +472,7 @@ export default function App() {
        trend = 'up'; // Weight went up
     }
 
-    return { percent: Math.round(percent), target: target.toFixed(1), trend };
+    return { percent: Math.round(percent), target: target.toFixed(1), trend, daysRemaining };
   }, [weight, unit, historyRefreshTrigger, metrics]);
 
   const handleDownloadPdf = async () => {
@@ -562,17 +579,6 @@ export default function App() {
               {t.tabWater}
             </button>
             <button
-              onClick={() => setActiveTab('groceries')}
-              className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
-                activeTab === 'groceries'
-                  ? (darkMode ? "bg-[#F04A00]/20 text-[#F04A00] font-bold" : "bg-[#F04A00]/10 text-[#F04A00] font-bold shadow-sm")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
-              )}
-            >
-              {t.tabHistory}
-            </button>
-            <button
               onClick={() => setActiveTab('breathing')}
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
@@ -582,7 +588,18 @@ export default function App() {
               )}
             >
               <Wind size={12} className="animate-pulse text-teal-400" />
-              {t.tabBreathe} (4-7-8)
+              {t.tabBreathe}
+            </button>
+            <button
+              onClick={() => setActiveTab('groceries')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                activeTab === 'groceries'
+                  ? (darkMode ? "bg-[#F04A00]/20 text-[#F04A00] font-bold" : "bg-[#F04A00]/10 text-[#F04A00] font-bold shadow-sm")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+              )}
+            >
+              {t.tabHistory}
             </button>
           </nav>
           
@@ -627,20 +644,72 @@ export default function App() {
               </button>
             </div>
 
-            <button
-              onClick={() => setIsProfileOpen(true)}
-              className={cn(
-                "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all cursor-pointer overflow-hidden",
-                darkMode ? "border-white/10 hover:border-white/30 bg-white/5" : "border-black/5 hover:border-black/20 bg-black/5"
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all cursor-pointer overflow-hidden",
+                  darkMode ? "border-white/10 hover:border-white/30 bg-white/5" : "border-black/5 hover:border-black/20 bg-black/5"
+                )}
+                title="Profile"
+              >
+                {auth.currentUser?.photoURL ? (
+                  <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <UserIcon size={14} className={darkMode ? "text-white/70" : "text-black/50"} />
+                )}
+              </button>
+              
+              {showProfileMenu && (
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowProfileMenu(false)}
+                />
               )}
-              title="Profile"
-            >
-              {auth.currentUser?.photoURL ? (
-                <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <UserIcon size={14} className={darkMode ? "text-white/70" : "text-black/50"} />
-              )}
-            </button>
+              <AnimatePresence>
+                {showProfileMenu && (
+                    <motion.div
+                      key="profile-menu"
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className={cn(
+                        "absolute right-0 top-12 w-48 rounded-2xl shadow-xl border overflow-hidden z-50",
+                        darkMode ? "bg-[#111111] border-white/10" : "bg-white border-black/5"
+                      )}
+                    >
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setIsProfileOpen(true);
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors",
+                          darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
+                        )}
+                      >
+                        <UserIcon size={16} />
+                        Profile
+                      </button>
+                      <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          auth.signOut();
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors",
+                          darkMode ? "hover:bg-red-500/10 text-red-400" : "hover:bg-red-50 text-red-600"
+                        )}
+                      >
+                        <LogOut size={16} />
+                        Sign out
+                      </button>
+                    </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </header>
@@ -726,7 +795,14 @@ export default function App() {
               <div className={cn("h-2 w-full rounded-full overflow-hidden", darkMode ? "bg-white/10" : "bg-gray-100")}>
                  <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(metrics || latestHistoryEntry) ? goalProgress.percent : 0}%` }} />
               </div>
-              <div className="text-[10px] text-gray-500 font-bold mt-1">Goal: {(metrics || latestHistoryEntry) ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</div>
+              <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold mt-1">
+                <span>Goal: {(metrics || latestHistoryEntry) ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</span>
+                {(metrics || latestHistoryEntry) && goalProgress.daysRemaining !== null && (
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight">
+                    {goalProgress.daysRemaining > 0 ? (lang === 'bn' ? `${formatNum(goalProgress.daysRemaining)} দিন` : `${goalProgress.daysRemaining} days`) : (lang === 'bn' ? 'শেষ' : 'Ended')}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -834,7 +910,7 @@ export default function App() {
                          </div>
                          <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t.bodyFat}</div>
-                           <div className="text-lg font-black text-amber-500">{formatNum(metrics.bodyFat.toFixed(1))}%</div>
+                           <div className="text-lg font-black text-amber-500">{metrics.bodyFat > 0 ? `${formatNum(metrics.bodyFat.toFixed(1))}%` : '--'}</div>
                          </div>
                          <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
@@ -861,6 +937,9 @@ export default function App() {
         {/* Goals */}
         <Goals darkMode={darkMode} unit={unit} currentWeight={metricData.weight} currentBodyFat={metrics?.bodyFat} lang={lang} onGoalUpdate={() => setHistoryRefreshTrigger(prev => prev + 1)} />
 
+        {/* Quick Steps */}
+        <QuickSteps darkMode={darkMode} lang={lang} onSave={() => setHistoryRefreshTrigger(prev => prev + 1)} />
+        
       </main>
 
       {/* Footer */}
@@ -985,18 +1064,6 @@ export default function App() {
           </button>
           
           <button 
-            id="tab_groceries"
-            onClick={() => setActiveTab('groceries')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
-            )}
-          >
-            <ShoppingBag size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabHistory}</span>
-          </button>
-
-          <button 
             id="tab_breathing"
             onClick={() => setActiveTab('breathing')}
             className={cn(
@@ -1006,6 +1073,18 @@ export default function App() {
           >
             <Wind size={18} />
             <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabBreathe}</span>
+          </button>
+
+          <button 
+            id="tab_groceries"
+            onClick={() => setActiveTab('groceries')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
+              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <ShoppingBag size={18} />
+            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabHistory}</span>
           </button>
         </div>
       </div>

@@ -78,13 +78,11 @@ export function calculateBodyFat(data: BodyData): number {
       }
     }
   } catch (e) {
-    console.warn("Navy formula error, falling back to BMI: ", e);
+    console.warn("Navy formula error: ", e);
   }
 
-  // BMI-based body fat calculation (fallback)
-  const genderFactor = gender === 'male' ? 1 : 0;
-  const bodyFat = (1.20 * bmi) + (0.23 * age) - (10.8 * genderFactor) - 5.4;
-  return Math.max(2, Math.min(60, bodyFat || 0));
+  // If no valid data is inputted for Navy formula, return 0
+  return 0;
 }
 
 export function calculateIdealWeight(height: number, gender: Gender): { kg: number; lb: number } {

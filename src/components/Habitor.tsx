@@ -678,7 +678,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
       {/* Progress Counter & Bar Header (Matching Screenshot with reduced margins) */}
       <div className={cn(
-        "p-2.5 sm:p-3 rounded-2xl border space-y-1.5 transition-all my-1",
+        "p-2.5 sm:p-3 rounded-2xl border space-y-1.5 transition-all mb-4",
         darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
       )}>
         <div className="flex items-center justify-between text-xs font-bold">

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Scale, Activity, TrendingDown, TrendingUp, Minus, Trash2, History as HistoryIcon
+import { Calendar, Scale, Activity, TrendingDown, TrendingUp, Minus, Trash2, History as HistoryIcon, Eye
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import ViewAllHistoryModal from './ViewAllHistoryModal';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -19,6 +20,12 @@ interface MetricEntry {
   bodyFat: number;
 }
 
+interface StepEntry {
+  id: string | number;
+  date: string;
+  steps: number;
+}
+
 interface HistoryProps {
   darkMode: boolean;
   unit: 'metric' | 'imperial';
@@ -29,8 +36,9 @@ interface HistoryProps {
 
 export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, lang = 'en' }: HistoryProps) {
   const [history, setHistory] = useState<MetricEntry[]>([]);
+  const [stepsHistory, setStepsHistory] = useState<StepEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
+  const [showAllModal, setShowAllModal] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
 
   const formatNum = (num: number | string | undefined | null) => {
@@ -53,14 +61,23 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     setIsLoading(true);
     try {
       let data = null;
+      let stepsData = null;
       const user = auth.currentUser;
       
       if (user) {
         try {
+          // Fetch weight history
           const docRef = doc(db, 'users', user.uid, 'appData', 'history');
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             data = docSnap.data().history;
+          }
+          
+          // Fetch steps history
+          const stepsDocRef = doc(db, 'users', user.uid);
+          const stepsDocSnap = await getDoc(stepsDocRef);
+          if (stepsDocSnap.exists()) {
+            stepsData = stepsDocSnap.data().stepsHistory;
           }
         } catch (e) {}
       }
@@ -69,14 +86,25 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
         const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
         data = localData;
       }
+      if (!stepsData) {
+        const localSteps = JSON.parse(localStorage.getItem('ratbod_steps_history') || '[]');
+        stepsData = localSteps;
+      }
       
       const sorted = data.sort((a: any, b: any) => 
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setHistory(sorted);
+      
+      const sortedSteps = stepsData.sort((a: any, b: any) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setStepsHistory(sortedSteps);
+      
     } catch (error) {
       console.error('Failed to fetch history:', error);
       setHistory([]);
+      setStepsHistory([]);
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +137,38 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
         : 'Failed to delete measurement. Please try again.';
       alert(errMsg);
       setDeleteConfirmId(null);
+    }
+  };
+
+  const deleteStep = async (id: string | number) => {
+    try {
+      let data = stepsHistory.filter((entry: StepEntry) => entry.id !== id);
+      localStorage.setItem('ratbod_steps_history', JSON.stringify(data));
+      
+      const user = auth.currentUser;
+      if (user) {
+        await setDoc(doc(db, 'users', user.uid), { stepsHistory: data }, { merge: true }).catch(e => {});
+      }
+      
+      fetchHistory();
+    } catch (error) {
+      console.error('Failed to delete steps:', error);
+    }
+  };
+
+  const deleteWeight = async (id: string | number) => {
+    try {
+      let data = history.filter((entry: MetricEntry) => entry.id !== id);
+      localStorage.setItem('ratbod_history', JSON.stringify(data));
+      
+      const user = auth.currentUser;
+      if (user) {
+        await setDoc(doc(db, 'users', user.uid, 'appData', 'history'), { history: data }, { merge: true }).catch(e => {});
+      }
+      
+      fetchHistory();
+    } catch (error) {
+      console.error('Failed to delete weight:', error);
     }
   };
 
@@ -166,21 +226,17 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
           </span>
         </div>
         
-        {history.length > 5 && (
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className={cn("text-xs font-bold transition-all cursor-pointer flex items-center gap-1", darkMode ? "text-emerald-500 hover:text-emerald-400" : "text-emerald-600 hover:text-emerald-500")}
-          >
-            {showAll 
-              ? (lang === 'bn' ? 'কম দেখুন' : 'Show Less') 
-              : (lang === 'bn' ? 'সব দেখুন' : 'View All')} 
-            {showAll ? '↑' : '↓'}
-          </button>
-        )}
+        <button
+          onClick={() => setShowAllModal(true)}
+          className={cn("text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-full", darkMode ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100")}
+        >
+          <Eye size={14} />
+          {lang === 'bn' ? 'সব দেখুন' : 'View All'}
+        </button>
       </div>
 
       <div className="space-y-2">
-        {(showAll ? history : history.slice(0, 5)).map((entry, idx) => {
+        {history.slice(0, 4).map((entry, idx) => {
           const index = history.findIndex(h => h.id === entry.id);
           const prevEntry = history[index + 1];
           const weightDiff = prevEntry ? entry.weight - prevEntry.weight : 0;
@@ -252,7 +308,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                      <Activity size={10} /> {lang === 'bn' ? 'শরীরের চর্বি' : 'BODY FAT'}
                    </div>
                    <div className={cn("text-sm font-black", darkMode ? "text-white" : "text-gray-900")}>
-                     {formatNum(entry.bodyFat.toFixed(1))}%
+                     {entry.bodyFat > 0 ? `${formatNum(entry.bodyFat.toFixed(1))}%` : '--'}
                    </div>
                 </div>
               </div>
@@ -260,6 +316,20 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
           );
         })}
       </div>
+      
+      {showAllModal && (
+        <ViewAllHistoryModal
+          darkMode={darkMode}
+          unit={unit}
+          lang={lang}
+          onClose={() => setShowAllModal(false)}
+          weightHistory={history}
+          stepsHistory={stepsHistory}
+          onDeleteWeight={deleteWeight}
+          onDeleteStep={deleteStep}
+        />
+      )}
+
       {deleteConfirmId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div 

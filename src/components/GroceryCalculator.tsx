@@ -593,6 +593,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
             <AnimatePresence mode="wait">
               {currentCalcPrice > 0 && (
                 <motion.div
+                  key="calc-price"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
@@ -671,6 +672,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
             <AnimatePresence initial={false}>
               {items.length === 0 ? (
                 <motion.div
+                  key="empty-state"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
