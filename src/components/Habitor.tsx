@@ -796,7 +796,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                     <div className="flex items-center gap-1.5">
                       <h3 className={cn(
                         "text-xs sm:text-sm font-bold tracking-tight truncate transition-all",
-                        isCompleted ? "line-through opacity-60 text-emerald-400 dark:text-emerald-300" : ""
+                        isCompleted ? "line-through opacity-80 text-[#32CD32]" : ""
                       )}>
                         {habit.title}
                       </h3>
@@ -805,7 +805,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                     {habit.subtitle && (
                       <p className={cn(
                         "text-[10px] sm:text-xs font-medium truncate mt-0.5",
-                        isCompleted ? "opacity-50 text-emerald-300/70" : "text-gray-400 dark:text-gray-400"
+                        isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
                       )}>
                         {habit.subtitle}
                       </p>
@@ -820,7 +820,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                   className={cn(
                     "w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer shrink-0",
                     isCompleted
-                      ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105"
+                      ? "bg-[#32CD32] border-[#32CD32] text-white shadow-xl shadow-[#32CD32]/50 scale-110 ring-4 ring-[#32CD32]/20"
                       : (darkMode
                           ? "border-gray-600 hover:border-gray-400 bg-white/5"
                           : "border-gray-300 hover:border-gray-400 bg-gray-50")

@@ -25,7 +25,7 @@ import {
   Wind,
   Droplet,
   HeartPulse,
-  Heart,
+  Heart, Zap, Flame,
   Flame,
   Calendar,
   Target,
@@ -327,10 +327,7 @@ export default function App() {
 
     setHistoryRefreshTrigger(prev => prev + 1);
     
-    // Custom logic to show alert, switch tab, and reset quick measurement fields
-    
-    
-    // Reset quick measurement fields
+    // Reset quick measurement fields after saving
     setWeight('');
     setWaist('');
     setNeck('');
@@ -414,8 +411,8 @@ export default function App() {
       history = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
     } catch (e) {}
     
-    let cw = parseFloat(weight) || 0;
-    if (!cw && history.length > 0) {
+    let cw = 0;
+    if (history.length > 0) {
       cw = unit === 'metric' ? history[history.length - 1].weight : history[history.length - 1].weight * 2.20462;
     }
         let goalData = null;
@@ -450,7 +447,7 @@ export default function App() {
       
       if (history.length > 1) {
         // The one before the current (latest saved vs current)
-        previousWeight = unit === 'metric' ? history[history.length - 1].weight : history[history.length - 1].weight * 2.20462;
+        previousWeight = unit === 'metric' ? history[history.length - 2].weight : history[history.length - 2].weight * 2.20462;
       } else {
         previousWeight = initialWeight;
       }
@@ -518,15 +515,56 @@ export default function App() {
     return null;
   }, [historyRefreshTrigger]);
 
-  const displayWeight = metricData.weight || (latestHistoryEntry ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) : 0);
-  const displayBmi = metrics ? metrics.bmi : (latestHistoryEntry ? latestHistoryEntry.bmi : null);
-  const displayCategory = metrics ? metrics.category : (latestHistoryEntry ? getBMICategory(latestHistoryEntry.bmi) : null);
+  const dashboardMetrics = useMemo(() => {
+    if (!latestHistoryEntry || !metricData.height || !metricData.age) return null;
+    
+    // Create a body data object strictly from the latest saved entry and static profile
+    const savedData: BodyData = {
+      ...metricData,
+      weight: latestHistoryEntry.weight, 
+      // For a completely accurate Body Fat, we should ideally use saved waist/neck/hip, but since they aren't in history, we fall back to metricData or assume the body fat in history is the source of truth.
+    };
+
+    const bmr = calculateBMR(savedData);
+    const tdee = calculateTDEE(bmr, savedData.activityLevel);
+    const idealWeight = calculateIdealWeight(savedData.height, savedData.gender);
+    const idealFatRange = getIdealBodyFatRange(savedData.gender, savedData.age);
+
+    const kgDiff = savedData.weight - idealWeight.kg;
+    const lbDiff = (savedData.weight * 2.20462) - idealWeight.lb;
+    
+    let type: 'lose' | 'gain' | 'maintain' = 'maintain';
+    if (Math.abs(kgDiff) < 0.1) type = 'maintain';
+    else if (kgDiff > 0) type = 'lose';
+    else type = 'gain';
+
+    return {
+      bmi: latestHistoryEntry.bmi,
+      bmr,
+      tdee,
+      bodyFat: latestHistoryEntry.bodyFat,
+      idealWeight,
+      idealFatRange,
+      weightDiff: {
+        kg: Math.abs(kgDiff),
+        lb: Math.abs(lbDiff),
+        type
+      },
+      category: getBMICategory(latestHistoryEntry.bmi)
+    };
+  }, [latestHistoryEntry, metricData]);
+
+  const displayWeight = latestHistoryEntry ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) : 0;
+  const displayBmi = latestHistoryEntry ? latestHistoryEntry.bmi : null;
+  const displayCategory = latestHistoryEntry ? getBMICategory(latestHistoryEntry.bmi) : null;
 
   return (
     <>
-    <div className={cn(
+    <div 
+      style={{ colorScheme: darkMode ? 'dark' : 'light' }}
+      className={cn(
       "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden pb-24 md:pb-0",
-      darkMode ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
+      darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
       <header className="sticky top-4 z-50 px-4 sm:px-6 transition-all duration-300">
@@ -753,21 +791,21 @@ export default function App() {
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
-            <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-gray-500">
+            <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               {lang === 'bn' ? 'সর্বশেষ এন্ট্রি' : 'Latest Entry'} <Calendar size={14} />
             </div>
             <div>
               <div className={cn("text-2xl font-black", darkMode ? "text-white" : "text-gray-900")}>
-                {displayWeight ? formatNum(displayWeight) : '--'} <span className="text-base font-bold text-gray-500">{unit === 'metric' ? 'kg' : 'lb'}</span>
+                {displayWeight ? formatNum(displayWeight) : '--'} <span className="text-base font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? 'kg' : 'lb'}</span>
               </div>
-              <div className="text-xs font-bold text-gray-500 mt-1">
+              <div className="text-xs font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {displayWeight ? (lang === 'bn' ? 'আজ' : 'Today') : (lang === 'bn' ? 'কোনো ডেটা নেই' : 'No data')}
               </div>
             </div>
           </div>
 
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
-            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-500">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               <div className="flex items-center gap-1"><Heart size={12} className="text-rose-500" />{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</div> 
               <div className={cn("w-2.5 h-2.5 rounded-full", displayCategory ? (displayCategory === 'Normal' ? "bg-emerald-500" : (displayCategory === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
             </div>
@@ -775,29 +813,29 @@ export default function App() {
               <div className={cn("text-xl font-black capitalize", darkMode ? "text-white" : "text-gray-900")}>
                 {displayCategory ? translateCategory(displayCategory) : '--'}
               </div>
-              <div className="text-xs font-bold text-gray-500 mt-1">
+              <div className="text-xs font-bold text-gray-900 dark:text-gray-100 mt-1">
                 BMI: {displayBmi ? formatNum(displayBmi.toFixed(1)) : '--'}
               </div>
             </div>
           </div>
 
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28 col-span-2 md:col-span-1", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
-             <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-gray-500">
+             <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               {lang === 'bn' ? 'লক্ষ্যের অগ্রগতি' : 'Goal Progress'} <Target size={14} className="text-emerald-500" />
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-2xl font-black text-emerald-500">
-                {(metrics || latestHistoryEntry) ? `${goalProgress.percent}%` : '--'}
-                {(metrics || latestHistoryEntry) && goalProgress.trend === 'down' && <TrendingDown size={20} className="text-emerald-500" />}
-                {(metrics || latestHistoryEntry) && goalProgress.trend === 'up' && <TrendingUp size={20} className="text-emerald-500" />}
-                {(metrics || latestHistoryEntry) && goalProgress.trend === 'none' && <Minus size={20} className="text-emerald-500" />}
+                {latestHistoryEntry ? `${goalProgress.percent}%` : '--'}
+                {latestHistoryEntry && goalProgress.trend === 'down' && <TrendingDown size={20} className="text-emerald-500" />}
+                {latestHistoryEntry && goalProgress.trend === 'up' && <TrendingUp size={20} className="text-emerald-500" />}
+                {latestHistoryEntry && goalProgress.trend === 'none' && <Minus size={20} className="text-emerald-500" />}
               </div>
               <div className={cn("h-2 w-full rounded-full overflow-hidden", darkMode ? "bg-white/10" : "bg-gray-100")}>
-                 <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(metrics || latestHistoryEntry) ? goalProgress.percent : 0}%` }} />
+                 <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${latestHistoryEntry ? goalProgress.percent : 0}%` }} />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold mt-1">
-                <span>Goal: {(metrics || latestHistoryEntry) ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</span>
-                {(metrics || latestHistoryEntry) && goalProgress.daysRemaining !== null && (
+              <div className="flex items-center justify-between text-[10px] text-gray-900 dark:text-gray-100 font-bold mt-1">
+                <span>Goal: {latestHistoryEntry ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</span>
+                {latestHistoryEntry && goalProgress.daysRemaining !== null && (
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight">
                     {goalProgress.daysRemaining > 0 ? (lang === 'bn' ? `${formatNum(goalProgress.daysRemaining)} দিন` : `${goalProgress.daysRemaining} days`) : (lang === 'bn' ? 'শেষ' : 'Ended')}
                   </span>
@@ -817,7 +855,7 @@ export default function App() {
             {/* Inputs */}
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.weight} *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.weight} *</label>
                 <div className="relative">
                   <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'kg' : 'lbs'}</span>
@@ -826,34 +864,37 @@ export default function App() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.waist} *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.waist} *</label>
                   <div className="relative">
                     <input type="number" value={waist} onChange={(e) => setWaist(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.neck} *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.neck} *</label>
                   <div className="relative">
                     <input type="number" value={neck} onChange={(e) => setNeck(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                   </div>
                 </div>
               </div>
               
               {gender === 'female' && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.hip} (Female) *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.hip} (Female) *</label>
                   <div className="relative">
                     <input type="number" value={hip} onChange={(e) => setHip(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t.activityLevel} *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.activityLevel} *</label>
                 <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")}>
                   {activityOptions.map(opt => <option key={opt.value} value={opt.value} className={darkMode ? "bg-[#0F0F0F]" : "bg-white"}>{opt.label}</option>)}
                 </select>
-                <p className="text-[10px] text-gray-500 mt-1">{activityOptions.find(o => o.value === activityLevel)?.desc}</p>
+                <p className="text-[10px] text-gray-900 dark:text-gray-100 mt-1">{activityOptions.find(o => o.value === activityLevel)?.desc}</p>
               </div>
             </div>
 
@@ -896,25 +937,37 @@ export default function App() {
                 isAnalyticsOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
               )}>
                 <div className={cn("p-6 flex flex-col items-center justify-center text-center transition-all", darkMode ? "bg-[#0F0F0F]" : "bg-white")}>
-                  {metrics ? (
+                  {dashboardMetrics ? (
                      <div className="w-full space-y-4">
                        <Activity size={32} className="mx-auto text-emerald-500" />
-                       <div className="grid grid-cols-2 gap-4 mt-4 text-left">
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
-                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
-                           <div className="text-lg font-black text-primary">{formatNum(metrics.bmr)} <span className="text-[10px] text-gray-500">kcal</span></div>
+                       <div className="grid grid-cols-2 gap-4 mt-2 text-left">
+                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                           <div className="absolute -right-4 -top-4 opacity-5">
+                             <Activity size={80} />
+                           </div>
+                           <div className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1 flex items-center gap-1.5"><Activity size={14}/> {lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
+                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmr)} <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
                          </div>
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
-                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
-                           <div className="text-lg font-black text-blue-500">{formatNum(metrics.tdee)} <span className="text-[10px] text-gray-500">kcal</span></div>
+                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                           <div className="absolute -right-4 -top-4 opacity-5">
+                             <Zap size={80} />
+                           </div>
+                           <div className="text-[11px] font-black uppercase tracking-widest text-blue-500 mb-1 flex items-center gap-1.5"><Zap size={14}/> {lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
+                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.tdee)} <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
                          </div>
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
-                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t.bodyFat}</div>
-                           <div className="text-lg font-black text-amber-500">{metrics.bodyFat > 0 ? `${formatNum(metrics.bodyFat.toFixed(1))}%` : '--'}</div>
+                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                           <div className="absolute -right-4 -top-4 opacity-5">
+                             <Flame size={80} />
+                           </div>
+                           <div className="text-[11px] font-black uppercase tracking-widest text-amber-500 mb-1 flex items-center gap-1.5"><Flame size={14}/> {t.bodyFat}</div>
+                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{dashboardMetrics.bodyFat > 0 ? `${formatNum(dashboardMetrics.bodyFat.toFixed(1))}` : '--'} <span className="text-base font-bold text-gray-500 dark:text-gray-400">%</span></div>
                          </div>
-                         <div className={cn("p-3 rounded-xl", darkMode ? "bg-black/40" : "bg-gray-50 shadow-sm border border-transparent")}>
-                           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
-                           <div className="text-lg font-black text-rose-500">{formatNum(metrics.bmi.toFixed(1))}</div>
+                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                           <div className="absolute -right-4 -top-4 opacity-5">
+                             <Heart size={80} />
+                           </div>
+                           <div className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-1 flex items-center gap-1.5"><Heart size={14}/> {lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
+                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmi.toFixed(1))}</div>
                          </div>
                        </div>
                      </div>
@@ -932,10 +985,10 @@ export default function App() {
         </div>
 
         {/* History */}
-        <History darkMode={darkMode} unit={unit} refreshTrigger={historyRefreshTrigger} isLoggedIn={!!authUser} lang={lang} />
+        <History darkMode={darkMode} unit={unit} refreshTrigger={historyRefreshTrigger} isLoggedIn={!!authUser} lang={lang} onUpdate={() => setHistoryRefreshTrigger(prev => prev + 1)} />
 
         {/* Goals */}
-        <Goals darkMode={darkMode} unit={unit} currentWeight={metricData.weight} currentBodyFat={metrics?.bodyFat} lang={lang} onGoalUpdate={() => setHistoryRefreshTrigger(prev => prev + 1)} />
+        <Goals darkMode={darkMode} unit={unit} currentWeight={latestHistoryEntry?.weight || metricData.weight} currentBodyFat={dashboardMetrics?.bodyFat || metrics?.bodyFat} lang={lang} onGoalUpdate={() => setHistoryRefreshTrigger(prev => prev + 1)} />
 
         {/* Quick Steps */}
         <QuickSteps darkMode={darkMode} lang={lang} onSave={() => setHistoryRefreshTrigger(prev => prev + 1)} />
@@ -949,9 +1002,9 @@ export default function App() {
       )}>
         <div className="flex flex-col items-center justify-center gap-3 text-center">
           {/* Logo */}
-          <div className="flex items-center gap-1.5 opacity-60">
-            <Activity size={14} className="text-[#b4a8a8]" />
-            <span className="text-xs font-black uppercase tracking-widest text-[#b4a8a8]">RATBOD</span>
+          <div className="flex items-center gap-1.5">
+            <Activity size={14} className="text-gray-700 dark:text-gray-300" />
+            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATBOD</span>
           </div>
 
           {/* UNIT Switcher Pill (Replaces LANG) */}
@@ -997,7 +1050,7 @@ export default function App() {
           {/* Copyright */}
           <p className={cn(
             "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
-            darkMode ? "text-gray-500" : "text-gray-800"
+            darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
           )}>
             © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
           </p>

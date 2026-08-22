@@ -518,7 +518,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         )}>
           {/* Header: Consumed Label + Percentage Badge */}
           <div className="w-full flex items-center justify-between border-b pb-2.5 border-gray-200/20 dark:border-white/5">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-400 flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
               <Droplet size={15} className="text-blue-500 fill-blue-500/20" />
               {labels.consumed}
             </span>
@@ -553,14 +553,16 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
               {/* Glass Tumbler Container with Liquid Water Fill (Display Only) */}
               <div className={cn(
-                "relative w-28 h-36 sm:w-32 sm:h-40 rounded-b-[2.2rem] rounded-t-md border-x-4 border-b-4 border-t-2 border-blue-400/80 dark:border-blue-500/70 flex items-center justify-center shadow-xl shadow-blue-500/20 overflow-hidden transition-all shrink-0",
-                darkMode ? "bg-slate-950/90" : "bg-blue-50/90"
+                "relative w-28 h-36 sm:w-32 sm:h-40 rounded-b-[2.2rem] rounded-t-md border-x-4 border-b-4 border-t-2 flex items-center justify-center shadow-xl overflow-hidden transition-all shrink-0",
+                totalConsumedMl >= goalMl 
+                  ? "border-[#32CD32]/80 shadow-[#32CD32]/20 " + (darkMode ? "bg-slate-950/90" : "bg-emerald-50/90")
+                  : "border-blue-400/80 dark:border-blue-500/70 shadow-blue-500/20 " + (darkMode ? "bg-slate-950/90" : "bg-blue-50/90")
               )}>
                 {/* Vertical Glass Shine Reflection */}
                 <div className="absolute left-2 top-2 bottom-4 w-1.5 bg-gradient-to-b from-white/50 via-white/20 to-transparent rounded-full z-20 pointer-events-none" />
 
                 {/* Measurement Notch Lines on Right Side */}
-                <div className="absolute right-1.5 top-4 bottom-4 flex flex-col justify-between z-20 pointer-events-none opacity-50">
+                <div className={cn("absolute right-1.5 top-4 bottom-4 flex flex-col justify-between z-20 pointer-events-none opacity-50", totalConsumedMl >= goalMl ? "hidden" : "")}>
                   <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
                   <div className="w-2.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
                   <div className="w-1.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
@@ -569,7 +571,11 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                 {/* Liquid Water Level Fill (Sea Water Gradient) */}
                 <motion.div
-                  className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-blue-800 via-blue-600 to-sky-400 pointer-events-none"
+                  className={cn("absolute bottom-0 left-0 right-0 w-full pointer-events-none",
+                    totalConsumedMl >= goalMl
+                      ? "bg-gradient-to-t from-emerald-800 via-[#32CD32] to-emerald-400"
+                      : "bg-gradient-to-t from-blue-800 via-blue-600 to-sky-400"
+                  )}
                   initial={{ height: 0 }}
                   animate={{ height: `${Math.min(100, progressPercent)}%` }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
@@ -580,8 +586,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                 {/* Center Display Overlay */}
                 <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md text-blue-600 dark:text-blue-200 flex items-center justify-center mb-0.5 shadow-2xs">
-                    <Droplet size={13} className="fill-current animate-pulse" />
+                  <div className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md flex items-center justify-center mb-0.5 shadow-2xs", totalConsumedMl >= goalMl ? "text-emerald-700 dark:text-emerald-200" : "text-blue-600 dark:text-blue-200")}>
+                    {totalConsumedMl >= goalMl ? <Check size={13} className="animate-in zoom-in-50" strokeWidth={3} /> : <Droplet size={13} className="fill-current animate-pulse" />}
                   </div>
                   <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
                     {formatNum(totalGlasses, 1)}
@@ -618,7 +624,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             </div>
 
             {/* Hydration Status Label */}
-            <span className="text-[10px] text-gray-700 dark:text-gray-400 mt-2 font-medium flex items-center gap-1">
+            <span className="text-[10px] text-gray-900 dark:text-white mt-2 font-medium flex items-center gap-1">
               <Sparkles size={11} className="text-blue-400 animate-pulse" />
               {lang === 'bn' ? 'দৈনিক হাইড্রেশন গ্লাস' : 'Daily Hydration Glass'}
             </span>
@@ -630,7 +636,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               "p-2 rounded-xl border flex flex-col items-center justify-center",
               darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
             )}>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">
                 {lang === 'bn' ? 'পান করা হয়েছে' : 'Consumed'}
               </span>
               <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
@@ -642,7 +648,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               "p-2 rounded-xl border flex flex-col items-center justify-center",
               darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
             )}>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">
                 {lang === 'bn' ? 'বাকি আছে' : 'Remaining'}
               </span>
               <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 mt-0.5">
@@ -743,7 +749,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                     darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                   )}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-700 dark:text-gray-400">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-900 dark:text-white">
                   {labels.mlUnit}
                 </span>
               </div>
@@ -791,134 +797,6 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         </div>
       </div>
 
-      {/* Reminder & Timer Card placed at TOP */}
-      <div className={cn(
-        "p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3",
-        darkMode ? "bg-blue-950/30 border-blue-500/20" : "bg-blue-50/80 border-blue-200"
-      )}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
-              <Bell size={18} />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                {labels.reminderTitle}
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
-                  {lang === 'bn' ? 'টাইমার' : 'Timer'}
-                </span>
-              </h4>
-              <p className="text-[10px] text-gray-700 dark:text-gray-400 mt-0.5">
-                {reminderActive 
-                  ? (isTimerRunning 
-                      ? (lang === 'bn' ? 'টাইমার চালূ আছে - এলার্ম বাজবে' : 'Countdown active - Alarm on') 
-                      : labels.reminderActiveMsg) 
-                  : labels.reminderOffMsg}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              const nextState = !reminderActive;
-              setReminderActive(nextState);
-              if (!nextState) handleStopTimer();
-            }}
-            className={cn(
-              "w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0",
-              reminderActive ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
-            )}
-          >
-            <div className={cn(
-              "w-5 h-5 rounded-full bg-white transition-transform shadow-xs",
-              reminderActive ? "translate-x-5" : "translate-x-0"
-            )} />
-          </button>
-        </div>
-
-        {/* Manual Water Intake Timer Controls (When Reminder Active) */}
-        {reminderActive && (
-          <div className="pt-2 border-t border-blue-500/10 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400">
-                {lang === 'bn' ? 'পরবর্তী পানির সময় টাইমার:' : 'Set Upcoming Intake Timer:'}
-              </span>
-              {isTimerRunning && timerSecondsLeft !== null && (
-                <span className="text-xs font-black text-rose-500 dark:text-rose-400 animate-pulse font-mono bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
-                  ⏱️ {formatTimerDisplay(timerSecondsLeft)}
-                </span>
-              )}
-            </div>
-
-            {/* Preset Timer Buttons: 30 min, 45 min, 50 min, 90 min */}
-            <div className="grid grid-cols-4 gap-1.5">
-              {[30, 45, 50, 90].map((mins) => {
-                const isSelected = timerMinutes === mins && isTimerRunning;
-                return (
-                  <button
-                    key={mins}
-                    type="button"
-                    onClick={() => handleStartTimer(mins)}
-                    className={cn(
-                      "py-1.5 px-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer border text-center flex flex-col items-center justify-center",
-                      isSelected
-                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/30 scale-105"
-                        : (darkMode ? "bg-white/5 border-white/10 hover:bg-white/10 text-gray-300" : "bg-white border-blue-200 hover:bg-blue-100 text-gray-800")
-                    )}
-                    title={`Set alarm in ${mins} minutes`}
-                  >
-                    <span>{mins}m</span>
-                    <span className="text-[8px] font-medium opacity-80">{lang === 'bn' ? 'মিনিট' : 'min'}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Live Controls: Custom input or Reset Timer */}
-            <div className="flex items-center gap-2 pt-0.5">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  min="1"
-                  max="300"
-                  placeholder={lang === 'bn' ? 'পছন্দমতো মিনিট' : 'Custom mins'}
-                  value={customTimerInput}
-                  onChange={(e) => setCustomTimerInput(e.target.value)}
-                  className={cn(
-                    "w-full rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-blue-500 border font-bold",
-                    darkMode ? "bg-black/30 border-white/10 text-white" : "bg-white border-blue-200 text-gray-900"
-                  )}
-                />
-              </div>
-
-              <button
-                type="button"
-                disabled={!customTimerInput || parseInt(customTimerInput) <= 0}
-                onClick={() => {
-                  const val = parseInt(customTimerInput);
-                  if (val > 0) {
-                    handleStartTimer(val);
-                    setCustomTimerInput('');
-                  }
-                }}
-                className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
-              >
-                {lang === 'bn' ? 'শুরু' : 'Start'}
-              </button>
-
-              {isTimerRunning && (
-                <button
-                  type="button"
-                  onClick={handleStopTimer}
-                  className="px-2.5 py-1 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-500 text-xs font-bold transition-all cursor-pointer shrink-0 border border-red-500/30"
-                >
-                  {lang === 'bn' ? 'থামুন' : 'Stop'}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
       {/* Intake Logs & Reminder Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
         
@@ -963,7 +841,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
                           +{formatNum(item.amountMl)} {labels.mlUnit} ({formatNum(item.glasses, 1)} {labels.glassesUnit})
                         </span>
-                        <span className="text-[10px] text-gray-700 dark:text-gray-400 font-medium">
+                        <span className="text-[10px] text-gray-900 dark:text-white font-medium">
                           {item.timestamp}
                         </span>
                       </div>
@@ -971,7 +849,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                     <button
                       onClick={() => handleDeleteEntry(item.id)}
-                      className="p-1.5 rounded-lg text-gray-700 dark:text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-gray-900 dark:text-white hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                       title="Delete entry"
                     >
                       <Trash2 size={13} />
@@ -1045,7 +923,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <button
                   type="button"
                   onClick={() => setShowGoalModal(false)}
-                  className="p-1 rounded-lg text-gray-700 dark:text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                  className="p-1 rounded-lg text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-white cursor-pointer"
                 >
                   ✕
                 </button>
@@ -1053,7 +931,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
               {/* Scrollable Content Body */}
               <div className="overflow-y-auto space-y-4 pr-1 py-2 my-1 shrink text-xs">
-                <p className="text-xs text-gray-700 dark:text-gray-400">
+                <p className="text-xs text-gray-900 dark:text-white">
                   {labels.selectGoalTip}
                 </p>
 
@@ -1098,7 +976,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Number of Glasses */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-400">
+                      <label className="text-[11px] font-bold text-gray-900 dark:text-white">
                         {labels.customGlassesLabel}
                       </label>
                       <div className="relative">
@@ -1114,7 +992,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                             darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                           )}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-700 dark:text-gray-400">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-900 dark:text-white">
                           {labels.glassesUnit}
                         </span>
                       </div>
@@ -1122,7 +1000,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                     {/* Total Water Target (ml) */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-400">
+                      <label className="text-[11px] font-bold text-gray-900 dark:text-white">
                         {labels.customTotalMlLabel}
                       </label>
                       <div className="relative">
@@ -1137,7 +1015,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                             darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                           )}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-700 dark:text-gray-400">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-900 dark:text-white">
                           {labels.mlUnit}
                         </span>
                       </div>
@@ -1146,7 +1024,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                   {/* Glass Size / Volume */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700 dark:text-gray-400">
+                    <label className="text-[11px] font-bold text-gray-900 dark:text-white">
                       {labels.customGlassSizeLabel}
                     </label>
                     <div className="relative">
@@ -1161,7 +1039,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                           darkMode ? "bg-transparent border-gray-700 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                         )}
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-700 dark:text-gray-400">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-900 dark:text-white">
                         {labels.mlUnit} / glass
                       </span>
                     </div>
@@ -1225,7 +1103,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <h3 className="text-xl font-black text-blue-500 dark:text-blue-400 tracking-tight">
                   {lang === 'bn' ? '⏰ পানি পানের সময় হয়েছে!' : '⏰ Time to Drink Water!'}
                 </h3>
-                <p className="text-xs text-gray-700 dark:text-gray-400 font-medium">
+                <p className="text-xs text-gray-900 dark:text-white font-medium">
                   {lang === 'bn'
                     ? 'আপনার হাইড্রেশন টাইমার শেষ হয়েছে। এখনই এক গ্লাস পানি পান করুন ও সতেজ থাকুন!'
                     : 'Your hydration timer ended! Drink a glass of water now to stay hydrated and energized.'

@@ -32,9 +32,10 @@ interface HistoryProps {
   refreshTrigger?: number;
   isLoggedIn: boolean;
   lang?: string;
+  onUpdate?: () => void;
 }
 
-export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, lang = 'en' }: HistoryProps) {
+export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, lang = 'en', onUpdate }: HistoryProps) {
   const [history, setHistory] = useState<MetricEntry[]>([]);
   const [stepsHistory, setStepsHistory] = useState<StepEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +130,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
       
       // Refresh history
       fetchHistory();
+      if (onUpdate) onUpdate();
       setDeleteConfirmId(null);
     } catch (error) {
       console.error('Failed to delete entry:', error);
@@ -151,6 +153,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
       }
       
       fetchHistory();
+      if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to delete steps:', error);
     }
@@ -167,6 +170,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
       }
       
       fetchHistory();
+      if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to delete weight:', error);
     }

@@ -21,7 +21,10 @@ interface LandingPageProps {
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-blue-500/30 font-sans overflow-x-hidden">
+    <div 
+      style={{ colorScheme: 'dark' }}
+      className="dark min-h-screen bg-[#050505] text-white selection:bg-blue-500/30 font-sans overflow-x-hidden"
+    >
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">

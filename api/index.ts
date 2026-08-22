@@ -4,8 +4,6 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 
 console.log("Server starting up in offline mode...");
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 app.set("trust proxy", 1);
@@ -28,10 +26,11 @@ async function setupMiddlewares() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "..", "dist")));
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      if (fs.existsSync(path.join(__dirname, "..", "dist", "index.html"))) {
-        res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+      if (fs.existsSync(path.join(distPath, "index.html"))) {
+        res.sendFile(path.join(distPath, "index.html"));
       } else {
         res.status(404).send("Not Found");
       }
