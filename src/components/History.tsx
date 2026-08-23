@@ -42,12 +42,17 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
   const [showAllModal, setShowAllModal] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
 
-  const formatNum = (num: number | string | undefined | null) => {
-    if (num === undefined || num === null) return '';
-    const str = typeof num === 'number' ? num.toFixed(1) : num.toString();
-    let finalStr = str;
-    if (finalStr.endsWith('.0')) {
-      finalStr = finalStr.substring(0, finalStr.length - 2);
+  const formatNum = (num: number | string | undefined | null, maxDecimals = 2) => {
+    if (num === undefined || num === null || num === '') return '';
+    let finalStr = '';
+    if (typeof num === 'number') {
+      if (Number.isInteger(num)) {
+        finalStr = num.toString();
+      } else {
+        finalStr = parseFloat(num.toFixed(maxDecimals)).toString();
+      }
+    } else {
+      finalStr = num.toString();
     }
     if (lang !== 'bn') return finalStr;
     const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -273,10 +278,10 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                 </div>
                 
                 <div className="flex items-center gap-1.5">
-                  {Math.abs(weightDiff) > 0.05 ? (
+                  {Math.abs(weightDiff) > 0.001 ? (
                     <div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-black", weightDiff > 0 ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500")}>
                        {weightDiff > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                       {formatNum(Math.abs(displayDiff).toFixed(1))}
+                       {formatNum(Math.abs(displayDiff))}
                     </div>
                   ) : (
                     <div className={cn("px-1.5 py-0.5 rounded-lg text-[10px] font-black flex items-center justify-center", darkMode ? "bg-white/5 text-gray-500" : "bg-gray-100 text-gray-400")}>
@@ -296,7 +301,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                      <Scale size={10} /> {lang === 'bn' ? 'ওজন' : 'WEIGHT'}
                    </div>
                    <div className={cn("text-sm font-black", darkMode ? "text-white" : "text-gray-900")}>
-                     {unit === 'metric' ? formatNum(entry.weight) : formatNum((entry.weight * 2.20462).toFixed(1))} <span className="text-[9px] font-bold text-gray-500">{unit === 'metric' ? 'kg' : 'lb'}</span>
+                     {unit === 'metric' ? formatNum(entry.weight) : formatNum(entry.weight * 2.20462)} <span className="text-[9px] font-bold text-gray-500">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                    </div>
                 </div>
                 <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50")}>

@@ -36,12 +36,17 @@ interface ViewAllHistoryModalProps {
 export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClose, weightHistory, stepsHistory, onDeleteWeight, onDeleteStep }: ViewAllHistoryModalProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'weight' | 'steps', id: string | number } | null>(null);
 
-  const formatNum = (num: number | string | undefined | null) => {
-    if (num === undefined || num === null) return '';
-    const str = typeof num === 'number' ? num.toFixed(1) : num.toString();
-    let finalStr = str;
-    if (finalStr.endsWith('.0')) {
-      finalStr = finalStr.substring(0, finalStr.length - 2);
+  const formatNum = (num: number | string | undefined | null, maxDecimals = 2) => {
+    if (num === undefined || num === null || num === '') return '';
+    let finalStr = '';
+    if (typeof num === 'number') {
+      if (Number.isInteger(num)) {
+        finalStr = num.toString();
+      } else {
+        finalStr = parseFloat(num.toFixed(maxDecimals)).toString();
+      }
+    } else {
+      finalStr = num.toString();
     }
     if (lang !== 'bn') return finalStr;
     const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -94,7 +99,7 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                         </span>
                         <div className="flex items-baseline gap-1">
                           <span className={cn("text-base sm:text-xl font-black", darkMode ? "text-white" : "text-gray-900")}>
-                            {formatNum(displayWeight.toFixed(1))}
+                            {formatNum(displayWeight)}
                           </span>
                           <span className="text-[9px] sm:text-[10px] font-bold text-gray-500">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                         </div>

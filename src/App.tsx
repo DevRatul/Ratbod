@@ -679,30 +679,23 @@ export default function App() {
   ], [t]);
 
   const dashboardMetrics = useMemo(() => {
-    if (!metricData.height || !metricData.age) return null;
-    const effectiveWeight = latestHistoryEntry ? latestHistoryEntry.weight : metricData.weight;
-    if (!effectiveWeight || effectiveWeight <= 0) return null;
+    if (!metricData.height || !metricData.age || !metricData.weight || metricData.weight <= 0) return null;
 
-    const savedData: BodyData = {
-      ...metricData,
-      weight: effectiveWeight,
-    };
+    const bmr = calculateBMR(metricData);
+    const tdee = calculateTDEE(bmr, metricData.activityLevel);
+    const idealWeight = calculateIdealWeight(metricData.height, metricData.gender);
+    const idealFatRange = getIdealBodyFatRange(metricData.gender, metricData.age);
 
-    const bmr = calculateBMR(savedData);
-    const tdee = calculateTDEE(bmr, savedData.activityLevel);
-    const idealWeight = calculateIdealWeight(savedData.height, savedData.gender);
-    const idealFatRange = getIdealBodyFatRange(savedData.gender, savedData.age);
-
-    const kgDiff = savedData.weight - idealWeight.kg;
-    const lbDiff = (savedData.weight * 2.20462) - idealWeight.lb;
+    const kgDiff = metricData.weight - idealWeight.kg;
+    const lbDiff = (metricData.weight * 2.20462) - idealWeight.lb;
     
     let type: 'lose' | 'gain' | 'maintain' = 'maintain';
     if (Math.abs(kgDiff) < 0.1) type = 'maintain';
     else if (kgDiff > 0) type = 'lose';
     else type = 'gain';
 
-    const bmiVal = calculateBMI(savedData.weight, savedData.height);
-    const bodyFatVal = latestHistoryEntry?.bodyFat || calculateBodyFat(savedData) || 0;
+    const bmiVal = calculateBMI(metricData.weight, metricData.height);
+    const bodyFatVal = calculateBodyFat(metricData) || 0;
 
     return {
       bmi: bmiVal,
@@ -718,7 +711,7 @@ export default function App() {
       },
       category: getBMICategory(bmiVal)
     };
-  }, [latestHistoryEntry, metricData]);
+  }, [metricData]);
 
   const displayWeight = latestHistoryEntry 
     ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) 
@@ -822,14 +815,14 @@ export default function App() {
     <div 
       style={{ colorScheme: darkMode ? 'dark' : 'light' }}
       className={cn(
-      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-hidden pb-24 md:pb-0",
+      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-clip pb-24 md:pb-0",
       darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
-      <header className="sticky top-4 z-50 px-4 sm:px-6 transition-all duration-300">
+      <header className="sticky top-0 z-50 px-3 sm:px-6 py-2 transition-all duration-300">
         <div className={cn(
-          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-xl shadow-xl transition-colors duration-300",
-          darkMode ? "bg-[#0F0F0F]/80 border-white/10 shadow-black/40" : "bg-white/80 border-black/5 shadow-gray-200/50"
+          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition-colors duration-300",
+          darkMode ? "bg-[#0F0F0F]/85 border-white/15 shadow-black/60" : "bg-white/85 border-black/10 shadow-gray-300/60"
         )}>
           <button 
             type="button"
@@ -1053,14 +1046,18 @@ export default function App() {
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-32", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
-            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-              <span className="truncate">{lang === 'bn' ? 'সর্বশেষ এন্ট্রি' : 'Latest Entry'}</span>
-              <Calendar size={14} className="text-gray-400 shrink-0" />
+          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
+            {/* Iconic Watermark */}
+            <div className="absolute right-3 top-2 opacity-45 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+              <Scale size={51} />
             </div>
-            <div>
+
+            <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+              <span className="truncate">{lang === 'bn' ? 'সর্বশেষ এন্ট্রি' : 'Latest Entry'}</span>
+            </div>
+            <div className="relative z-10">
               <div className={cn("text-xl sm:text-2xl font-black", darkMode ? "text-white" : "text-gray-900")}>
-                {displayWeight !== null ? formatNum(displayWeight) : '--'} <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? 'kg' : 'lb'}</span>
+                {displayWeight !== null ? formatNum(displayWeight) : '--'} <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
               </div>
               <div className="text-[10px] sm:text-xs font-bold text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-1.5 truncate">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
@@ -1069,12 +1066,17 @@ export default function App() {
             </div>
           </div>
 
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-32", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
-            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-              <div className="flex items-center gap-1 truncate"><Heart size={12} className="text-rose-500 shrink-0" /><span className="truncate">{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</span></div> 
+          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
+            {/* Iconic Watermark */}
+            <div className="absolute right-3 top-2 opacity-45 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+              <Heart size={51} />
+            </div>
+
+            <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+              <span className="truncate">{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</span>
               <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", displayCategory ? (displayCategory === 'Normal' ? "bg-emerald-500" : (displayCategory === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
             </div>
-            <div>
+            <div className="relative z-10">
               <div className={cn("text-base sm:text-xl font-black capitalize truncate", darkMode ? "text-white" : "text-gray-900")}>
                 {displayCategory ? translateCategory(displayCategory) : (latestHistoryEntry ? (lang === 'bn' ? 'স্বাভাবিক' : 'Normal') : '--')}
               </div>
@@ -1084,12 +1086,16 @@ export default function App() {
             </div>
           </div>
 
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
-             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
+             {/* Iconic Watermark */}
+             <div className="absolute right-3 top-2 opacity-45 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+               <Target size={51} />
+             </div>
+
+             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               <span>{lang === 'bn' ? 'লক্ষ্যের অগ্রগতি' : 'Goal Progress'}</span>
-              <Target size={14} className="text-emerald-500" />
             </div>
-            <div className="space-y-1.5">
+            <div className="relative z-10 space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <span className={cn(
@@ -1099,7 +1105,7 @@ export default function App() {
                       : (goalProgress.percent < 0 ? "text-red-500" : "text-emerald-500")
                   )}>
                     {latestHistoryEntry 
-                      ? `${goalProgress.percent > 0 ? '+' : ''}${formatNum(goalProgress.percent)}%` 
+                      ? `${formatNum(goalProgress.percent)}%` 
                       : '--'}
                   </span>
                 </div>
@@ -1385,9 +1391,9 @@ export default function App() {
     </div>
 {/* Mobile Sticky Tab Navigation */}
       <div className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-lg transition-colors duration-300",
-        darkMode ? "bg-[#0F0F0F]/90 border-white/10 text-white" : "bg-white/90 border-black/5 text-gray-900",
-        "pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 px-6 shadow-2xl shadow-black/20"
+        "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+        darkMode ? "bg-[#0F0F0F]/85 border-white/15 text-white" : "bg-white/85 border-black/10 text-gray-900",
+        "pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 px-6 shadow-2xl shadow-black/40"
       )}>
         <div className="flex items-center justify-between">
           <button 
