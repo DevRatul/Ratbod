@@ -25,7 +25,8 @@ import {
   Wind,
   Droplet,
   HeartPulse,
-  Heart, Zap, Flame,
+  Heart, 
+  Zap, 
   Flame,
   Calendar,
   Target,
@@ -94,12 +95,34 @@ export default function App() {
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isIdealWeightOpen, setIsIdealWeightOpen] = useState(false);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+  const [historyList, setHistoryList] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
+  const [savedGoal, setSavedGoal] = useState<any>(() => {
+    try {
+      const g = localStorage.getItem('ratbod_goals');
+      return g ? JSON.parse(g) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [authUser, setAuthUser] = useState(auth.currentUser);
   const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>('water');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Persist activeTab to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ratbod_active_tab', activeTab);
+    } catch (e) {}
+  }, [activeTab]);
 
   // Load from Firestore (fallback to localStorage) on auth state change
   useEffect(() => {
@@ -109,6 +132,12 @@ export default function App() {
       let loadedFromDb = false;
       let readFailed = false;
       if (user) {
+        // Default to water section on login
+        setActiveTab('water');
+        try {
+          localStorage.setItem('ratbod_active_tab', 'water');
+        } catch (e) {}
+
         try {
           const docRef = doc(db, 'users', user.uid);
           const docSnap = await getDoc(docRef);
@@ -128,6 +157,22 @@ export default function App() {
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
             if (data.lang !== undefined) setLang(data.lang || 'en');
             loadedFromDb = true;
+
+            // Load history & goals from Firestore
+            try {
+              const histSnap = await getDoc(doc(db, 'users', user.uid, 'appData', 'history'));
+              if (histSnap.exists() && Array.isArray(histSnap.data().history)) {
+                setHistoryList(histSnap.data().history);
+                localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history));
+              }
+              const goalSnap = await getDoc(doc(db, 'users', user.uid, 'appData', 'goals'));
+              if (goalSnap.exists() && goalSnap.data().goal) {
+                setSavedGoal(goalSnap.data().goal);
+                localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal));
+              }
+            } catch (err) {
+              console.error('Error loading history/goals from db:', err);
+            }
           }
         } catch (e) {
           console.error('Error loading profile:', e);
@@ -144,7 +189,6 @@ export default function App() {
         // Do not fallback to local storage if user is signed in to prevent local leak over to new account
         if (user) {
           // Keep fields empty for new user
-          // Don't overwrite basic preferences if they already exist, but for a brand new user, set defaults
         } else {
           // If no user load local
           const savedName = localStorage.getItem('ratbod_name') || '';
@@ -178,6 +222,13 @@ export default function App() {
           setUnit(savedUnit);
           setDarkMode(savedDarkMode);
           setLang(savedLang);
+
+          try {
+            const h = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+            setHistoryList(h);
+            const g = localStorage.getItem('ratbod_goals');
+            setSavedGoal(g ? JSON.parse(g) : null);
+          } catch (e) {}
         }
       }
       setIsLoaded(true);
@@ -185,6 +236,18 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Sync state with localStorage on refresh trigger
+  useEffect(() => {
+    try {
+      const h = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      setHistoryList(h);
+    } catch (e) {}
+    try {
+      const g = localStorage.getItem('ratbod_goals');
+      setSavedGoal(g ? JSON.parse(g) : null);
+    } catch (e) {}
+  }, [historyRefreshTrigger]);
 
   // Sync back to localStorage & Firestore
   useEffect(() => {
@@ -283,13 +346,18 @@ export default function App() {
     }
   }, [birthdate]);
 
-  const formatNum = (num: number | string | undefined | null) => {
-    if (num === undefined || num === null) return '';
-    const str = typeof num === 'number' ? num.toFixed(1) : num.toString();
-    // Strip trailing .0 if it's there and represent clean integer or keep matching decimal
-    let finalStr = str;
-    if (finalStr.endsWith('.0')) {
-      finalStr = finalStr.substring(0, finalStr.length - 2);
+  const formatNum = (num: number | string | undefined | null, maxDecimals = 2) => {
+    if (num === undefined || num === null || num === '') return '';
+    let finalStr = '';
+    if (typeof num === 'number') {
+      if (Number.isInteger(num)) {
+        finalStr = num.toString();
+      } else {
+        // Retain exact decimal precision up to 2 decimal places without trailing floating-point noise
+        finalStr = parseFloat(num.toFixed(maxDecimals)).toString();
+      }
+    } else {
+      finalStr = num.toString();
     }
     if (lang !== 'bn') return finalStr;
     const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -305,24 +373,75 @@ export default function App() {
     return cat;
   };
 
-  const handleSaveMetrics = () => {
-    if (!metrics) return;
+  const translateCategory = (cat: string) => {
+    if (lang !== 'bn') return cat;
+    if (cat === 'Underweight') return 'কম ওজন';
+    if (cat === 'Normal') return 'স্বাভাবিক';
+    if (cat === 'Overweight') return 'অতিরিক্ত ওজন';
+    if (cat === 'Obese') return 'স্থূলতা';
+    return cat;
+  };
+
+  // Relative date calculation for latest entry card
+  const formatRelativeDate = (dateStr?: string | null) => {
+    if (!dateStr) return lang === 'bn' ? 'কোনো তথ্য নেই' : 'No data';
     
-    const entry = {
+    const entryDate = new Date(dateStr);
+    if (isNaN(entryDate.getTime())) return lang === 'bn' ? 'কোনো তথ্য নেই' : 'No data';
+    
+    const now = new Date();
+    
+    // Day difference by calendar date (midnight to midnight)
+    const entryMidnight = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate()).getTime();
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const diffDays = Math.round((nowMidnight - entryMidnight) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) {
+      return lang === 'bn' ? 'আজ' : 'Today';
+    } else if (diffDays === 1) {
+      return lang === 'bn' ? '১ দিন আগে' : '1 day ago';
+    } else if (diffDays < 30) {
+      return lang === 'bn' ? `${formatNum(diffDays)} দিন আগে` : `${diffDays} days ago`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return lang === 'bn' ? `${formatNum(months)} মাস আগে` : `${months} month${months > 1 ? 's' : ''} ago`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      return lang === 'bn' ? `${formatNum(years)} বছর আগে` : `${years} year${years > 1 ? 's' : ''} ago`;
+    }
+  };
+
+  const handleSaveMetrics = () => {
+    const inputWeight = parseFloat(weight);
+    if (isNaN(inputWeight) || inputWeight <= 0) return;
+    
+    const weightInKg = unit === 'metric' ? inputWeight : inputWeight / 2.20462;
+    const heightInCm = metricData.height || 0;
+    
+    // Calculate BMI if height is available
+    const computedBmi = heightInCm > 0 ? calculateBMI(weightInKg, heightInCm) : 0;
+    
+    // Calculate Body Fat if waist/neck provided
+    const computedBodyFat = metrics?.bodyFat || 0;
+
+    const newEntry = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
-      weight: metricData.weight,
-      bmi: metrics.bmi,
-      bodyFat: metrics.bodyFat
+      weight: weightInKg,
+      bmi: computedBmi,
+      bodyFat: computedBodyFat
     };
 
     const existing = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-    existing.push(entry);
-    localStorage.setItem('ratbod_history', JSON.stringify(existing));
+    const updated = [...existing, newEntry];
+    localStorage.setItem('ratbod_history', JSON.stringify(updated));
+    setHistoryList(updated);
     
     const currentUser = auth.currentUser;
     if (currentUser) {
-      setDoc(doc(db, 'users', currentUser.uid, 'appData', 'history'), { history: existing }, { merge: true }).catch(e => {});
+      setDoc(doc(db, 'users', currentUser.uid, 'appData', 'history'), { history: updated }, { merge: true }).catch(e => {
+        console.error('Error saving history entry:', e);
+      });
     }
 
     setHistoryRefreshTrigger(prev => prev + 1);
@@ -335,16 +454,6 @@ export default function App() {
   };
 
   // Convert inputs to metric for calculations
-  
-  const translateCategory = (cat: string) => {
-    if (lang !== 'bn') return cat;
-    if (cat === 'Underweight') return 'কম ওজন';
-    if (cat === 'Normal') return 'স্বাভাবিক';
-    if (cat === 'Overweight') return 'অতিরিক্ত ওজন';
-    if (cat === 'Obese') return 'স্থূলতা';
-    return cat;
-  };
-
   const metricData = useMemo(() => {
     const h = parseFloat(height) || 0;
     const w = parseFloat(weight) || 0;
@@ -404,73 +513,137 @@ export default function App() {
     };
   }, [metricData]);
 
-  
-  const goalProgress = useMemo(() => {
-    let history = [];
-    try {
-      history = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-    } catch (e) {}
-    
-    let cw = 0;
-    if (history.length > 0) {
-      cw = unit === 'metric' ? history[history.length - 1].weight : history[history.length - 1].weight * 2.20462;
-    }
-        let goalData = null;
-    try {
-      const savedGoals = localStorage.getItem('ratbod_goals');
-      if (savedGoals) {
-        goalData = JSON.parse(savedGoals);
-      }
-    } catch (e) {}
+  // Chronologically sorted history entries (earliest [0] to latest [length - 1])
+  const sortedHistoryAsc = useMemo(() => {
+    if (!Array.isArray(historyList) || historyList.length === 0) return [];
+    return [...historyList].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [historyList]);
 
-    // Use goal weight if it exists, otherwise fallback to ideal weight
-    const goalTargetWeight = goalData && goalData.targetWeight ? goalData.targetWeight : null;
-    
-    // In metric it's straightforward, in imperial we need to handle conversion if the goal is saved in kg and app is in lb
-    // Wait, Goals.tsx saves targetWeight in whatever unit the user selected when saving? Let's assume Goals.tsx saves targetWeight.
-    // Let's just do standard conversion: Goals.tsx gets unit from props. If unit changes, the goal might be displayed wrong unless converted. 
-    // Wait, if it's the exact same target in the Goals tab, we should use it exactly as it is there.
-    
-    const target = goalTargetWeight ? (unit === 'metric' ? goalTargetWeight : goalTargetWeight * 2.20462) : (unit === 'metric' ? metrics?.idealWeight?.kg : metrics?.idealWeight?.lb);
-    
-    const targetDate = goalData && goalData.targetDate ? goalData.targetDate : null;
-    let daysRemaining = null;
+  // First saved weight measurement (Base data for goal progress)
+  const baseHistoryEntry = useMemo(() => {
+    if (sortedHistoryAsc.length === 0) return null;
+    return sortedHistoryAsc[0];
+  }, [sortedHistoryAsc]);
+
+  // Latest saved weight measurement
+  const latestHistoryEntry = useMemo(() => {
+    if (sortedHistoryAsc.length === 0) return null;
+    return sortedHistoryAsc[sortedHistoryAsc.length - 1];
+  }, [sortedHistoryAsc]);
+
+  // Goal target weight in kg
+  const goalTargetWeightKg = useMemo(() => {
+    if (savedGoal && typeof savedGoal.targetWeight === 'number' && savedGoal.targetWeight > 0) {
+      return savedGoal.targetWeight; // always stored in kg
+    }
+    const h = metricData.height || 0;
+    if (h > 0) {
+      const ideal = calculateIdealWeight(h, gender);
+      if (ideal.kg > 0) return ideal.kg;
+    }
+    return null;
+  }, [savedGoal, metricData.height, gender]);
+
+  // Goal Progression percentage calculation based on:
+  // - First saved weight data as base data
+  // - Latest saved weight measurement
+  // - Targeted goal weight data
+  // Also calculates remaining weight to final target (e.g. 100kg target & 90kg latest = 10kg more to go)
+  const goalProgress = useMemo(() => {
+    const targetDate = savedGoal && savedGoal.targetDate ? savedGoal.targetDate : null;
+    let daysRemaining: number | null = null;
     if (targetDate) {
       daysRemaining = Math.ceil((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    let initialWeight = cw;
-    let previousWeight = cw;
+    if (sortedHistoryAsc.length === 0 || !goalTargetWeightKg) {
+      const targetVal = goalTargetWeightKg ? (unit === 'metric' ? goalTargetWeightKg : goalTargetWeightKg * 2.20462) : null;
+      return {
+        percent: 0,
+        target: targetVal ? targetVal.toFixed(1) : '--',
+        trend: 'none' as 'up' | 'down' | 'none',
+        daysRemaining,
+        remainingWeight: null as number | null,
+        isAchieved: false,
+        baseWeight: null as string | null,
+        currentWeight: null as string | null
+      };
+    }
 
-    if (history.length > 0) {
-      initialWeight = unit === 'metric' ? history[0].weight : history[0].weight * 2.20462;
-      
-      if (history.length > 1) {
-        // The one before the current (latest saved vs current)
-        previousWeight = unit === 'metric' ? history[history.length - 2].weight : history[history.length - 2].weight * 2.20462;
+    // Base weight (first saved weight) and Current weight (latest saved weight)
+    const baseEntry = sortedHistoryAsc[0];
+    const currentEntry = sortedHistoryAsc[sortedHistoryAsc.length - 1];
+
+    const baseKg = baseEntry.weight;
+    const currentKg = currentEntry.weight;
+    const targetKg = goalTargetWeightKg;
+
+    // Convert for current unit display
+    const baseVal = unit === 'metric' ? baseKg : baseKg * 2.20462;
+    const currentVal = unit === 'metric' ? currentKg : currentKg * 2.20462;
+    const targetVal = unit === 'metric' ? targetKg : targetKg * 2.20462;
+
+    // Remaining weight to final target (e.g. target 100kg and current 90kg => 10kg more to go)
+    const remainingVal = Math.abs(targetVal - currentVal);
+
+    // Determine trend relative to previous saved measurement
+    let trend: 'up' | 'down' | 'none' = 'none';
+    if (sortedHistoryAsc.length > 1) {
+      const prevKg = sortedHistoryAsc[sortedHistoryAsc.length - 2].weight;
+      if (currentKg < prevKg) trend = 'down';
+      else if (currentKg > prevKg) trend = 'up';
+    }
+
+    // Goal Progression Percentage Calculation:
+    // Base data: first saved weight data (baseKg)
+    // Target data: goal weight data (targetKg)
+    let percent = 0;
+    let isAchieved = false;
+
+    const totalDistance = Math.abs(targetKg - baseKg);
+
+    if (totalDistance < 0.05) {
+      // Base weight already equals target weight
+      const diff = Math.abs(currentKg - targetKg);
+      if (diff <= 0.2) {
+        percent = 100;
+        isAchieved = true;
       } else {
-        previousWeight = initialWeight;
+        percent = 0;
+      }
+    } else if (targetKg < baseKg) {
+      // Weight Loss Goal
+      if (currentKg <= targetKg) {
+        percent = 100;
+        isAchieved = true;
+      } else {
+        const progressMade = baseKg - currentKg;
+        // Allows negative percentage if current weight increased above base weight
+        percent = Math.round((progressMade / totalDistance) * 100);
+      }
+    } else {
+      // Weight Gain Goal
+      if (currentKg >= targetKg) {
+        percent = 100;
+        isAchieved = true;
+      } else {
+        const progressMade = currentKg - baseKg;
+        // Allows negative percentage if current weight dropped below base weight
+        percent = Math.round((progressMade / totalDistance) * 100);
       }
     }
 
-    if (!target || !cw || initialWeight === target) return { percent: 0, target, trend: 'none', daysRemaining };
-    
-    const totalDiff = Math.abs(initialWeight - target);
-    const currentDiff = Math.abs(initialWeight - cw);
-    
-    let percent = (currentDiff / totalDiff) * 100;
-    if (percent > 100) percent = 100;
-    if (percent < 0) percent = 0;
-
-    let trend = 'none';
-    if (cw < previousWeight) {
-       trend = 'down'; // Weight went down
-    } else if (cw > previousWeight) {
-       trend = 'up'; // Weight went up
-    }
-
-    return { percent: Math.round(percent), target: target.toFixed(1), trend, daysRemaining };
-  }, [weight, unit, historyRefreshTrigger, metrics]);
+    return {
+      percent,
+      target: targetVal,
+      trend,
+      daysRemaining,
+      remainingWeight: remainingVal,
+      isAchieved,
+      baseWeight: baseVal,
+      currentWeight: currentVal
+    };
+  }, [sortedHistoryAsc, goalTargetWeightKg, savedGoal, unit]);
 
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
@@ -505,24 +678,14 @@ export default function App() {
     { value: 'extra_active', label: t.extra_active, desc: t.extra_activeDesc },
   ], [t]);
 
-
-  // Calculate dashboard display metrics based on input OR latest history
-  const latestHistoryEntry = useMemo(() => {
-    try {
-      const history = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      if (history.length > 0) return history[history.length - 1];
-    } catch (e) {}
-    return null;
-  }, [historyRefreshTrigger]);
-
   const dashboardMetrics = useMemo(() => {
-    if (!latestHistoryEntry || !metricData.height || !metricData.age) return null;
-    
-    // Create a body data object strictly from the latest saved entry and static profile
+    if (!metricData.height || !metricData.age) return null;
+    const effectiveWeight = latestHistoryEntry ? latestHistoryEntry.weight : metricData.weight;
+    if (!effectiveWeight || effectiveWeight <= 0) return null;
+
     const savedData: BodyData = {
       ...metricData,
-      weight: latestHistoryEntry.weight, 
-      // For a completely accurate Body Fat, we should ideally use saved waist/neck/hip, but since they aren't in history, we fall back to metricData or assume the body fat in history is the source of truth.
+      weight: effectiveWeight,
     };
 
     const bmr = calculateBMR(savedData);
@@ -538,11 +701,14 @@ export default function App() {
     else if (kgDiff > 0) type = 'lose';
     else type = 'gain';
 
+    const bmiVal = calculateBMI(savedData.weight, savedData.height);
+    const bodyFatVal = latestHistoryEntry?.bodyFat || calculateBodyFat(savedData) || 0;
+
     return {
-      bmi: latestHistoryEntry.bmi,
+      bmi: bmiVal,
       bmr,
       tdee,
-      bodyFat: latestHistoryEntry.bodyFat,
+      bodyFat: bodyFatVal,
       idealWeight,
       idealFatRange,
       weightDiff: {
@@ -550,13 +716,106 @@ export default function App() {
         lb: Math.abs(lbDiff),
         type
       },
-      category: getBMICategory(latestHistoryEntry.bmi)
+      category: getBMICategory(bmiVal)
     };
   }, [latestHistoryEntry, metricData]);
 
-  const displayWeight = latestHistoryEntry ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) : 0;
-  const displayBmi = latestHistoryEntry ? latestHistoryEntry.bmi : null;
-  const displayCategory = latestHistoryEntry ? getBMICategory(latestHistoryEntry.bmi) : null;
+  const displayWeight = latestHistoryEntry 
+    ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) 
+    : null;
+
+  const displayBmi = useMemo(() => {
+    if (latestHistoryEntry && typeof latestHistoryEntry.bmi === 'number' && latestHistoryEntry.bmi > 0) {
+      return latestHistoryEntry.bmi;
+    }
+    const h = metricData.height || 0;
+    const w = latestHistoryEntry ? latestHistoryEntry.weight : (metricData.weight || 0);
+    if (w > 0 && h > 0) {
+      return calculateBMI(w, h);
+    }
+    return null;
+  }, [latestHistoryEntry, metricData]);
+
+  const displayCategory = useMemo(() => {
+    if (displayBmi && displayBmi > 0) {
+      return getBMICategory(displayBmi);
+    }
+    return null;
+  }, [displayBmi]);
+
+  // Handler to refresh and remain in the health tab
+  const handleHealthMenuClick = async () => {
+    setActiveTab('calculator');
+    try {
+      localStorage.setItem('ratbod_active_tab', 'calculator');
+    } catch (e) {}
+
+    // Trigger local state and metric re-calculations
+    setHistoryRefreshTrigger(prev => prev + 1);
+
+    try {
+      const h = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      setHistoryList(h);
+      const g = localStorage.getItem('ratbod_goals');
+      setSavedGoal(g ? JSON.parse(g) : null);
+
+      const savedWeight = localStorage.getItem('ratbod_weight');
+      const savedHeight = localStorage.getItem('ratbod_height');
+      const savedAge = localStorage.getItem('ratbod_age');
+      const savedGender = localStorage.getItem('ratbod_gender') as Gender;
+      const savedWaist = localStorage.getItem('ratbod_waist');
+      const savedNeck = localStorage.getItem('ratbod_neck');
+      const savedHip = localStorage.getItem('ratbod_hip');
+      const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel;
+      const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial';
+
+      if (savedWeight !== null) setWeight(savedWeight);
+      if (savedHeight !== null) setHeight(savedHeight);
+      if (savedAge !== null) setAge(savedAge);
+      if (savedGender) setGender(savedGender);
+      if (savedWaist !== null) setWaist(savedWaist);
+      if (savedNeck !== null) setNeck(savedNeck);
+      if (savedHip !== null) setHip(savedHip);
+      if (savedActivity) setActivityLevel(savedActivity);
+      if (savedUnit) setUnit(savedUnit);
+    } catch (e) {}
+
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const data = userDocSnap.data();
+          if (data.weight !== undefined) setWeight(data.weight || '');
+          if (data.height !== undefined) setHeight(data.height || '');
+          if (data.age !== undefined) setAge(data.age || '');
+          if (data.gender !== undefined) setGender(data.gender || 'male');
+          if (data.waist !== undefined) setWaist(data.waist || '');
+          if (data.neck !== undefined) setNeck(data.neck || '');
+          if (data.hip !== undefined) setHip(data.hip || '');
+          if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
+          if (data.unit !== undefined) setUnit(data.unit || 'metric');
+        }
+
+        const histSnap = await getDoc(doc(db, 'users', currentUser.uid, 'appData', 'history'));
+        if (histSnap.exists() && Array.isArray(histSnap.data().history)) {
+          setHistoryList(histSnap.data().history);
+          localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history));
+        }
+        const goalSnap = await getDoc(doc(db, 'users', currentUser.uid, 'appData', 'goals'));
+        if (goalSnap.exists() && goalSnap.data().goal) {
+          setSavedGoal(goalSnap.data().goal);
+          localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal));
+        }
+      } catch (err) {
+        console.error('Error refreshing health data from db:', err);
+      }
+    }
+
+    // Scroll smoothly to top for instant view of refreshed data
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <>
@@ -572,17 +831,21 @@ export default function App() {
           "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-xl shadow-xl transition-colors duration-300",
           darkMode ? "bg-[#0F0F0F]/80 border-white/10 shadow-black/40" : "bg-white/80 border-black/5 shadow-gray-200/50"
         )}>
-          <a href="/" className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity">
+          <button 
+            type="button"
+            onClick={handleHealthMenuClick} 
+            className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity cursor-pointer text-left bg-transparent border-0 p-0"
+          >
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white">
               <Activity size={14} />
             </div>
             <h1 className="font-sans font-black text-base tracking-tighter">RatboD</h1>
-          </a>
+          </button>
           
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
             <button
-              onClick={() => setActiveTab('calculator')}
+              onClick={handleHealthMenuClick}
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
                 activeTab === 'calculator'
@@ -790,51 +1053,98 @@ export default function App() {
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
-            <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-              {lang === 'bn' ? 'সর্বশেষ এন্ট্রি' : 'Latest Entry'} <Calendar size={14} />
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-32", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
+            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+              <span className="truncate">{lang === 'bn' ? 'সর্বশেষ এন্ট্রি' : 'Latest Entry'}</span>
+              <Calendar size={14} className="text-gray-400 shrink-0" />
             </div>
             <div>
-              <div className={cn("text-2xl font-black", darkMode ? "text-white" : "text-gray-900")}>
-                {displayWeight ? formatNum(displayWeight) : '--'} <span className="text-base font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? 'kg' : 'lb'}</span>
+              <div className={cn("text-xl sm:text-2xl font-black", darkMode ? "text-white" : "text-gray-900")}>
+                {displayWeight !== null ? formatNum(displayWeight) : '--'} <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? 'kg' : 'lb'}</span>
               </div>
-              <div className="text-xs font-bold text-gray-900 dark:text-gray-100 mt-1">
-                {displayWeight ? (lang === 'bn' ? 'আজ' : 'Today') : (lang === 'bn' ? 'কোনো ডেটা নেই' : 'No data')}
+              <div className="text-[10px] sm:text-xs font-bold text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-1.5 truncate">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                <span className="truncate">{latestHistoryEntry ? formatRelativeDate(latestHistoryEntry.date) : (lang === 'bn' ? 'কোনো তথ্য নেই' : 'No data')}</span>
               </div>
             </div>
           </div>
 
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-32", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-              <div className="flex items-center gap-1"><Heart size={12} className="text-rose-500" />{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</div> 
-              <div className={cn("w-2.5 h-2.5 rounded-full", displayCategory ? (displayCategory === 'Normal' ? "bg-emerald-500" : (displayCategory === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
+              <div className="flex items-center gap-1 truncate"><Heart size={12} className="text-rose-500 shrink-0" /><span className="truncate">{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</span></div> 
+              <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", displayCategory ? (displayCategory === 'Normal' ? "bg-emerald-500" : (displayCategory === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
             </div>
             <div>
-              <div className={cn("text-xl font-black capitalize", darkMode ? "text-white" : "text-gray-900")}>
-                {displayCategory ? translateCategory(displayCategory) : '--'}
+              <div className={cn("text-base sm:text-xl font-black capitalize truncate", darkMode ? "text-white" : "text-gray-900")}>
+                {displayCategory ? translateCategory(displayCategory) : (latestHistoryEntry ? (lang === 'bn' ? 'স্বাভাবিক' : 'Normal') : '--')}
               </div>
-              <div className="text-xs font-bold text-gray-900 dark:text-gray-100 mt-1">
+              <div className="text-[10px] sm:text-xs font-bold text-gray-900 dark:text-gray-100 mt-1 truncate">
                 BMI: {displayBmi ? formatNum(displayBmi.toFixed(1)) : '--'}
               </div>
             </div>
           </div>
 
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-28 col-span-2 md:col-span-1", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
-             <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-              {lang === 'bn' ? 'লক্ষ্যের অগ্রগতি' : 'Goal Progress'} <Target size={14} className="text-emerald-500" />
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
+             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+              <span>{lang === 'bn' ? 'লক্ষ্যের অগ্রগতি' : 'Goal Progress'}</span>
+              <Target size={14} className="text-emerald-500" />
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-2xl font-black text-emerald-500">
-                {latestHistoryEntry ? `${goalProgress.percent}%` : '--'}
-                {latestHistoryEntry && goalProgress.trend === 'down' && <TrendingDown size={20} className="text-emerald-500" />}
-                {latestHistoryEntry && goalProgress.trend === 'up' && <TrendingUp size={20} className="text-emerald-500" />}
-                {latestHistoryEntry && goalProgress.trend === 'none' && <Minus size={20} className="text-emerald-500" />}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <span className={cn(
+                    "text-2xl font-black tracking-tight",
+                    !latestHistoryEntry 
+                      ? "text-gray-400" 
+                      : (goalProgress.percent < 0 ? "text-red-500" : "text-emerald-500")
+                  )}>
+                    {latestHistoryEntry 
+                      ? `${goalProgress.percent > 0 ? '+' : ''}${formatNum(goalProgress.percent)}%` 
+                      : '--'}
+                  </span>
+                </div>
+                
+                {/* Amount of kg/lb more to go styled like Health Goals Section */}
+                {latestHistoryEntry && goalProgress.remainingWeight !== null && (
+                  <div className="text-right space-y-0.5">
+                    <div className="flex items-center justify-end gap-1">
+                      {goalProgress.trend === 'down' ? <TrendingDown className="text-primary" size={13} /> : 
+                       goalProgress.trend === 'up' ? <TrendingUp className="text-red-500" size={13} /> : 
+                       <Minus className="text-gray-400" size={13} />}
+                      <span className={cn(
+                        "text-sm font-bold tracking-tight",
+                        goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
+                          ? "text-emerald-500"
+                          : (goalProgress.trend === 'down' ? "text-primary" : goalProgress.trend === 'up' ? "text-red-500" : (darkMode ? "text-white" : "text-gray-900"))
+                      )}>
+                        {goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
+                          ? (lang === 'bn' ? '🎉 লক্ষ্য অর্জিত' : '🎉 Reached')
+                          : (
+                            <>
+                              {formatNum(goalProgress.remainingWeight)} <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+                            </>
+                          )}
+                      </span>
+                    </div>
+                    <p className="text-[9px] text-gray-500 font-medium">
+                      {goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
+                        ? (lang === 'bn' ? 'লক্ষ্য সম্পন্ন' : 'Target Achieved') 
+                        : (lang === 'bn' ? 'আর বাকি আছে' : 'More to go')}
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className={cn("h-2 w-full rounded-full overflow-hidden", darkMode ? "bg-white/10" : "bg-gray-100")}>
-                 <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${latestHistoryEntry ? goalProgress.percent : 0}%` }} />
+              <div className={cn("h-1.5 w-full rounded-full overflow-hidden", darkMode ? "bg-white/10" : "bg-gray-100")}>
+                 <div 
+                   className={cn(
+                     "h-full transition-all duration-1000",
+                     goalProgress.percent < 0 ? "bg-red-500" : "bg-emerald-500"
+                   )} 
+                   style={{ width: `${latestHistoryEntry ? Math.max(0, Math.min(100, goalProgress.percent)) : 0}%` }} 
+                 />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-gray-900 dark:text-gray-100 font-bold mt-1">
-                <span>Goal: {latestHistoryEntry ? goalProgress.target : '--'} {unit === 'metric' ? 'kg' : 'lb'}</span>
+              <div className="flex items-center justify-between text-[10px] text-gray-900 dark:text-gray-100 font-bold">
+                <span>{lang === 'bn' ? 'লক্ষ্য:' : 'Goal:'} {latestHistoryEntry ? formatNum(goalProgress.target) : '--'} {unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                 {latestHistoryEntry && goalProgress.daysRemaining !== null && (
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight">
                     {goalProgress.daysRemaining > 0 ? (lang === 'bn' ? `${formatNum(goalProgress.daysRemaining)} দিন` : `${goalProgress.daysRemaining} days`) : (lang === 'bn' ? 'শেষ' : 'Ended')}
@@ -902,10 +1212,10 @@ export default function App() {
             
             <button 
               onClick={handleSaveMetrics} 
-              disabled={!metrics}
+              disabled={!weight || parseFloat(weight) <= 0}
               className={cn(
                 "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
-                !metrics 
+                !weight || parseFloat(weight) <= 0
                   ? "bg-gray-500/20 text-gray-400 cursor-not-allowed" 
                   : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
               )}
@@ -1082,10 +1392,10 @@ export default function App() {
         <div className="flex items-center justify-between">
           <button 
             id="tab_calculator"
-            onClick={() => setActiveTab('calculator')}
+            onClick={handleHealthMenuClick}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'calculator' ? "text-primary scale-105" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all cursor-pointer",
+              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
             )}
           >
             <Heart size={18} />

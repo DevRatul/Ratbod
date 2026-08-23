@@ -40,12 +40,17 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const formatNum = (num: number | string | undefined | null) => {
-    if (num === undefined || num === null) return '';
-    const str = typeof num === 'number' ? num.toFixed(1) : num.toString();
-    let finalStr = str;
-    if (finalStr.endsWith('.0')) {
-      finalStr = finalStr.substring(0, finalStr.length - 2);
+  const formatNum = (num: number | string | undefined | null, maxDecimals = 2) => {
+    if (num === undefined || num === null || num === '') return '';
+    let finalStr = '';
+    if (typeof num === 'number') {
+      if (Number.isInteger(num)) {
+        finalStr = num.toString();
+      } else {
+        finalStr = parseFloat(num.toFixed(maxDecimals)).toString();
+      }
+    } else {
+      finalStr = num.toString();
     }
     if (lang !== 'bn') return finalStr;
     const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -314,12 +319,12 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-xl sm:text-3xl font-light tracking-tighter">
-                  {formatNum(unit === 'metric' ? (goal.targetWeight || 0).toFixed(1) : ((goal.targetWeight || 0) * 2.20462).toFixed(1))}
+                  {formatNum(unit === 'metric' ? goal.targetWeight : (goal.targetWeight || 0) * 2.20462)}
                   <span className="text-[10px] sm:text-sm text-gray-500 font-bold ml-1">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{lang === 'bn' ? 'লক্ষ্যিত ওজন' : 'Target Weight'}</p>
               </div>
-              {currentWeight && (
+              {currentWeight !== undefined && currentWeight !== null && currentWeight > 0 && (
                 <div className="text-right space-y-1">
                   <div className="flex items-center justify-end gap-1">
                     {weightProgress === 'down' ? <TrendingDown className="text-primary" size={14} /> : 
@@ -327,12 +332,16 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                      <Minus className="text-gray-500 dark:text-gray-400" size={14} />}
                     <span className={cn(
                       "text-sm sm:text-xl font-bold tracking-tighter",
-                      weightProgress === 'down' ? "text-primary" : weightProgress === 'up' ? "text-red-500" : "text-gray-400"
+                      weightProgress === 'down' ? "text-primary" : weightProgress === 'up' ? "text-red-500" : "text-emerald-500"
                     )}>
-                      {formatNum(Math.abs(currentWeight - goal.targetWeight).toFixed(1))}
+                      {formatNum(
+                        unit === 'metric' 
+                          ? Math.abs(currentWeight - goal.targetWeight) 
+                          : Math.abs((currentWeight * 2.20462) - (goal.targetWeight * 2.20462))
+                      )} <span className="text-[10px] sm:text-xs font-normal">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                     </span>
                   </div>
-                  <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{lang === 'bn' ? 'বাকি আছে' : 'To Go'}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{lang === 'bn' ? 'আর বাকি আছে' : 'More to go'}</p>
                 </div>
               )}
             </div>

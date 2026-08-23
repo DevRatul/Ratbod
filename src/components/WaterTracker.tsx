@@ -329,45 +329,51 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
+
+      const play = () => {
+        const now = ctx.currentTime;
+
+        // Primary liquid drop sweep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(1300, now + 0.08);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.35, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.13);
+
+        // Secondary drop bubble pop resonance
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1150, now + 0.035);
+        osc2.frequency.exponentialRampToValueAtTime(2200, now + 0.09);
+
+        gain2.gain.setValueAtTime(0.001, now + 0.035);
+        gain2.gain.linearRampToValueAtTime(0.18, now + 0.045);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+
+        osc2.start(now + 0.035);
+        osc2.stop(now + 0.16);
+      };
+
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().then(play).catch(play);
+      } else {
+        play();
       }
-      const now = ctx.currentTime;
-
-      // Primary liquid drop sweep
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(450, now);
-      osc.frequency.exponentialRampToValueAtTime(1300, now + 0.08);
-
-      gain.gain.setValueAtTime(0.01, now);
-      gain.gain.linearRampToValueAtTime(0.35, now + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.13);
-
-      // Secondary drop bubble pop resonance
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1150, now + 0.035);
-      osc2.frequency.exponentialRampToValueAtTime(2200, now + 0.09);
-
-      gain2.gain.setValueAtTime(0.001, now + 0.035);
-      gain2.gain.linearRampToValueAtTime(0.18, now + 0.045);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-
-      osc2.start(now + 0.035);
-      osc2.stop(now + 0.16);
     } catch {
       // Audio context fallback
     }
@@ -379,41 +385,116 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
+
+      const play = () => {
+        // Celebratory cheerful fanfare arpeggio: C5, E5, G5, B5, C6 + shimmer
+        const notes = [
+          { freq: 523.25, time: 0, duration: 0.22 },     // C5
+          { freq: 659.25, time: 0.10, duration: 0.22 },  // E5
+          { freq: 783.99, time: 0.20, duration: 0.25 },  // G5
+          { freq: 987.77, time: 0.30, duration: 0.30 },  // B5
+          { freq: 1046.50, time: 0.42, duration: 0.65 }, // C6
+          { freq: 1318.51, time: 0.46, duration: 0.60 }  // E6
+        ];
+
+        const now = ctx.currentTime;
+
+        notes.forEach(({ freq, time, duration }) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'triangle'; // Warm bell tone
+          osc.frequency.setValueAtTime(freq, now + time);
+
+          gain.gain.setValueAtTime(0.0001, now + time);
+          gain.gain.linearRampToValueAtTime(0.28, now + time + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + time + duration);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + time);
+          osc.stop(now + time + duration + 0.05);
+        });
+      };
+
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().then(play).catch(play);
+      } else {
+        play();
       }
+    } catch {
+      // AudioContext fallback handling
+    }
+  };
 
-      // Celebratory cheerful fanfare arpeggio: C5, E5, G5, B5, C6 + shimmer
-      const notes = [
-        { freq: 523.25, time: 0, duration: 0.22 },     // C5
-        { freq: 659.25, time: 0.10, duration: 0.22 },  // E5
-        { freq: 783.99, time: 0.20, duration: 0.25 },  // G5
-        { freq: 987.77, time: 0.30, duration: 0.30 },  // B5
-        { freq: 1046.50, time: 0.42, duration: 0.65 }, // C6
-        { freq: 1318.51, time: 0.46, duration: 0.60 }  // E6
-      ];
+  // Play distinct "undo" rewind/swoop sound
+  const playUndoSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
 
-      const now = ctx.currentTime;
+      const play = () => {
+        const now = ctx.currentTime;
 
-      notes.forEach(({ freq, time, duration }) => {
+        // 1. Primary descending swoop tone (sine 850Hz -> 200Hz)
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        osc.type = 'triangle'; // Warm bell tone
-        osc.frequency.setValueAtTime(freq, now + time);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(850, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.16);
 
-        gain.gain.setValueAtTime(0, now + time);
-        gain.gain.linearRampToValueAtTime(0.28, now + time + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + time + duration);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.17);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
 
-        osc.start(now + time);
-        osc.stop(now + time + duration + 0.05);
-      });
+        osc.start(now);
+        osc.stop(now + 0.18);
+
+        // 2. Sub-harmonic resonant tone (triangle 480Hz -> 120Hz)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(480, now);
+        osc2.frequency.exponentialRampToValueAtTime(120, now + 0.13);
+
+        gain2.gain.setValueAtTime(0.28, now);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+
+        osc2.start(now);
+        osc2.stop(now + 0.15);
+
+        // 3. Tactile click transient pop (square 320Hz -> 60Hz)
+        const osc3 = ctx.createOscillator();
+        const gain3 = ctx.createGain();
+        osc3.type = 'square';
+        osc3.frequency.setValueAtTime(320, now);
+        osc3.frequency.exponentialRampToValueAtTime(60, now + 0.04);
+
+        gain3.gain.setValueAtTime(0.18, now);
+        gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+
+        osc3.connect(gain3);
+        gain3.connect(ctx.destination);
+
+        osc3.start(now);
+        osc3.stop(now + 0.05);
+      };
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(play).catch(play);
+      } else {
+        play();
+      }
     } catch {
-      // AudioContext fallback handling
+      // Audio context fallback
     }
   };
 
@@ -446,12 +527,23 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
   };
 
-  const handleDeleteEntry = (id: string) => {
+  const handleDeleteEntry = (id: string, playSound: boolean = true) => {
+    if (playSound) {
+      playUndoSound();
+    }
     setEntries(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleUndoLast = () => {
+    if (entries.length > 0) {
+      playUndoSound();
+      setEntries(prev => prev.slice(1));
+    }
   };
 
   const handleResetToday = () => {
     if (entries.length === 0) return;
+    playUndoSound();
     setEntries([]);
   };
 
@@ -767,11 +859,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           {/* Control Actions Row */}
           <div className="flex items-center justify-between pt-1">
             <button
-              onClick={() => {
-                if (entries.length > 0) {
-                  handleDeleteEntry(entries[0].id);
-                }
-              }}
+              onClick={handleUndoLast}
               disabled={entries.length === 0}
               className={cn(
                 "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
