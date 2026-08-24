@@ -1412,16 +1412,13 @@ export default function App() {
                 unit={unit}
       />
     </div>
-{/* Mobile Sticky Tab Navigation */}
+      {/* Mobile Sticky Tab Navigation */}
       <div 
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode ? "bg-[#0F0F0F]/90 border-white/15 text-white" : "bg-white/90 border-black/10 text-gray-900",
-          "pt-1.5 px-1.5 shadow-2xl shadow-black/40"
+          "py-2 px-1.5 shadow-2xl shadow-black/40"
         )}
-        style={{
-          paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))'
-        }}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">
           <button 

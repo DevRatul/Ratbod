@@ -689,40 +689,34 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         <div className="relative my-0.5 sm:my-1 flex flex-col items-center justify-center w-full">
           <div className="grid grid-cols-[1fr_1fr_auto_1fr_1fr] sm:flex sm:items-center sm:justify-center items-center justify-items-center gap-1 sm:gap-2.5 w-full max-w-full py-1">
             
-            {/* Left Outer: 300 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
+            {/* Left Outer: 300 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(300)}
               title={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
-              className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
-                darkMode ? "text-white" : "text-black"
-              )}
+              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
             >
               <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
+                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
               </div>
-              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
+              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
                 300 {labels.mlUnit}
               </span>
             </motion.button>
 
-            {/* Left Inner: 400 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
+            {/* Left Inner: 400 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(400)}
               title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
-              className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
-                darkMode ? "text-white" : "text-black"
-              )}
+              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
             >
               <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
+                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
               </div>
-              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
+              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
                 400 {labels.mlUnit}
               </span>
             </motion.button>
@@ -767,20 +761,20 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   {totalConsumedMl >= goalMl ? <Check size={11} className="animate-in zoom-in-50" strokeWidth={3} /> : <Droplet size={11} className="fill-current animate-pulse" />}
                 </div>
 
-                {/* Middle: Glasses and Consumed Volume (Target removed from tumbler) */}
+                {/* Middle: Number of glasses only (ML removed as requested) */}
                 <div className="flex flex-col items-center my-auto">
-                  <span className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
-                    {formatNum(totalGlasses, 1)} <span className="text-[9px] sm:text-[10.5px] font-bold opacity-85">{labels.glassesUnit}</span>
+                  <span className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
+                    {formatNum(totalGlasses, 1)}
                   </span>
-                  <span className="text-[8px] sm:text-[9.5px] font-bold text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs truncate max-w-full px-0.5">
-                    {formatNum(totalConsumedMl)} {labels.mlUnit}
+                  <span className="text-[9.5px] sm:text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs truncate max-w-full px-0.5">
+                    {labels.glassesUnit}
                   </span>
                 </div>
 
-                {/* Bottom of Tumbler: Percentage Calculated Badge */}
-                <div className="w-full flex items-center justify-center pb-0.5 sm:pb-1">
+                {/* Bottom of Tumbler: Increased Percentage Badge */}
+                <div className="w-full flex items-center justify-center pb-1 sm:pb-1.5">
                   <span className={cn(
-                    "text-[8.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs leading-tight tracking-tight",
+                    "text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded-full border shadow-xs leading-tight tracking-tight",
                     totalConsumedMl >= goalMl
                       ? "bg-emerald-600 text-white border-emerald-400/60"
                       : "bg-blue-600 text-white border-blue-400/60"
@@ -791,40 +785,34 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               </div>
             </div>
 
-            {/* Right Inner: 250 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
+            {/* Right Inner: 250 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(250)}
               title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
-              className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
-                darkMode ? "text-white" : "text-black"
-              )}
+              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
             >
               <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
+                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
               </div>
-              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
+              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
                 250 {labels.mlUnit}
               </span>
             </motion.button>
 
-            {/* Right Outer: 100 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
+            {/* Right Outer: 100 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(100)}
               title={lang === 'bn' ? '১০০ মিলি যোগ করুন' : 'Add 100 ml'}
-              className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
-                darkMode ? "text-white" : "text-black"
-              )}
+              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
             >
               <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
+                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
               </div>
-              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
+              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
                 100 {labels.mlUnit}
               </span>
             </motion.button>
