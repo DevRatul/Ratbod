@@ -111,7 +111,17 @@ export default function App() {
     }
   });
   const [authUser, setAuthUser] = useState(auth.currentUser);
-  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>('water');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_active_tab');
+      if (saved && ['calculator', 'results', 'groceries', 'water', 'goals', 'breathing'].includes(saved)) {
+        return saved as any;
+      }
+      return 'calculator';
+    } catch (e) {
+      return 'calculator';
+    }
+  });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -132,12 +142,6 @@ export default function App() {
       let loadedFromDb = false;
       let readFailed = false;
       if (user) {
-        // Default to water section on login
-        setActiveTab('water');
-        try {
-          localStorage.setItem('ratbod_active_tab', 'water');
-        } catch (e) {}
-
         try {
           const docRef = doc(db, 'users', user.uid);
           const docSnap = await getDoc(docRef);
@@ -346,18 +350,12 @@ export default function App() {
     }
   }, [birthdate]);
 
-  const formatNum = (num: number | string | undefined | null, maxDecimals = 2) => {
+  const formatNum = (num: number | string | undefined | null) => {
     if (num === undefined || num === null || num === '') return '';
-    let finalStr = '';
-    if (typeof num === 'number') {
-      if (Number.isInteger(num)) {
-        finalStr = num.toString();
-      } else {
-        // Retain exact decimal precision up to 2 decimal places without trailing floating-point noise
-        finalStr = parseFloat(num.toFixed(maxDecimals)).toString();
-      }
-    } else {
-      finalStr = num.toString();
+    const str = typeof num === 'number' ? (Number.isInteger(num) ? num.toString() : num.toFixed(1)) : num.toString();
+    let finalStr = str;
+    if (finalStr.endsWith('.0')) {
+      finalStr = finalStr.substring(0, finalStr.length - 2);
     }
     if (lang !== 'bn') return finalStr;
     const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -1010,7 +1008,7 @@ export default function App() {
 
       {/* Breathing Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
         activeTab === 'breathing' ? "block" : "hidden"
       )}>
         <BreathingTimer darkMode={darkMode} lang={lang} />
@@ -1018,7 +1016,7 @@ export default function App() {
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -1026,7 +1024,7 @@ export default function App() {
 
       {/* Water Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
         activeTab === 'water' ? "block" : "hidden"
       )}>
         <WaterTracker darkMode={darkMode} lang={lang} />
@@ -1034,22 +1032,22 @@ export default function App() {
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} />
       </div>
 
       <main className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-12 space-y-8 overflow-x-hidden",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12 space-y-8 overflow-x-hidden",
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
             {/* Iconic Watermark */}
-            <div className="absolute right-3 top-2 opacity-45 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-              <Scale size={51} />
+            <div className="absolute -right-2 -top-2 opacity-30 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+              <Scale size={87} />
             </div>
 
             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
@@ -1068,13 +1066,12 @@ export default function App() {
 
           <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
             {/* Iconic Watermark */}
-            <div className="absolute right-3 top-2 opacity-45 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-              <Heart size={51} />
+            <div className="absolute -right-2 -top-2 opacity-30 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+              <Heart size={87} />
             </div>
 
             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               <span className="truncate">{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</span>
-              <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", displayCategory ? (displayCategory === 'Normal' ? "bg-emerald-500" : (displayCategory === 'Underweight' ? "bg-blue-500" : "bg-red-500 animate-pulse")) : "bg-gray-500")} />
             </div>
             <div className="relative z-10">
               <div className={cn("text-base sm:text-xl font-black capitalize truncate", darkMode ? "text-white" : "text-gray-900")}>
@@ -1088,8 +1085,8 @@ export default function App() {
 
           <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
              {/* Iconic Watermark */}
-             <div className="absolute right-3 top-2 opacity-45 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-               <Target size={51} />
+             <div className="absolute -right-2 -top-2 opacity-30 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+               <Target size={87} />
              </div>
 
              <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
