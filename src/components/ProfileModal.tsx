@@ -88,7 +88,7 @@ export default function ProfileModal({
                 className={cn(
                   "flex-1 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border",
                   gender === 'male'
-                    ? (darkMode ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-blue-50 text-blue-700 border-blue-200")
+                    ? (darkMode ? "bg-white/10 text-white border-white/20 shadow-sm" : "bg-white text-gray-900 border-gray-300 shadow-sm")
                     : (darkMode ? "bg-black/50 text-gray-400 border-white/5" : "bg-gray-50 text-gray-500 border-gray-200")
                 )}
               >
@@ -99,7 +99,7 @@ export default function ProfileModal({
                 className={cn(
                   "flex-1 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border",
                   gender === 'female'
-                    ? (darkMode ? "bg-pink-500/20 text-pink-400 border-pink-500/30" : "bg-pink-50 text-pink-700 border-pink-200")
+                    ? (darkMode ? "bg-white/10 text-white border-white/20 shadow-sm" : "bg-white text-gray-900 border-gray-300 shadow-sm")
                     : (darkMode ? "bg-black/50 text-gray-400 border-white/5" : "bg-gray-50 text-gray-500 border-gray-200")
                 )}
               >

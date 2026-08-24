@@ -840,7 +840,7 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
                 activeTab === 'calculator'
-                  ? (darkMode ? "bg-white/10 text-white" : "bg-white text-primary-dark shadow-sm")
+                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
@@ -851,7 +851,7 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'results'
-                  ? (darkMode ? "bg-orange-500/20 text-orange-400 font-bold" : "bg-orange-50 text-orange-700 font-bold shadow-sm")
+                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
@@ -863,7 +863,7 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'water'
-                  ? (darkMode ? "bg-blue-500/20 text-blue-400 font-bold" : "bg-blue-50 text-blue-800 font-bold shadow-sm")
+                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
@@ -875,8 +875,8 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'breathing'
-                  ? (darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-50 text-teal-700 shadow-sm")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-505 hover:text-gray-900")
+                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
               <Wind size={12} className="animate-pulse text-teal-400" />
@@ -887,7 +887,7 @@ export default function App() {
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
                 activeTab === 'groceries'
-                  ? (darkMode ? "bg-[#F04A00]/20 text-[#F04A00] font-bold" : "bg-[#F04A00]/10 text-[#F04A00] font-bold shadow-sm")
+                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
@@ -915,7 +915,7 @@ export default function App() {
                 className={cn(
                   "px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all cursor-pointer",
                   lang === 'en' 
-                    ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
+                    ? (darkMode ? "bg-white/15 text-white" : "bg-white shadow-sm text-gray-900") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
                 )}
                 title="English"
@@ -927,7 +927,7 @@ export default function App() {
                 className={cn(
                   "px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all cursor-pointer",
                   lang === 'bn' 
-                    ? (darkMode ? "bg-primary text-white" : "bg-white shadow-sm text-primary-dark") 
+                    ? (darkMode ? "bg-white/15 text-white" : "bg-white shadow-sm text-gray-900") 
                     : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
                 )}
                 title="বাংলা"
@@ -1008,7 +1008,7 @@ export default function App() {
 
       {/* Breathing Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
         activeTab === 'breathing' ? "block" : "hidden"
       )}>
         <BreathingTimer darkMode={darkMode} lang={lang} />
@@ -1016,7 +1016,7 @@ export default function App() {
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -1024,7 +1024,7 @@ export default function App() {
 
       {/* Water Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
         activeTab === 'water' ? "block" : "hidden"
       )}>
         <WaterTracker darkMode={darkMode} lang={lang} />
@@ -1032,22 +1032,22 @@ export default function App() {
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} />
       </div>
 
       <main className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-12 space-y-8 overflow-x-hidden",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12 space-y-8 overflow-x-hidden",
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
             {/* Iconic Watermark */}
-            <div className="absolute -right-2 -top-2 opacity-30 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-              <Scale size={87} />
+            <div className="absolute -right-2 -top-2 opacity-25 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+              <Scale size={91} />
             </div>
 
             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
@@ -1066,8 +1066,8 @@ export default function App() {
 
           <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
             {/* Iconic Watermark */}
-            <div className="absolute -right-2 -top-2 opacity-30 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-              <Heart size={87} />
+            <div className="absolute -right-2 -top-2 opacity-25 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+              <Heart size={91} />
             </div>
 
             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
@@ -1085,8 +1085,8 @@ export default function App() {
 
           <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
              {/* Iconic Watermark */}
-             <div className="absolute -right-2 -top-2 opacity-30 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-               <Target size={87} />
+             <div className="absolute -right-2 -top-2 opacity-25 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+               <Target size={91} />
              </div>
 
              <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
@@ -1158,143 +1158,139 @@ export default function App() {
           </div>
         </div>
 
-        {/* Quick Measurement */}
+        {/* Quick Measurement & Health Analytics */}
         <div className={cn("p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border-black/5")}>
-          <div className="flex items-center gap-2 mb-6 text-lg font-bold">
-            <Scale size={20} className="opacity-70" /> {lang === 'bn' ? 'দ্রুত পরিমাপ' : 'Quick Measurement'}
-          </div>
-          
-          <div>
-            {/* Inputs */}
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.weight} *</label>
-                <div className="relative">
-                  <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'kg' : 'lbs'}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Side: Quick Measurement Form */}
+            <div className="lg:col-span-5 flex flex-col justify-between h-full">
+              <div>
+                <div className="flex items-center gap-2 mb-6 text-lg font-bold">
+                  <Scale size={20} className="opacity-70" /> {lang === 'bn' ? 'দ্রুত পরিমাপ' : 'Quick Measurement'}
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.waist} *</label>
-                  <div className="relative">
-                    <input type="number" value={waist} onChange={(e) => setWaist(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
+                
+                {/* Inputs */}
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.weight} *</label>
+                    <div className="relative">
+                      <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'kg' : 'lbs'}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.neck} *</label>
-                  <div className="relative">
-                    <input type="number" value={neck} onChange={(e) => setNeck(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.waist} *</label>
+                      <div className="relative">
+                        <input type="number" value={waist} onChange={(e) => setWaist(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.neck} *</label>
+                      <div className="relative">
+                        <input type="number" value={neck} onChange={(e) => setNeck(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {gender === 'female' && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.hip} (Female) *</label>
+                      <div className="relative">
+                        <input type="number" value={hip} onChange={(e) => setHip(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.activityLevel} *</label>
+                    <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")}>
+                      {activityOptions.map(opt => <option key={opt.value} value={opt.value} className={darkMode ? "bg-[#0F0F0F]" : "bg-white"}>{opt.label}</option>)}
+                    </select>
+                    <p className="text-[10px] text-gray-900 dark:text-gray-100 mt-1">{activityOptions.find(o => o.value === activityLevel)?.desc}</p>
                   </div>
                 </div>
               </div>
               
-              {gender === 'female' && (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.hip} (Female) *</label>
-                  <div className="relative">
-                    <input type="number" value={hip} onChange={(e) => setHip(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.activityLevel} *</label>
-                <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")}>
-                  {activityOptions.map(opt => <option key={opt.value} value={opt.value} className={darkMode ? "bg-[#0F0F0F]" : "bg-white"}>{opt.label}</option>)}
-                </select>
-                <p className="text-[10px] text-gray-900 dark:text-gray-100 mt-1">{activityOptions.find(o => o.value === activityLevel)?.desc}</p>
-              </div>
-            </div>
-
-            </div>
-            
-            <button 
-              onClick={handleSaveMetrics} 
-              disabled={!weight || parseFloat(weight) <= 0}
-              className={cn(
-                "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
-                !weight || parseFloat(weight) <= 0
-                  ? "bg-gray-500/20 text-gray-400 cursor-not-allowed" 
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
-              )}
-            >
-              <Save size={18} />
-              {lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save'}
-            </button>
-
-            {/* Health Analytics Accordion */}
-            <div className="mt-6 border border-transparent rounded-2xl overflow-hidden shadow-sm">
               <button 
-                onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+                onClick={handleSaveMetrics} 
+                disabled={!weight || parseFloat(weight) <= 0}
                 className={cn(
-                  "w-full px-6 py-4 flex items-center justify-between font-bold transition-colors",
-                  darkMode ? "bg-[#111] hover:bg-[#1A1A1A] text-white border-white/5" : "bg-gray-50 hover:bg-gray-100 text-gray-900 border-black/5"
+                  "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                  !weight || parseFloat(weight) <= 0
+                    ? "bg-gray-500/20 text-gray-400 cursor-not-allowed" 
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <Activity size={18} className="text-emerald-500" />
-                  {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ' : 'Health Analytics'}
-                </div>
-                <div className={cn("transition-transform duration-300", isAnalyticsOpen ? "rotate-180" : "")}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </div>
+                <Save size={18} />
+                {lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save'}
               </button>
-              
-              <div className={cn(
-                "transition-all duration-300 ease-in-out origin-top",
-                isAnalyticsOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-              )}>
-                <div className={cn("p-6 flex flex-col items-center justify-center text-center transition-all", darkMode ? "bg-[#0F0F0F]" : "bg-white")}>
-                  {dashboardMetrics ? (
-                     <div className="w-full space-y-4">
-                       <Activity size={32} className="mx-auto text-emerald-500" />
-                       <div className="grid grid-cols-2 gap-4 mt-2 text-left">
-                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
-                           <div className="absolute -right-4 -top-4 opacity-5">
-                             <Activity size={80} />
-                           </div>
-                           <div className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1 flex items-center gap-1.5"><Activity size={14}/> {lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
-                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmr)} <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
-                         </div>
-                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
-                           <div className="absolute -right-4 -top-4 opacity-5">
-                             <Zap size={80} />
-                           </div>
-                           <div className="text-[11px] font-black uppercase tracking-widest text-blue-500 mb-1 flex items-center gap-1.5"><Zap size={14}/> {lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
-                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.tdee)} <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
-                         </div>
-                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
-                           <div className="absolute -right-4 -top-4 opacity-5">
-                             <Flame size={80} />
-                           </div>
-                           <div className="text-[11px] font-black uppercase tracking-widest text-amber-500 mb-1 flex items-center gap-1.5"><Flame size={14}/> {t.bodyFat}</div>
-                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{dashboardMetrics.bodyFat > 0 ? `${formatNum(dashboardMetrics.bodyFat.toFixed(1))}` : '--'} <span className="text-base font-bold text-gray-500 dark:text-gray-400">%</span></div>
-                         </div>
-                         <div className={cn("relative p-4 sm:p-5 rounded-2xl overflow-hidden shadow-lg", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
-                           <div className="absolute -right-4 -top-4 opacity-5">
-                             <Heart size={80} />
-                           </div>
-                           <div className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-1 flex items-center gap-1.5"><Heart size={14}/> {lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
-                           <div className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmi.toFixed(1))}</div>
-                         </div>
-                       </div>
-                     </div>
-                  ) : (
-                     <div className="space-y-3 opacity-60 py-6">
-                       <Activity size={32} className="mx-auto text-gray-400" />
-                       <p className="text-sm font-bold text-gray-400">
-                         {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ দেখতে আপনার পরিমাপ দিন' : 'Enter your measurements to see health analysis'}
-                       </p>
-                     </div>
-                  )}
+            </div>
+
+            {/* Right Side: Health Analytics */}
+            <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l pt-6 lg:pt-0 lg:pl-8 border-black/5 dark:border-white/5 flex flex-col justify-between h-full">
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2 text-lg font-bold">
+                    <Activity size={20} className="text-emerald-500" />
+                    {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ' : 'Health Analytics'}
+                  </div>
+                  <span className="text-[11px] font-bold text-gray-400">
+                    {dashboardMetrics ? (lang === 'bn' ? 'রিয়েল-টাইম হিসাব' : 'Live Calculated') : (lang === 'bn' ? 'অপেক্ষা করছে' : 'Awaiting Input')}
+                  </span>
                 </div>
+
+                {dashboardMetrics ? (
+                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                      <div className="absolute -right-3 -top-3 opacity-10 text-emerald-500 pointer-events-none">
+                        <Activity size={64} />
+                      </div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1 flex items-center gap-1"><Activity size={12}/> {lang === 'bn' ? 'বিএমআর' : 'BMR'}</div>
+                      <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmr)} <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
+                    </div>
+
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                      <div className="absolute -right-3 -top-3 opacity-10 text-blue-500 pointer-events-none">
+                        <Zap size={64} />
+                      </div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1 flex items-center gap-1"><Zap size={12}/> {lang === 'bn' ? 'টিডিইই' : 'TDEE'}</div>
+                      <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.tdee)} <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
+                    </div>
+
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                      <div className="absolute -right-3 -top-3 opacity-10 text-amber-500 pointer-events-none">
+                        <Flame size={64} />
+                      </div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1 flex items-center gap-1"><Flame size={12}/> {t.bodyFat}</div>
+                      <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{dashboardMetrics.bodyFat > 0 ? `${formatNum(dashboardMetrics.bodyFat.toFixed(1))}` : '--'} <span className="text-xs font-bold text-gray-500 dark:text-gray-400">%</span></div>
+                    </div>
+
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                      <div className="absolute -right-3 -top-3 opacity-10 text-rose-500 pointer-events-none">
+                        <Heart size={64} />
+                      </div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1 flex items-center gap-1"><Heart size={12}/> {lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
+                      <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmi.toFixed(1))}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={cn(
+                    "p-8 rounded-2xl border flex flex-col items-center justify-center text-center space-y-3",
+                    darkMode ? "bg-black/30 border-white/5" : "bg-gray-50/70 border-black/5"
+                  )}>
+                    <Activity size={36} className="text-gray-400 opacity-60" />
+                    <p className="text-sm font-bold text-gray-400 max-w-xs">
+                      {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ দেখতে আপনার পরিমাপ দিন' : 'Enter measurements to see real-time BMR, TDEE, Body Fat & BMI analytics'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
         </div>
 
         {/* History */}
