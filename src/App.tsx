@@ -1049,7 +1049,7 @@ export default function App() {
 
       {/* Breathing Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
         activeTab === 'breathing' ? "block" : "hidden"
       )}>
         <BreathingTimer darkMode={darkMode} lang={lang} />
@@ -1057,7 +1057,7 @@ export default function App() {
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -1065,7 +1065,7 @@ export default function App() {
 
       {/* Water Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
         activeTab === 'water' ? "block" : "hidden"
       )}>
         <WaterTracker darkMode={darkMode} lang={lang} />
@@ -1073,14 +1073,14 @@ export default function App() {
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} />
       </div>
 
       <main className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-3 sm:pt-3 pb-12 space-y-8 overflow-x-hidden",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12 space-y-8 overflow-x-hidden",
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
