@@ -852,17 +852,6 @@ export default function App() {
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
             <button
-              onClick={() => setActiveTab('home')}
-              className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
-                activeTab === 'home'
-                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
-              )}
-            >
-              {t.tabHome || 'Home'}
-            </button>
-            <button
               onClick={handleHealthMenuClick}
               className={cn(
                 "px-3 py-1 rounded-lg transition-colors cursor-pointer",
@@ -1005,12 +994,12 @@ export default function App() {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors",
+                          "hidden md:flex w-full text-left px-4 py-3 text-sm font-bold items-center gap-3 transition-colors",
                           darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
                         )}
                       >
                         <Activity size={16} className="text-primary" />
-                        {lang === 'bn' ? 'হোম পেজ' : 'Landing / Home'}
+                        {lang === 'bn' ? 'হোম' : 'Home'}
                       </button>
                       <button
                         onClick={() => {
@@ -1424,70 +1413,75 @@ export default function App() {
       />
     </div>
 {/* Mobile Sticky Tab Navigation */}
-      <div className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
-        darkMode ? "bg-[#0F0F0F]/85 border-white/15 text-white" : "bg-white/85 border-black/10 text-gray-900",
-        "pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 px-6 shadow-2xl shadow-black/40"
-      )}>
-        <div className="flex items-center justify-between">
+      <div 
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+          darkMode ? "bg-[#0F0F0F]/90 border-white/15 text-white" : "bg-white/90 border-black/10 text-gray-900",
+          "pt-1.5 px-1.5 shadow-2xl shadow-black/40"
+        )}
+        style={{
+          paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))'
+        }}
+      >
+        <div className="flex items-center justify-around w-full max-w-lg mx-auto">
           <button 
             id="tab_calculator"
             onClick={handleHealthMenuClick}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all cursor-pointer",
-              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
+              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
             <Heart size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabMeasure}</span>
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
           </button>
           
           <button 
             id="tab_results"
             onClick={() => setActiveTab('results')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all relative",
-              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
+              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
             <Flame size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabResults}</span>
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
           </button>
 
           <button 
             id="tab_water"
             onClick={() => setActiveTab('water')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'water' ? "text-blue-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              activeTab === 'water' ? "text-blue-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
             <Droplet size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabWater}</span>
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabWater}</span>
           </button>
           
           <button 
             id="tab_breathing"
             onClick={() => setActiveTab('breathing')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'breathing' ? "text-primary scale-105 animate-pulse" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              activeTab === 'breathing' ? "text-teal-400 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
             <Wind size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabBreathe}</span>
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
           </button>
 
           <button 
             id="tab_groceries"
             onClick={() => setActiveTab('groceries')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1.5 transition-all",
-              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
             <ShoppingBag size={18} />
-            <span className="text-[10px] font-bold mt-1 tracking-tight">{t.tabHistory}</span>
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
           </button>
         </div>
       </div>

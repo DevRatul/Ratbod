@@ -25,7 +25,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
@@ -362,48 +362,6 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   const [menuOpenHabitId, setMenuOpenHabitId] = useState<string | null>(null);
   const [deletingHabit, setDeletingHabit] = useState<HabitItem | null>(null);
 
-  // Drag and drop state
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === targetIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-
-    setHabits(prev => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(draggedIndex, 1);
-      updated.splice(targetIndex, 0, movedItem);
-      return updated;
-    });
-
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
   // Modal for detailed analytics
   const [analyticsHabit, setAnalyticsHabit] = useState<HabitItem | null>(null);
   const [analyticsViewTab, setAnalyticsViewTab] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -699,139 +657,165 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
         </div>
       </div>
 
-      {/* Habit Items List (Matching Screenshot Cards with working Drag and Drop) */}
+      {/* Habit Items List (Smooth Buttery Reorder with Motion Spring Physics) */}
       <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {habits.map((habit, habitIndex) => {
-            const isCompleted = completedTodaySet.has(habit.id);
-            const isMenuOpen = menuOpenHabitId === habit.id;
-            const isDragging = draggedIndex === habitIndex;
-            const isDragOver = dragOverIndex === habitIndex;
+        <Reorder.Group
+          axis="y"
+          values={habits}
+          onReorder={setHabits}
+          className="space-y-2 list-none p-0 m-0"
+        >
+          <AnimatePresence initial={false}>
+            {habits.map((habit) => {
+              const isCompleted = completedTodaySet.has(habit.id);
+              const isMenuOpen = menuOpenHabitId === habit.id;
 
-            return (
-              <motion.div
-                key={habit.id}
-                layout
-                draggable
-                onDragStart={(e) => handleDragStart(e, habitIndex)}
-                onDragOver={(e) => handleDragOver(e, habitIndex)}
-                onDrop={(e) => handleDrop(e, habitIndex)}
-                onDragEnd={handleDragEnd}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: isDragging ? 0.4 : 1, y: 0, scale: isDragOver ? 1.02 : 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={cn(
-                  "group relative p-2.5 sm:p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 select-none",
-                  isDragOver ? "ring-2 ring-rose-500 border-rose-500" : "",
-                  isCompleted
-                    ? (darkMode 
-                        ? "bg-[#0c1813] border-emerald-500/30 text-gray-300" 
-                        : "bg-emerald-50/80 border-emerald-200 text-gray-800")
-                    : (darkMode 
-                        ? "bg-[#111116] border-white/10 hover:border-white/20 text-white" 
-                        : "bg-white border-black/5 hover:border-black/10 text-gray-900 shadow-2xs")
-                )}
-              >
-                {/* Left Grip Handle & Menu Dots */}
-                <div className="flex items-center gap-1 shrink-0 text-gray-500 dark:text-gray-400 dark:text-gray-600">
-                  <GripVertical size={16} className="cursor-grab active:cursor-grabbing hover:text-gray-300" />
-                  
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setMenuOpenHabitId(isMenuOpen ? null : habit.id)}
-                      className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                    >
-                      <MoreVertical size={15} />
-                    </button>
-
-                    {/* Quick Dropdown Menu */}
-                    <AnimatePresence>
-                      {isMenuOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9, y: 5 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                          className={cn(
-                            "absolute left-0 top-7 z-30 min-w-[120px] rounded-xl border p-1 shadow-xl backdrop-blur-md",
-                            darkMode ? "bg-[#181820] border-white/10 text-white" : "bg-white border-black/10 text-gray-800"
-                          )}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingHabit(habit);
-                              setMenuOpenHabitId(null);
-                            }}
-                            className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer text-left"
-                          >
-                            <Edit2 size={13} />
-                            {lang === 'bn' ? 'সম্পাদনা' : 'Edit'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeletingHabit(habit);
-                              setMenuOpenHabitId(null);
-                            }}
-                            className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
-                          >
-                            <Trash2 size={13} />
-                            {lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                {/* Middle Content: Emoji + Title + Subtitle - Click to open Analytics */}
-                <div 
-                  onClick={() => setAnalyticsHabit(habit)}
-                  className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer group/title hover:opacity-90 transition-opacity"
-                  title={lang === 'bn' ? 'অ্যানালিটিক্স দেখতে ক্লিক করুন' : 'Click to view habit analytics'}
-                >
-                  <span className="text-xl shrink-0 select-none group-hover/title:scale-110 transition-transform">{habit.emoji}</span>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className={cn(
-                        "text-xs sm:text-sm font-bold tracking-tight truncate transition-all",
-                        isCompleted ? "line-through opacity-80 text-[#32CD32]" : ""
-                      )}>
-                        {habit.title}
-                      </h3>
-                      <BarChart2 size={13} className="text-gray-500 dark:text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity shrink-0" />
-                    </div>
-                    {habit.subtitle && (
-                      <p className={cn(
-                        "text-[10px] sm:text-xs font-medium truncate mt-0.5",
-                        isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
-                      )}>
-                        {habit.subtitle}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Big Circular Checkbox */}
-                <button
-                  type="button"
-                  onClick={() => toggleHabit(habit.id)}
+              return (
+                <Reorder.Item
+                  key={habit.id}
+                  value={habit}
+                  id={habit.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  whileDrag={{ 
+                    scale: 1.025, 
+                    boxShadow: darkMode
+                      ? "0 20px 30px -10px rgba(0, 0, 0, 0.8), 0 0 0 2px #FF5A5A"
+                      : "0 20px 30px -10px rgba(0, 0, 0, 0.2), 0 0 0 2px #FF5A5A",
+                    zIndex: 50,
+                    cursor: "grabbing"
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 450,
+                    damping: 32
+                  }}
                   className={cn(
-                    "w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer shrink-0",
+                    "group relative p-2.5 sm:p-3 rounded-2xl border transition-colors flex items-center justify-between gap-3 select-none touch-none",
                     isCompleted
-                      ? "bg-[#32CD32] border-[#32CD32] text-white shadow-xl shadow-[#32CD32]/50 scale-110 ring-4 ring-[#32CD32]/20"
-                      : (darkMode
-                          ? "border-gray-600 hover:border-gray-400 bg-white/5"
-                          : "border-gray-300 hover:border-gray-400 bg-gray-50")
+                      ? (darkMode 
+                          ? "bg-[#0c1813] border-emerald-500/30 text-gray-300" 
+                          : "bg-emerald-50/80 border-emerald-200 text-gray-800")
+                      : (darkMode 
+                          ? "bg-[#111116] border-white/10 hover:border-white/20 text-white" 
+                          : "bg-white border-black/5 hover:border-black/10 text-gray-900 shadow-2xs")
                   )}
                 >
-                  {isCompleted && <Check size={16} strokeWidth={3} className="animate-in zoom-in-50 duration-200" />}
-                </button>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                  {/* Left Grip Handle & Menu Dots */}
+                  <div className="flex items-center gap-1 shrink-0 text-gray-500 dark:text-gray-400">
+                    <div 
+                      className="p-1 -m-1 cursor-grab active:cursor-grabbing hover:text-rose-400 transition-colors"
+                      title={lang === 'bn' ? 'স্থান পরিবর্তন করতে টেনে আনুন' : 'Drag to reorder'}
+                    >
+                      <GripVertical size={16} />
+                    </div>
+                    
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenHabitId(isMenuOpen ? null : habit.id);
+                        }}
+                        className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                      >
+                        <MoreVertical size={15} />
+                      </button>
+
+                      {/* Quick Dropdown Menu */}
+                      <AnimatePresence>
+                        {isMenuOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 5 }}
+                            className={cn(
+                              "absolute left-0 top-7 z-30 min-w-[120px] rounded-xl border p-1 shadow-xl backdrop-blur-md",
+                              darkMode ? "bg-[#181820] border-white/10 text-white" : "bg-white border-black/10 text-gray-800"
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingHabit(habit);
+                                setMenuOpenHabitId(null);
+                              }}
+                              className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer text-left"
+                            >
+                              <Edit2 size={13} />
+                              {lang === 'bn' ? 'সম্পাদনা' : 'Edit'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingHabit(habit);
+                                setMenuOpenHabitId(null);
+                              }}
+                              className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+                            >
+                              <Trash2 size={13} />
+                              {lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  {/* Middle Content: Emoji + Title + Subtitle - Click to open Analytics */}
+                  <div 
+                    onClick={() => setAnalyticsHabit(habit)}
+                    className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer group/title hover:opacity-90 transition-opacity"
+                    title={lang === 'bn' ? 'অ্যানালিটিক্স দেখতে ক্লিক করুন' : 'Click to view habit analytics'}
+                  >
+                    <span className="text-xl shrink-0 select-none group-hover/title:scale-110 transition-transform">{habit.emoji}</span>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className={cn(
+                          "text-xs sm:text-sm font-bold tracking-tight truncate transition-all",
+                          isCompleted ? "line-through opacity-80 text-[#32CD32]" : ""
+                        )}>
+                          {habit.title}
+                        </h3>
+                        <BarChart2 size={13} className="text-gray-500 dark:text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity shrink-0" />
+                      </div>
+                      {habit.subtitle && (
+                        <p className={cn(
+                          "text-[10px] sm:text-xs font-medium truncate mt-0.5",
+                          isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
+                        )}>
+                          {habit.subtitle}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Big Circular Checkbox */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleHabit(habit.id);
+                    }}
+                    className={cn(
+                      "w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer shrink-0",
+                      isCompleted
+                        ? "bg-[#32CD32] border-[#32CD32] text-white shadow-xl shadow-[#32CD32]/50 scale-110 ring-4 ring-[#32CD32]/20"
+                        : (darkMode
+                            ? "border-gray-600 hover:border-gray-400 bg-white/5"
+                            : "border-gray-300 hover:border-gray-400 bg-gray-50")
+                    )}
+                  >
+                    {isCompleted && <Check size={16} strokeWidth={3} className="animate-in zoom-in-50 duration-200" />}
+                  </button>
+                </Reorder.Item>
+              );
+            })}
+          </AnimatePresence>
+        </Reorder.Group>
 
         {habits.length === 0 && (
           <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-gray-700/50">

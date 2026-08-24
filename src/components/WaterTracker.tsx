@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -15,6 +15,7 @@ interface WaterEntry {
   amountMl: number;
   glasses: number;
   timestamp: string;
+  createdAt?: number;
 }
 
 interface DayHistory {
@@ -37,6 +38,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [reminderActive, setReminderActive] = useState<boolean>(false);
   const [customMlInput, setCustomMlInput] = useState<string>('');
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
   // Modal custom goal state
   const [modalGlasses, setModalGlasses] = useState<string>('16');
@@ -203,6 +205,16 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
+  // Live ticker to refresh elapsed time (e.g. "X min ago")
+  const [nowTime, setNowTime] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowTime(Date.now());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Continuous alarm chime effect while alarm modal is open
   useEffect(() => {
     let soundInterval: any = null;
@@ -227,6 +239,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       mlUnit: "ml",
       litersUnit: "L",
       consumed: "Consumed Today",
+      lastIntake: "Last Intake",
+      noneToday: "None today",
+      justNow: "Just now",
       remaining: "Remaining",
       percentDone: "Completed",
       addGlass: "+1 Glass (250 ml)",
@@ -273,6 +288,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       mlUnit: "মিলি",
       litersUnit: "লিটার",
       consumed: "আজ পান করেছেন",
+      lastIntake: "শেষ গ্রহণ",
+      noneToday: "আজকে এখনও নেই",
+      justNow: "এইমাত্র",
       remaining: "অবশিষ্ট",
       percentDone: "সম্পন্ন",
       addGlass: "+১ গ্লাস (২৫০ মিলি)",
@@ -321,6 +339,44 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       return val.replace(/\d/g, (d) => bnDigits[parseInt(d)]);
     }
     return val;
+  };
+
+  // Helper to format last water intake time & elapsed duration (time ago)
+  const formatLastIntakeTimeAgo = () => {
+    if (entries.length === 0) {
+      return labels.noneToday;
+    }
+    const lastEntry = entries[0];
+    let entryTimeMs = lastEntry.createdAt;
+    if (!entryTimeMs) {
+      const parsedId = Number(lastEntry.id);
+      if (!isNaN(parsedId) && parsedId > 1600000000000) {
+        entryTimeMs = parsedId;
+      }
+    }
+
+    if (entryTimeMs) {
+      const diffMs = Math.max(0, nowTime - entryTimeMs);
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMins / 60);
+
+      if (diffMins < 1) {
+        return labels.justNow;
+      } else if (diffMins < 60) {
+        return lang === 'bn' ? `${formatNum(diffMins)} মি. আগে` : `${diffMins}m ago`;
+      } else {
+        const remainingMins = diffMins % 60;
+        if (lang === 'bn') {
+          return remainingMins > 0 
+            ? `${formatNum(diffHours)}ঘ ${formatNum(remainingMins)}মি আগে` 
+            : `${formatNum(diffHours)}ঘ আগে`;
+        } else {
+          return remainingMins > 0 ? `${diffHours}h ${remainingMins}m ago` : `${diffHours}h ago`;
+        }
+      }
+    }
+
+    return lastEntry.timestamp;
   };
 
   // Play sound when water is consumed (crisp water drop swoop & pop)
@@ -509,11 +565,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       playWaterDropSound();
     }
 
+    const now = Date.now();
     const newEntry: WaterEntry = {
-      id: Date.now().toString(),
+      id: now.toString(),
       amountMl,
       glasses: amountMl / (glassVolumeMl || 250),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: now
     };
     setEntries(prev => [newEntry, ...prev]);
   };
@@ -605,66 +663,73 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         "p-3 sm:p-6 rounded-2xl border space-y-3 sm:space-y-4 relative overflow-hidden transition-all shadow-xs w-full",
         darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
       )}>
-        {/* Header: Consumed Label + Percentage Badge */}
-        <div className="w-full flex items-center justify-between border-b pb-2.5 sm:pb-3 border-gray-200/20 dark:border-white/5">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
+        {/* Header: Consumed Label (Left) + Last Water Intake with Clock Icon (Right) */}
+        <div className="w-full flex items-center justify-between border-b pb-2 sm:pb-2.5 border-gray-200/20 dark:border-white/5 gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5 shrink-0">
             <Droplet size={15} className="text-blue-500 fill-blue-500/20" />
             {labels.consumed}
           </span>
-          <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
-            {formatNum(progressPercent)}% {labels.percentDone}
-          </span>
+
+          {/* Last Water Intake with Clock Icon showing Time Ago */}
+          <div 
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] sm:text-xs font-bold border transition-all shrink-0 max-w-[65%] truncate shadow-2xs",
+              entries.length > 0
+                ? (darkMode ? "bg-blue-500/20 border-blue-500/35 text-white" : "bg-blue-50 border-blue-200 text-gray-900")
+                : (darkMode ? "bg-white/5 border-white/10 text-white/90" : "bg-gray-100 border-gray-200 text-gray-900")
+            )}
+            title={entries.length > 0 ? `${labels.lastIntake}: ${entries[0].timestamp}` : undefined}
+          >
+            <Clock size={12} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0" : "text-blue-600 shrink-0") : (darkMode ? "text-white/80 shrink-0" : "text-gray-900 shrink-0")} />
+            <span className="truncate">{formatLastIntakeTimeAgo()}</span>
+          </div>
         </div>
 
         {/* Glass Cup with Liquid Fill: Left [300ml] [400ml] - Center [Cup] - Right [250ml] [100ml] - Zero horizontal scroll on mobile */}
         <div className="relative my-0.5 sm:my-1 flex flex-col items-center justify-center w-full">
           <div className="grid grid-cols-[1fr_1fr_auto_1fr_1fr] sm:flex sm:items-center sm:justify-center items-center justify-items-center gap-1 sm:gap-2.5 w-full max-w-full py-1">
             
-            {/* Left Outer: 300 ml Glass Button */}
+            {/* Left Outer: 300 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(300)}
               title={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
               className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer group shadow-2xs w-full max-w-[62px] sm:max-w-[76px] min-w-0 active:scale-95",
-                darkMode
-                  ? "bg-blue-600/10 border-blue-600/30 text-blue-300 hover:bg-blue-600/20"
-                  : "bg-blue-100/90 border-blue-300 text-blue-900 hover:bg-blue-200"
+                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
+                darkMode ? "text-white" : "text-black"
               )}
             >
-              <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shadow-blue-600/30 group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={12} className="fill-current sm:scale-125" />
+              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
               </div>
-              <span className="text-[8.5px] sm:text-[11px] font-black mt-1 text-center truncate w-full tracking-tight">
+              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
                 300 {labels.mlUnit}
               </span>
             </motion.button>
 
-            {/* Left Inner: 400 ml Glass Button */}
+            {/* Left Inner: 400 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(400)}
               title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
               className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer group shadow-2xs w-full max-w-[62px] sm:max-w-[76px] min-w-0 active:scale-95",
-                darkMode
-                  ? "bg-blue-700/10 border-blue-700/30 text-blue-300 hover:bg-blue-700/20"
-                  : "bg-blue-200/90 border-blue-400 text-blue-950 hover:bg-blue-300"
+                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
+                darkMode ? "text-white" : "text-black"
               )}
             >
-              <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-700 text-white flex items-center justify-center shadow-xs shadow-blue-700/30 group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={13} className="fill-current sm:scale-125" />
+              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
               </div>
-              <span className="text-[8.5px] sm:text-[11px] font-black mt-1 text-center truncate w-full tracking-tight">
+              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
                 400 {labels.mlUnit}
               </span>
             </motion.button>
 
             {/* Glass Tumbler Container with Liquid Water Fill (Display Only) */}
             <div className={cn(
-              "relative w-[76px] h-[112px] sm:w-28 sm:h-38 rounded-b-[1.75rem] sm:rounded-b-[2rem] rounded-t-sm sm:rounded-t-md border-x-[3px] sm:border-x-4 border-b-[3px] sm:border-b-4 border-t-2 flex items-center justify-center shadow-lg sm:shadow-xl overflow-hidden transition-all shrink-0 mx-0.5 sm:mx-1",
+              "relative w-[76px] h-[116px] sm:w-28 sm:h-40 rounded-b-[1.75rem] sm:rounded-b-[2rem] rounded-t-sm sm:rounded-t-md border-x-[3px] sm:border-x-4 border-b-[3px] sm:border-b-4 border-t-2 flex items-center justify-center shadow-lg sm:shadow-xl overflow-hidden transition-all shrink-0 mx-0.5 sm:mx-1",
               totalConsumedMl >= goalMl 
                 ? "border-[#32CD32]/80 shadow-[#32CD32]/20 " + (darkMode ? "bg-slate-950/90" : "bg-emerald-50/90")
                 : "border-blue-400/80 dark:border-blue-500/70 shadow-blue-500/20 " + (darkMode ? "bg-slate-950/90" : "bg-blue-50/90")
@@ -695,68 +760,78 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/50 animate-pulse" />
               </motion.div>
 
-              {/* Center Display Overlay */}
-              <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center p-0.5 sm:p-1 select-none pointer-events-none backdrop-blur-[1px]">
-                <div className={cn("w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md flex items-center justify-center mb-0.5 shadow-2xs", totalConsumedMl >= goalMl ? "text-emerald-700 dark:text-emerald-200" : "text-blue-600 dark:text-blue-200")}>
+              {/* Center Display Overlay: Target glasses removed, Consumed amount in center, Percentage at bottom */}
+              <div className="relative z-10 w-full h-full flex flex-col items-center justify-between text-center p-1 sm:p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
+                {/* Top status indicator icon */}
+                <div className={cn("w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md flex items-center justify-center shadow-2xs mt-0.5", totalConsumedMl >= goalMl ? "text-emerald-700 dark:text-emerald-200" : "text-blue-600 dark:text-blue-200")}>
                   {totalConsumedMl >= goalMl ? <Check size={11} className="animate-in zoom-in-50" strokeWidth={3} /> : <Droplet size={11} className="fill-current animate-pulse" />}
                 </div>
-                <span className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
-                  {formatNum(totalGlasses, 1)}
-                </span>
-                <span className="text-[7.5px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs truncate max-w-full px-0.5">
-                  / {formatNum(goalGlasses)} {labels.glassesUnit}
-                </span>
-                <span className="text-[7.5px] sm:text-[9px] font-semibold text-slate-700 dark:text-blue-100 mt-0.5 drop-shadow-2xs truncate max-w-full px-0.5">
-                  {formatNum(totalConsumedMl)} {labels.mlUnit}
-                </span>
+
+                {/* Middle: Glasses and Consumed Volume (Target removed from tumbler) */}
+                <div className="flex flex-col items-center my-auto">
+                  <span className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
+                    {formatNum(totalGlasses, 1)} <span className="text-[9px] sm:text-[10.5px] font-bold opacity-85">{labels.glassesUnit}</span>
+                  </span>
+                  <span className="text-[8px] sm:text-[9.5px] font-bold text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs truncate max-w-full px-0.5">
+                    {formatNum(totalConsumedMl)} {labels.mlUnit}
+                  </span>
+                </div>
+
+                {/* Bottom of Tumbler: Percentage Calculated Badge */}
+                <div className="w-full flex items-center justify-center pb-0.5 sm:pb-1">
+                  <span className={cn(
+                    "text-[8.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs leading-tight tracking-tight",
+                    totalConsumedMl >= goalMl
+                      ? "bg-emerald-600 text-white border-emerald-400/60"
+                      : "bg-blue-600 text-white border-blue-400/60"
+                  )}>
+                    {formatNum(progressPercent)}%
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Right Inner: 250 ml Glass Button */}
+            {/* Right Inner: 250 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(250)}
               title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
               className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer group shadow-2xs w-full max-w-[62px] sm:max-w-[76px] min-w-0 active:scale-95",
-                darkMode
-                  ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
-                  : "bg-blue-50/90 border-blue-200 text-blue-800 hover:bg-blue-100"
+                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
+                darkMode ? "text-white" : "text-black"
               )}
             >
-              <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs shadow-blue-500/30 group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={12} className="fill-current sm:scale-125" />
+              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
               </div>
-              <span className="text-[8.5px] sm:text-[11px] font-black mt-1 text-center truncate w-full tracking-tight">
+              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
                 250 {labels.mlUnit}
               </span>
             </motion.button>
 
-            {/* Right Outer: 100 ml Glass Button */}
+            {/* Right Outer: 100 ml Glass Button (Unified Single Theme Color, white in dark mode, black in light mode) */}
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(100)}
               title={lang === 'bn' ? '১০০ মিলি যোগ করুন' : 'Add 100 ml'}
               className={cn(
-                "flex flex-col items-center justify-center p-1 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer group shadow-2xs w-full max-w-[62px] sm:max-w-[76px] min-w-0 active:scale-95",
-                darkMode
-                  ? "bg-blue-400/10 border-blue-400/30 text-blue-300 hover:bg-blue-400/20"
-                  : "bg-blue-50/60 border-blue-200 text-blue-700 hover:bg-blue-100"
+                "flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95",
+                darkMode ? "text-white" : "text-black"
               )}
             >
-              <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-400 text-white flex items-center justify-center shadow-xs shadow-blue-400/30 group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={12} className="fill-current sm:scale-125" />
+              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                <Droplet size={10} className={cn("fill-current sm:scale-110", darkMode ? "text-white" : "text-black")} />
               </div>
-              <span className="text-[8.5px] sm:text-[11px] font-black mt-1 text-center truncate w-full tracking-tight">
+              <span className={cn("text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight drop-shadow-xs", darkMode ? "text-white" : "text-black")}>
                 100 {labels.mlUnit}
               </span>
             </motion.button>
           </div>
 
-          {/* Hydration Status Label */}
-          <span className="text-[10px] text-gray-900 dark:text-white mt-1 font-medium flex items-center gap-1">
+          {/* Hydration Status Label with padding bottom */}
+          <span className="text-[10.5px] sm:text-xs text-gray-900 dark:text-white mt-1.5 pb-2.5 font-semibold flex items-center gap-1">
             <Sparkles size={11} className="text-blue-400 animate-pulse" />
             {lang === 'bn' ? 'দৈনিক হাইড্রেশন গ্লাস' : 'Daily Hydration Glass'}
           </span>
@@ -947,6 +1022,42 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             >
               <Target size={12} />
               <span>{lang === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Edit Goal'}</span>
+            </button>
+          </div>
+
+          {/* History Small-Sized Card after Daily Target */}
+          <div className={cn(
+            "mt-2 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-xs",
+            darkMode
+              ? "bg-emerald-950/30 border-emerald-500/20 hover:border-emerald-500/30"
+              : "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/60"
+          )}>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-emerald-500/20">
+                <HistoryIcon size={14} />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
+                <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                  {lang === 'bn' ? 'পানি পানের ইতিহাস' : 'Water Intake History'}:
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap">
+                  {formatNum(totalConsumedMl)} {labels.mlUnit} {lang === 'bn' ? '(আজ)' : '(Today)'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              className={cn(
+                "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+                darkMode
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
+                  : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+              )}
+            >
+              <HistoryIcon size={12} />
+              <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
             </button>
           </div>
         </div>
@@ -1199,6 +1310,162 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   )}
                 >
                   {lang === 'bn' ? 'এলার্ম বন্ধ করুন (Dismiss)' : 'Dismiss Alarm'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Daily Water Intake History Modal with Top Corner Back Button */}
+      <AnimatePresence>
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              key="water-history-modal"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={cn(
+                "w-full max-w-md max-h-[92vh] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl my-auto",
+                darkMode ? "bg-[#091522] border-emerald-500/30 text-white" : "bg-white border-gray-200 text-gray-900"
+              )}
+            >
+              {/* Sticky Header with Back Button in top corner */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/20 dark:border-white/10 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shadow-emerald-500/30">
+                    <HistoryIcon size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-tight">
+                      {lang === 'bn' ? 'দৈনিক পানি পানের ইতিহাস' : 'Daily Water Intake History'}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                      {lang === 'bn' ? 'দৈনিক মোট পানি পানের হিসাব' : 'Daily hydration intake overview'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Back button in top corner as requested */}
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className={cn(
+                    "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-95",
+                    darkMode
+                      ? "bg-white/10 border-white/15 text-white hover:bg-white/20"
+                      : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
+                  )}
+                  title={lang === 'bn' ? 'ফিরে যান' : 'Back'}
+                >
+                  <ArrowLeft size={14} />
+                  <span>{lang === 'bn' ? 'ফিরে যান' : 'Back'}</span>
+                </button>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="overflow-y-auto space-y-3.5 pr-1 py-3 text-xs">
+                {/* Today's Total Intake Hero Card */}
+                <div className={cn(
+                  "p-3.5 rounded-2xl border flex flex-col gap-2 shadow-xs",
+                  darkMode
+                    ? "bg-gradient-to-br from-blue-950/60 to-emerald-950/40 border-blue-500/30"
+                    : "bg-gradient-to-br from-blue-50 to-emerald-50 border-blue-200"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                      {lang === 'bn' ? 'আজকের মোট পানি গ্রহণ' : "Today's Total Water Intake"}
+                    </span>
+                    <span className="text-[10.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      {formatNum(progressPercent)}% {labels.percentDone}
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
+                      {formatNum(totalConsumedMl)} <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{labels.mlUnit}</span>
+                    </span>
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                      {lang === 'bn' ? 'দৈনিক লক্ষ্য:' : 'Goal:'} {formatNum(goalMl)} {labels.mlUnit} ({formatNum(goalMl / 1000, 1)}L)
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                    <div 
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
+                      style={{ width: `${Math.min(100, progressPercent)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 dark:text-gray-400 pt-0.5">
+                    <span>{lang === 'bn' ? `মোট গ্লাস: ${formatNum(totalGlasses, 1)}` : `Total Glasses: ${formatNum(totalGlasses, 1)}`}</span>
+                    <span>{lang === 'bn' ? `লগ সংখ্যা: ${formatNum(entries.length)} টি` : `Total Logs: ${formatNum(entries.length)}`}</span>
+                  </div>
+                </div>
+
+                {/* Past Daily History Records */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar size={13} className="text-emerald-500" />
+                    {lang === 'bn' ? 'পূর্ববর্তী দিনগুলোর দৈনিক রেকর্ড' : 'Past Daily Intake History'}
+                  </h4>
+
+                  {history.length === 0 ? (
+                    <div className={cn(
+                      "p-4 rounded-xl border text-center space-y-1",
+                      darkMode ? "bg-white/5 border-white/5 text-gray-400" : "bg-gray-50 border-gray-100 text-gray-500"
+                    )}>
+                      <p className="text-xs font-medium">
+                        {lang === 'bn' ? 'পূর্ববর্তী কোনো দিনের রেকর্ড সংরক্ষিত নেই।' : 'No past daily history recorded yet.'}
+                      </p>
+                      <p className="text-[10.5px] opacity-75">
+                        {lang === 'bn' ? 'প্রতিদিন দিন শেষে স্বয়ংক্রিয়ভাবে মোট পানির পরিমাণ এখানে যুক্ত হবে।' : 'Daily water intake totals are recorded and saved here every day.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {history.map((record, index) => {
+                        const recPercent = Math.min(100, Math.round((record.consumedMl / (record.goalMl || 1)) * 100));
+                        return (
+                          <div 
+                            key={`${record.date}-${index}`}
+                            className={cn(
+                              "p-3 rounded-xl border flex flex-col gap-1.5 transition-all",
+                              darkMode ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"
+                            )}
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-gray-900 dark:text-white">
+                                {record.date}
+                              </span>
+                              <span className="font-extrabold text-blue-600 dark:text-blue-400">
+                                {formatNum(record.consumedMl)} / {formatNum(record.goalMl)} {labels.mlUnit} ({formatNum(recPercent)}%)
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                              <div 
+                                className="h-full rounded-full bg-blue-500"
+                                style={{ width: `${recPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="pt-3 border-t border-gray-200/20 dark:border-white/10 flex items-center justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-xs shadow-blue-500/20 active:scale-95"
+                >
+                  {lang === 'bn' ? 'ঠিক আছে (Close)' : 'Close'}
                 </button>
               </div>
             </motion.div>

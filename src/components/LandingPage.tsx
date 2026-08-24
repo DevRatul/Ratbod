@@ -252,7 +252,7 @@ export default function LandingPage({
               )}
             >
               <Activity size={12} className="text-primary" />
-              {lang === 'bn' ? 'স্বাস্থ্য ক্যালকুলেটর' : 'Health Calculator'}
+              {lang === 'bn' ? 'স্বাস্থ্য (Health)' : 'Health'}
             </a>
             <a 
               href="#habit-tracker-section" 
@@ -262,7 +262,7 @@ export default function LandingPage({
               )}
             >
               <HistoryIcon size={12} className="text-emerald-500" />
-              {lang === 'bn' ? 'অভ্যাস ট্র্যাকার' : 'Habit Tracker'}
+              {lang === 'bn' ? 'অভ্যাস (Habit)' : 'Habit'}
             </a>
             <a 
               href="#water-tracker-section" 
@@ -272,16 +272,7 @@ export default function LandingPage({
               )}
             >
               <Droplet size={12} className="text-blue-500" />
-              {lang === 'bn' ? 'পানি ট্র্যাকার' : 'Water Tracker'}
-            </a>
-            <a 
-              href="#all-features" 
-              className={cn(
-                "px-3 py-1 rounded-lg transition-colors",
-                darkMode ? "text-gray-300 hover:text-white hover:bg-white/10" : "text-gray-700 hover:text-gray-900 hover:bg-white"
-              )}
-            >
-              {lang === 'bn' ? 'সকল ফিচার' : 'All Features'}
+              {lang === 'bn' ? 'পানি (Water)' : 'Water'}
             </a>
           </nav>
           
@@ -778,15 +769,12 @@ export default function LandingPage({
                             key={btn.ml}
                             type="button"
                             onClick={() => handleAddDemoWater(btn.ml)}
-                            className={cn(
-                              "p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs hover:border-blue-400 min-w-0",
-                              darkMode ? "bg-blue-600/10 border-blue-500/20 text-blue-300 hover:bg-blue-600/20" : "bg-blue-50 border-blue-200 text-blue-900 hover:bg-blue-100"
-                            )}
+                            className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border border-blue-500/30 bg-blue-600 hover:bg-blue-700 text-white flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs min-w-0"
                           >
-                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center mb-1">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-white/20 text-white flex items-center justify-center mb-1">
                               <Droplet size={12} className="fill-current" />
                             </div>
-                            <span className="text-[9px] sm:text-[10px] font-black truncate w-full text-center">{btn.label}</span>
+                            <span className="text-[10px] sm:text-xs font-black truncate w-full text-center text-white">{btn.label}</span>
                           </button>
                         ))}
                       </div>
