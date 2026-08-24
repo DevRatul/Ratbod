@@ -65,6 +65,7 @@ import Goals from './components/Goals';
 import History from './components/History';
 import QuickSteps from './components/QuickSteps';
 import ProfileModal from './components/ProfileModal';
+import LandingPage from './components/LandingPage';
 import { translations } from './utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -111,10 +112,10 @@ export default function App() {
     }
   });
   const [authUser, setAuthUser] = useState(auth.currentUser);
-  const [activeTab, setActiveTab] = useState<'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>(() => {
+  const [activeTab, setActiveTab] = useState<'home' | 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>(() => {
     try {
       const saved = localStorage.getItem('ratbod_active_tab');
-      if (saved && ['calculator', 'results', 'groceries', 'water', 'goals', 'breathing'].includes(saved)) {
+      if (saved && ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'breathing'].includes(saved)) {
         return saved as any;
       }
       return 'calculator';
@@ -300,8 +301,17 @@ export default function App() {
 
   useEffect(() => {
     // Set browser tab theme-color and iOS status bar style
-    const themeColor = darkMode ? '#000000' : '#ffffff';
+    const themeColor = darkMode ? '#0A0A0A' : '#F5F5F5';
     const statusBar = darkMode ? 'black-translucent' : 'default';
+
+    // 1. Update <meta name="theme-color">
+    let themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeMeta) {
+      themeMeta = document.createElement('meta');
+      themeMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeMeta);
+    }
+    themeMeta.setAttribute('content', themeColor);
 
     // 2. Update <meta name="apple-mobile-web-app-status-bar-style">
     let statusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
@@ -312,10 +322,17 @@ export default function App() {
     }
     statusMeta.setAttribute('content', statusBar);
 
-    // 3. Set background color on documentElement and body for seamless browser window/tab integration
+    // 3. Set background color and class on documentElement and body for seamless browser window/tab/status-bar integration
     document.documentElement.style.backgroundColor = themeColor;
     document.body.style.backgroundColor = themeColor;
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
   }, [darkMode]);
 
   // Calculate age when birthdate changes
@@ -778,6 +795,32 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleLogoClick = (e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      localStorage.setItem('ratbod_active_tab', 'calculator');
+    } catch (err) {}
+    window.location.reload();
+  };
+
+  if (activeTab === 'home') {
+    return (
+      <LandingPage
+        onNavigateTab={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        lang={lang}
+        setLang={setLang}
+      />
+    );
+  }
+
   return (
     <>
     <div 
@@ -787,24 +830,38 @@ export default function App() {
       darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
-      <header className="sticky top-0 z-50 px-3 sm:px-6 py-2 transition-all duration-300">
+      <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 transition-all duration-300">
         <div className={cn(
           "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition-colors duration-300",
           darkMode ? "bg-[#0F0F0F]/85 border-white/15 shadow-black/60" : "bg-white/85 border-black/10 shadow-gray-300/60"
         )}>
           <button 
             type="button"
-            onClick={handleHealthMenuClick} 
-            className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity cursor-pointer text-left bg-transparent border-0 p-0"
+            id="ratbod_logo_btn"
+            onClick={handleLogoClick} 
+            className="flex items-center gap-2 shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer text-left bg-transparent border-0 py-2 px-1 -ml-1 rounded-xl touch-manipulation relative z-10 select-none"
+            title="Reload RatboD"
+            aria-label="Reload RatboD"
           >
-            <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white">
+            <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white shadow-sm shadow-primary/30 shrink-0">
               <Activity size={14} />
             </div>
-            <h1 className="font-sans font-black text-base tracking-tighter">RatboD</h1>
+            <h1 className="font-sans font-black text-base tracking-tighter select-none">RatboD</h1>
           </button>
           
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                activeTab === 'home'
+                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+              )}
+            >
+              {t.tabHome || 'Home'}
+            </button>
             <button
               onClick={handleHealthMenuClick}
               className={cn(
@@ -941,6 +998,20 @@ export default function App() {
                         darkMode ? "bg-[#111111] border-white/10" : "bg-white border-black/5"
                       )}
                     >
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setActiveTab('home');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors",
+                          darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
+                        )}
+                      >
+                        <Activity size={16} className="text-primary" />
+                        {lang === 'bn' ? 'হোম পেজ' : 'Landing / Home'}
+                      </button>
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);

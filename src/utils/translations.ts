@@ -18,6 +18,7 @@ export const translations = {
     breathingSubtitle: "Lower heartbeat • Reduce stress & cortisol • Relax",
 
     // Tabs
+    tabHome: "Home",
     tabMeasure: "Health",
     tabResults: "Habitor",
     tabGoals: "Goals",
@@ -151,6 +152,7 @@ export const translations = {
     breathingSubtitle: "হৃদস্পন্দন কমান • মানসিক চাপ ও কর্টিসল হ্রাস করুন • শান্ত হোন",
 
     // Tabs
+    tabHome: "হোম",
     tabMeasure: "স্বাস্থ্য",
     tabResults: "হ্যাবিটর",
     tabGoals: "লক্ষ্য সমূহ",
