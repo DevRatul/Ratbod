@@ -152,10 +152,7 @@ export default function App() {
             if (data.birthdate !== undefined) setBirthdate(data.birthdate || '');
             if (data.age !== undefined) setAge(data.age || '');
             if (data.height !== undefined) setHeight(data.height || '');
-            if (data.weight !== undefined) setWeight(data.weight || '');
-            if (data.waist !== undefined) setWaist(data.waist || '');
-            if (data.neck !== undefined) setNeck(data.neck || '');
-            if (data.hip !== undefined) setHip(data.hip || '');
+            // Quick measurement fields (weight, waist, neck, hip) intentionally start empty on reload
             if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
             if (data.unit !== undefined) setUnit(data.unit || 'metric');
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
@@ -200,10 +197,7 @@ export default function App() {
           const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
           const savedAge = localStorage.getItem('ratbod_age') || '';
           const savedHeight = localStorage.getItem('ratbod_height') || '';
-          const savedWeight = localStorage.getItem('ratbod_weight') || '';
-          const savedWaist = localStorage.getItem('ratbod_waist') || '';
-          const savedNeck = localStorage.getItem('ratbod_neck') || '';
-          const savedHip = localStorage.getItem('ratbod_hip') || '';
+          // Quick measurement fields reset on reload
           const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
           const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
           const rawDarkMode = localStorage.getItem('ratbod_darkmode');
@@ -217,11 +211,7 @@ export default function App() {
           setBirthdate(savedBirthdate);
           setAge(savedAge);
           setHeight(savedHeight);
-          setWeight(savedWeight);
-          
-          setWaist(savedWaist);
-          setNeck(savedNeck);
-          setHip(savedHip);
+          // weight, waist, neck, hip remain empty
           setActivityLevel(savedActivity);
           setUnit(savedUnit);
           setDarkMode(savedDarkMode);
@@ -262,10 +252,6 @@ export default function App() {
     localStorage.setItem('ratbod_birthdate', birthdate);
     localStorage.setItem('ratbod_age', age);
     localStorage.setItem('ratbod_height', height);
-    localStorage.setItem('ratbod_weight', weight);
-    localStorage.setItem('ratbod_waist', waist);
-    localStorage.setItem('ratbod_neck', neck);
-    localStorage.setItem('ratbod_hip', hip);
     localStorage.setItem('ratbod_activity', activityLevel);
     localStorage.setItem('ratbod_unit', unit);
     localStorage.setItem('ratbod_darkmode', darkMode.toString());
@@ -301,10 +287,6 @@ export default function App() {
         birthdate,
         age,
         height,
-        weight,
-        waist,
-        neck,
-        hip,
         activityLevel,
         unit,
         darkMode,
@@ -314,7 +296,7 @@ export default function App() {
         console.error("Failed to sync profile to Firestore", e);
       });
     }
-  }, [name, gender, birthdate, age, height, weight, waist, neck, hip, activityLevel, unit, darkMode, lang, isLoaded]);
+  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, lang, isLoaded]);
 
   useEffect(() => {
     // Set browser tab theme-color and iOS status bar style
@@ -750,23 +732,15 @@ export default function App() {
       const g = localStorage.getItem('ratbod_goals');
       setSavedGoal(g ? JSON.parse(g) : null);
 
-      const savedWeight = localStorage.getItem('ratbod_weight');
       const savedHeight = localStorage.getItem('ratbod_height');
       const savedAge = localStorage.getItem('ratbod_age');
       const savedGender = localStorage.getItem('ratbod_gender') as Gender;
-      const savedWaist = localStorage.getItem('ratbod_waist');
-      const savedNeck = localStorage.getItem('ratbod_neck');
-      const savedHip = localStorage.getItem('ratbod_hip');
       const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel;
       const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial';
 
-      if (savedWeight !== null) setWeight(savedWeight);
       if (savedHeight !== null) setHeight(savedHeight);
       if (savedAge !== null) setAge(savedAge);
       if (savedGender) setGender(savedGender);
-      if (savedWaist !== null) setWaist(savedWaist);
-      if (savedNeck !== null) setNeck(savedNeck);
-      if (savedHip !== null) setHip(savedHip);
       if (savedActivity) setActivityLevel(savedActivity);
       if (savedUnit) setUnit(savedUnit);
     } catch (e) {}
@@ -778,13 +752,9 @@ export default function App() {
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const data = userDocSnap.data();
-          if (data.weight !== undefined) setWeight(data.weight || '');
           if (data.height !== undefined) setHeight(data.height || '');
           if (data.age !== undefined) setAge(data.age || '');
           if (data.gender !== undefined) setGender(data.gender || 'male');
-          if (data.waist !== undefined) setWaist(data.waist || '');
-          if (data.neck !== undefined) setNeck(data.neck || '');
-          if (data.hip !== undefined) setHip(data.hip || '');
           if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
           if (data.unit !== undefined) setUnit(data.unit || 'metric');
         }
@@ -1044,9 +1014,9 @@ export default function App() {
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
+          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
             {/* Iconic Watermark */}
-            <div className="absolute -right-2 -top-2 opacity-25 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+            <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
               <Scale size={91} />
             </div>
 
@@ -1064,9 +1034,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-black/5 shadow-xl shadow-gray-200/50")}>
+          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
             {/* Iconic Watermark */}
-            <div className="absolute -right-2 -top-2 opacity-25 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+            <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
               <Heart size={91} />
             </div>
 
@@ -1083,9 +1053,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border-green-500/30 shadow-xl shadow-green-500/10")}>
+          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border border-emerald-500/30 shadow-md shadow-emerald-500/10")}>
              {/* Iconic Watermark */}
-             <div className="absolute -right-2 -top-2 opacity-25 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
+             <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
                <Target size={91} />
              </div>
 
@@ -1159,7 +1129,7 @@ export default function App() {
         </div>
 
         {/* Quick Measurement & Health Analytics */}
-        <div className={cn("p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border-black/5")}>
+        <div className={cn("p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Side: Quick Measurement Form */}
             <div className="lg:col-span-5 flex flex-col justify-between h-full">
@@ -1173,7 +1143,7 @@ export default function App() {
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.weight} *</label>
                     <div className="relative">
-                      <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                      <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'kg' : 'lbs'}</span>
                     </div>
                   </div>
@@ -1182,14 +1152,14 @@ export default function App() {
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.waist} *</label>
                       <div className="relative">
-                        <input type="number" value={waist} onChange={(e) => setWaist(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                        <input type="number" value={waist} onChange={(e) => setWaist(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.neck} *</label>
                       <div className="relative">
-                        <input type="number" value={neck} onChange={(e) => setNeck(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                        <input type="number" value={neck} onChange={(e) => setNeck(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                       </div>
                     </div>
@@ -1199,7 +1169,7 @@ export default function App() {
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.hip} (Female) *</label>
                       <div className="relative">
-                        <input type="number" value={hip} onChange={(e) => setHip(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")} placeholder="0.0" />
+                        <input type="number" value={hip} onChange={(e) => setHip(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                       </div>
                     </div>
@@ -1207,7 +1177,7 @@ export default function App() {
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.activityLevel} *</label>
-                    <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900")}>
+                    <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")}>
                       {activityOptions.map(opt => <option key={opt.value} value={opt.value} className={darkMode ? "bg-[#0F0F0F]" : "bg-white"}>{opt.label}</option>)}
                     </select>
                     <p className="text-[10px] text-gray-900 dark:text-gray-100 mt-1">{activityOptions.find(o => o.value === activityLevel)?.desc}</p>
@@ -1222,7 +1192,7 @@ export default function App() {
                   "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
                   !weight || parseFloat(weight) <= 0
                     ? "bg-gray-500/20 text-gray-400 cursor-not-allowed" 
-                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 cursor-pointer"
                 )}
               >
                 <Save size={18} />
@@ -1231,7 +1201,7 @@ export default function App() {
             </div>
 
             {/* Right Side: Health Analytics */}
-            <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l pt-6 lg:pt-0 lg:pl-8 border-black/5 dark:border-white/5 flex flex-col justify-between h-full">
+            <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l pt-6 lg:pt-0 lg:pl-8 border-gray-200 dark:border-white/5 flex flex-col justify-between h-full">
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2 text-lg font-bold">
@@ -1245,7 +1215,7 @@ export default function App() {
 
                 {dashboardMetrics ? (
                   <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
-                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-sm transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-white border border-gray-200 shadow-sm shadow-gray-200/50")}>
                       <div className="absolute -right-3 -top-3 opacity-10 text-emerald-500 pointer-events-none">
                         <Activity size={64} />
                       </div>
@@ -1253,7 +1223,7 @@ export default function App() {
                       <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmr)} <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
                     </div>
 
-                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-sm transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-gray-200 shadow-sm shadow-gray-200/50")}>
                       <div className="absolute -right-3 -top-3 opacity-10 text-blue-500 pointer-events-none">
                         <Zap size={64} />
                       </div>
@@ -1261,7 +1231,7 @@ export default function App() {
                       <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.tdee)} <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">kcal</span></div>
                     </div>
 
-                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-sm transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-gray-200 shadow-sm shadow-gray-200/50")}>
                       <div className="absolute -right-3 -top-3 opacity-10 text-amber-500 pointer-events-none">
                         <Flame size={64} />
                       </div>
@@ -1269,7 +1239,7 @@ export default function App() {
                       <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{dashboardMetrics.bodyFat > 0 ? `${formatNum(dashboardMetrics.bodyFat.toFixed(1))}` : '--'} <span className="text-xs font-bold text-gray-500 dark:text-gray-400">%</span></div>
                     </div>
 
-                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-lg transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-gradient-to-br from-white to-gray-50 border border-black/5")}>
+                    <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-sm transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-white border border-gray-200 shadow-sm shadow-gray-200/50")}>
                       <div className="absolute -right-3 -top-3 opacity-10 text-rose-500 pointer-events-none">
                         <Heart size={64} />
                       </div>
@@ -1280,7 +1250,7 @@ export default function App() {
                 ) : (
                   <div className={cn(
                     "p-8 rounded-2xl border flex flex-col items-center justify-center text-center space-y-3",
-                    darkMode ? "bg-black/30 border-white/5" : "bg-gray-50/70 border-black/5"
+                    darkMode ? "bg-black/30 border-white/5" : "bg-gray-50 border border-gray-200"
                   )}>
                     <Activity size={36} className="text-gray-400 opacity-60" />
                     <p className="text-sm font-bold text-gray-400 max-w-xs">

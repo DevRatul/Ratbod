@@ -92,7 +92,7 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                 ) : weightHistory.map((entry) => {
                   const displayWeight = unit === 'metric' ? entry.weight : entry.weight * 2.20462;
                   return (
-                    <div key={entry.id} className={cn("px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border flex items-center justify-between transition-colors", darkMode ? "bg-[#111111] border-white/10 hover:bg-white/5" : "bg-white border-black/5 hover:bg-gray-50 shadow-xs")}>
+                    <div key={entry.id} className={cn("px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border flex items-center justify-between transition-colors", darkMode ? "bg-[#111111] border-white/10 hover:bg-white/5" : "bg-white border border-gray-200 hover:bg-gray-50 shadow-sm")}>
                       <div className="flex flex-col">
                         <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
                            {formatNum(new Date(entry.date).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { year: 'numeric', month: 'short', day: 'numeric' }))}
@@ -132,7 +132,7 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                 {stepsHistory.length === 0 ? (
                   <div className="text-center py-8 text-sm text-gray-500">{lang === 'bn' ? 'কোনো ডেটা নেই' : 'No data available'}</div>
                 ) : stepsHistory.map((entry) => (
-                  <div key={entry.id} className={cn("px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border flex items-center justify-between transition-colors", darkMode ? "bg-[#111111] border-white/10 hover:bg-white/5" : "bg-white border-black/5 hover:bg-gray-50 shadow-xs")}>
+                  <div key={entry.id} className={cn("px-2 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border flex items-center justify-between transition-colors", darkMode ? "bg-[#111111] border-white/10 hover:bg-white/5" : "bg-white border border-gray-200 hover:bg-gray-50 shadow-sm")}>
                     <div className="flex flex-col">
                       <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
                          {formatNum(new Date(entry.date).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { year: 'numeric', month: 'short', day: 'numeric' }))}

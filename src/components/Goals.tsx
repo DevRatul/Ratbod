@@ -212,7 +212,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           onSubmit={handleSave} 
           className={cn(
             "p-6 rounded-3xl border space-y-6",
-            darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border-black/5"
+            darkMode ? "bg-[#0F0F0F] border-white/5" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
           )}
         >
           <div className="grid grid-cols-2 gap-4 sm:gap-6">
@@ -310,7 +310,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             {/* Weight Goal Card */}
             <div className={cn(
               "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-              darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border-black/5 shadow-md shadow-gray-100"
+              darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
             )}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'ওজন লক্ষ্য' : 'Weight Goal'}</span>
@@ -350,7 +350,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           {/* Body Fat Goal Card */}
           <div className={cn(
             "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border-black/5 shadow-md shadow-gray-100"
+            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
           )}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'চর্বির লক্ষ্য' : 'Body Fat Goal'}</span>
@@ -386,7 +386,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           {/* Calories Goal Card */}
           <div className={cn(
             "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border-black/5 shadow-md shadow-gray-100"
+            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
           )}>
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'দৈনিক ক্যালরি' : 'Daily Calorie'}</span>
             <div className="flex items-baseline gap-1.5">
@@ -399,7 +399,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           {/* Timeframe Card */}
           <div className={cn(
             "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border-black/5 shadow-md shadow-gray-100"
+            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
           )}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'শেষ তারিখ' : 'Target Date'}</span>

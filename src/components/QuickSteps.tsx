@@ -67,7 +67,7 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
   };
 
   return (
-    <div className={cn("p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border-black/5")}>
+    <div className={cn("p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
       <div className="flex items-center gap-2 mb-4 text-lg font-bold">
         <Footprints size={20} className="text-blue-500 opacity-70" /> {lang === 'bn' ? 'সাপ্তাহিক পদক্ষেপ' : 'Weekly Steps'}
       </div>
@@ -80,7 +80,7 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
             onChange={(e) => setSteps(e.target.value)}
             className={cn(
               "w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all",
-              darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+              darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white"
             )}
             placeholder={lang === 'bn' ? '০' : '0'}
           />
@@ -92,7 +92,7 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
         <button
           onClick={handleSave}
           disabled={!steps || isSaving}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20"
         >
           {isSaving ? <span className="animate-spin text-sm">...</span> : <Save size={18} />}
           <span className="hidden sm:inline">{lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save'}</span>

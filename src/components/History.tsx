@@ -208,7 +208,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     return (
       <div className={cn(
         "p-8 rounded-3xl border border-dashed text-center space-y-3",
-        darkMode ? "border-white/10 bg-white/5" : "border-gray-300 bg-gray-50"
+        darkMode ? "border-white/10 bg-white/5" : "border-gray-300 bg-white shadow-sm"
       )}>
         <Calendar className="mx-auto text-gray-500 dark:text-gray-400" size={32} />
         <p className={cn("text-sm font-medium", darkMode ? "text-gray-400" : "text-gray-500")}>
@@ -258,8 +258,8 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               className={cn(
-                "p-3 rounded-2xl border", 
-                darkMode ? "bg-[#111111] border-white/5" : "bg-white border-black/5 shadow-sm"
+                "p-3 rounded-2xl border transition-all", 
+                darkMode ? "bg-[#111111] border-white/5" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50 hover:shadow-lg"
               )}
             >
               <div className="flex justify-between items-center mb-2">
@@ -296,7 +296,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
               </div>
 
               <div className="grid grid-cols-3 gap-1.5">
-                <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50")}>
+                <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50 border border-gray-200/60")}>
                    <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-1 ">
                      <Scale size={10} /> {lang === 'bn' ? 'ওজন' : 'WEIGHT'}
                    </div>
@@ -304,7 +304,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                      {unit === 'metric' ? formatNum(entry.weight) : formatNum(entry.weight * 2.20462)} <span className="text-[9px] font-bold text-gray-500">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                    </div>
                 </div>
-                <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50")}>
+                <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50 border border-gray-200/60")}>
                    <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest ">
                      {lang === 'bn' ? 'বিএমআই' : 'BMI'}
                    </div>
@@ -312,7 +312,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                      {formatNum(entry.bmi.toFixed(1))} <span className="text-[10px] font-bold text-gray-500">kg/m²</span>
                    </div>
                 </div>
-                <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50")}>
+                <div className={cn("p-3 rounded-2xl flex flex-col justify-center items-center", darkMode ? "bg-[#1A1A1A]" : "bg-gray-50 border border-gray-200/60")}>
                    <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-1 ">
                      <Activity size={10} /> {lang === 'bn' ? 'শরীরের চর্বি' : 'BODY FAT'}
                    </div>
