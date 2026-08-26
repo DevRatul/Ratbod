@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <path d="M 60 256 H 142 L 200 400 L 314 112 L 372 256 H 452" 
+  <path d="M 52 256 H 144 L 202 396 L 316 116 L 374 256 H 460" 
         fill="none" 
         stroke="#000000" 
-        stroke-width="44" 
+        stroke-width="48" 
         stroke-linecap="round" 
         stroke-linejoin="round" />
 </svg>

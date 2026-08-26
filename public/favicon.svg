@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Black Ash / Matte Charcoal Rounded Square -->
+  <!-- Black Ash / Matte Charcoal Rounded Square Container -->
   <rect width="512" height="512" rx="112" ry="112" fill="#18181c" />
   
-  <!-- Smooth White Activity / Pulse Waveform -->
-  <path d="M 60 256 H 142 L 200 400 L 314 112 L 372 256 H 452" 
+  <!-- Smooth White Activity / Heartbeat Pulse Waveform with proportional thick rounded stroke -->
+  <path d="M 52 256 H 144 L 202 396 L 316 116 L 374 256 H 460" 
         fill="none" 
         stroke="#FFFFFF" 
-        stroke-width="44" 
+        stroke-width="48" 
         stroke-linecap="round" 
         stroke-linejoin="round" />
 </svg>
