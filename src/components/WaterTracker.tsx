@@ -59,11 +59,19 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Helper to get local YYYY-MM-DD date string (respects user's actual timezone)
+  const getLocalDateString = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Load from Firestore & LocalStorage
   useEffect(() => {
     const loadData = async () => {
       try {
-        let parsed = null;
+        let parsed: any = null;
         const user = auth.currentUser;
         
         if (user) {
@@ -73,7 +81,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             if (docSnap.exists()) {
               parsed = docSnap.data();
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error("Firestore read error:", e);
+          }
         }
 
         if (!parsed) {
@@ -89,19 +99,41 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
             if (parsed.glassVolumeMl) setGlassVolumeMl(parsed.glassVolumeMl);
           }
-          if (parsed.todayEntries && parsed.todayDate === new Date().toISOString().split('T')[0]) {
-            setEntries(parsed.todayEntries);
-          } else if (parsed.todayEntries && parsed.todayDate) {
-            // Store yesterday into history before resetting
-            const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + c.amountMl, 0);
-            setHistory(prev => [{
-              date: parsed.todayDate,
-              consumedMl: oldTotal,
-              goalMl: (parsed.goalGlasses || 12) * (parsed.glassVolumeMl || 250)
-            }, ...prev].slice(0, 7));
+
+          const currentToday = getLocalDateString(new Date());
+          let loadedHistory: DayHistory[] = Array.isArray(parsed.history) ? [...parsed.history] : [];
+
+          if (parsed.todayDate === currentToday) {
+            // Same day: restore today's entries
+            if (Array.isArray(parsed.todayEntries)) {
+              setEntries(parsed.todayEntries);
+            }
+          } else {
+            // Date changed since last session: archive the previous day's intake into history
+            if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
+              const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
+              const oldGoal = (parsed.goalGlasses || 16) * (parsed.glassVolumeMl || 250);
+              
+              const existingIdx = loadedHistory.findIndex(h => h.date === parsed.todayDate);
+              if (existingIdx >= 0) {
+                loadedHistory[existingIdx] = { date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal };
+              } else if (oldTotal > 0) {
+                loadedHistory.unshift({ date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
+              }
+            }
             setEntries([]);
           }
-          if (parsed.history) setHistory(parsed.history);
+
+          // Clean, deduplicate, and sort history chronologically descending (newest first)
+          const uniqueHistoryMap = new Map<string, DayHistory>();
+          loadedHistory.forEach(item => {
+            if (item && item.date && item.date !== currentToday) {
+              uniqueHistoryMap.set(item.date, item);
+            }
+          });
+          const sortedHistory = Array.from(uniqueHistoryMap.values()).sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+
+          setHistory(sortedHistory.slice(0, 60));
           if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
         }
       } catch (e) {
@@ -112,11 +144,53 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     loadData();
   }, []);
 
+  // Real-time day rollover checker (archives previous day if midnight passes while app is open)
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    const checkDayRollover = () => {
+      const currentToday = getLocalDateString(new Date());
+      const savedDataStr = localStorage.getItem('ratbod_water_tracker_data');
+      if (savedDataStr) {
+        try {
+          const saved = JSON.parse(savedDataStr);
+          if (saved.todayDate && saved.todayDate !== currentToday) {
+            const oldEntries: WaterEntry[] = saved.todayEntries || [];
+            const oldTotal = oldEntries.reduce((acc, c) => acc + (c.amountMl || 0), 0);
+            const oldGoal = (saved.goalGlasses || goalGlasses) * (saved.glassVolumeMl || glassVolumeMl);
+            
+            if (oldTotal > 0) {
+              setHistory(prev => {
+                const uniqueMap = new Map<string, DayHistory>();
+                prev.forEach(h => uniqueMap.set(h.date, h));
+                uniqueMap.set(saved.todayDate, { date: saved.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
+                const updated = Array.from(uniqueMap.values()).sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+                return updated.slice(0, 60);
+              });
+            }
+            
+            setEntries([]);
+          }
+        } catch (e) {}
+      }
+    };
+
+    const interval = setInterval(checkDayRollover, 10000);
+    window.addEventListener('focus', checkDayRollover);
+    document.addEventListener('visibilitychange', checkDayRollover);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkDayRollover);
+      document.removeEventListener('visibilitychange', checkDayRollover);
+    };
+  }, [isLoaded, goalGlasses, glassVolumeMl]);
+
   // Save to Firestore & LocalStorage
   useEffect(() => {
     if (!isLoaded) return;
     try {
-      const todayDate = new Date().toISOString().split('T')[0];
+      const todayDate = getLocalDateString(new Date());
       const dataToSave = {
         goalGlasses,
         glassVolumeMl,
@@ -135,7 +209,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     } catch (e) {
       console.error("Failed to save water tracker data", e);
     }
-  }, [goalGlasses, glassVolumeMl, entries, history, reminderActive]);
+  }, [isLoaded, goalGlasses, glassVolumeMl, entries, history, reminderActive]);
 
   // Audio Alarm chime synthesizer
   const playHydrationAlarmSound = () => {
@@ -339,6 +413,45 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       return val.replace(/\d/g, (d) => bnDigits[parseInt(d)]);
     }
     return val;
+  };
+
+  // Helper formatting for past history dates
+  const formatHistoryDate = (dateStr: string) => {
+    const todayStr = getLocalDateString(new Date());
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+
+    if (dateStr === todayStr) {
+      return lang === 'bn' ? 'আজ (Today)' : 'Today';
+    }
+    if (dateStr === yesterdayStr) {
+      return lang === 'bn' ? 'গতকাল (Yesterday)' : 'Yesterday';
+    }
+
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (lang === 'bn') {
+          return d.toLocaleDateString('bn-BD', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        } else {
+          return d.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
+      }
+    } catch (e) {}
+
+    return dateStr;
   };
 
   // Helper to format last water intake time & elapsed duration (time ago)
@@ -658,30 +771,77 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   return (
     <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto pb-6 w-full overflow-x-hidden">
 
+      {/* Compact Single-Row Set Goal Section (Positioned Directly Above 'Consume Today') */}
+      <div className={cn(
+        "p-2 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all shadow-xs w-full flex-nowrap",
+        darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
+      )}>
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-nowrap">
+          <div className={cn(
+            "w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs",
+            darkMode
+              ? "bg-[#181a20] text-white border-gray-700/80"
+              : "bg-gray-100 text-black border-gray-300"
+          )}>
+            <Target size={15} />
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
+            <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0 whitespace-nowrap">
+              {labels.goalLabel}:
+            </span>
+            <span className={cn(
+              "text-xs font-extrabold px-2 py-0.5 rounded-lg border whitespace-nowrap shrink-0",
+              darkMode 
+                ? "text-blue-400 bg-blue-500/15 border-blue-500/25" 
+                : "text-blue-600 bg-blue-50 border-blue-200"
+            )}>
+              {formatNum(goalMl / 1000, goalMl % 1000 === 0 ? 0 : 1)}L ({formatNum(goalMl)} {lang === 'bn' ? 'মিলি' : 'ml'})
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleOpenGoalModal}
+          className={cn(
+            "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+            darkMode
+              ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
+              : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
+          )}
+        >
+          <span>{lang === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Edit Goal'}</span>
+        </button>
+      </div>
+
       {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}
       <div className={cn(
         "p-3 sm:p-6 rounded-2xl border space-y-3 sm:space-y-4 relative overflow-hidden transition-all shadow-xs w-full",
         darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
       )}>
-        {/* Header: Consumed Label (Left) + Last Water Intake with Clock Icon (Right) */}
-        <div className="w-full flex items-center justify-between border-b pb-2 sm:pb-2.5 border-gray-200/20 dark:border-white/5 gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5 shrink-0">
-            <Droplet size={15} className="text-blue-500 fill-blue-500/20" />
+        {/* Header: Consumed Label (Left) + Last Water Intake with Clock Icon (Right - Bigger and More Highlighted) */}
+        <div className="w-full flex items-center justify-between border-b pb-2.5 sm:pb-3 border-gray-200/20 dark:border-white/5 gap-2 flex-wrap sm:flex-nowrap">
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5 shrink-0">
+            <Droplet size={16} className="text-blue-500 fill-blue-500/20" />
             {labels.consumed}
           </span>
 
-          {/* Last Water Intake with Clock Icon showing Time Ago */}
+          {/* Last Water Intake with Clock Icon showing Time Ago (Black border in dark mode, relative clean border in light mode) */}
           <div 
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] sm:text-xs font-bold border transition-all shrink-0 max-w-[65%] truncate shadow-2xs",
+              "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate shadow-2xs",
               entries.length > 0
-                ? (darkMode ? "bg-blue-500/20 border-blue-500/35 text-white" : "bg-blue-50 border-blue-200 text-gray-900")
-                : (darkMode ? "bg-white/5 border-white/10 text-white/90" : "bg-gray-100 border-gray-200 text-gray-900")
+                ? (darkMode 
+                    ? "bg-[#181a20] border-black text-white" 
+                    : "bg-gray-100 border-gray-300 text-gray-900")
+                : (darkMode 
+                    ? "bg-[#181a20] border-black text-white" 
+                    : "bg-gray-100 border-gray-300 text-gray-900")
             )}
             title={entries.length > 0 ? `${labels.lastIntake}: ${entries[0].timestamp}` : undefined}
           >
-            <Clock size={12} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0" : "text-blue-600 shrink-0") : (darkMode ? "text-white/80 shrink-0" : "text-gray-900 shrink-0")} />
-            <span className="truncate">{formatLastIntakeTimeAgo()}</span>
+            <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-600 shrink-0")} />
+            <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
           </div>
         </div>
 
@@ -978,75 +1138,44 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             </div>
           )}
 
-          {/* Daily Goal Card at the Bottom of Today's Water Intake Log */}
+          {/* History Small-Sized Card below Today's Water Intake Log */}
           <div className={cn(
-            "mt-3 pt-3 border-t px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all",
-            darkMode
-              ? "bg-gradient-to-r from-blue-950/70 to-indigo-950/50 border-blue-500/20 shadow-xs"
-              : "bg-gradient-to-r from-blue-50 to-sky-50/60 border-blue-200/80 shadow-xs"
+            "mt-3 pt-3 border-t border-gray-200/20 dark:border-white/5",
           )}>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
-                <Target size={14} />
+            <div className={cn(
+              "px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-xs",
+              darkMode
+                ? "bg-emerald-950/30 border-emerald-500/20 hover:border-emerald-500/30"
+                : "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/60"
+            )}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-emerald-500/20">
+                  <HistoryIcon size={14} />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
+                  <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                    {lang === 'bn' ? 'পানি পানের ইতিহাস' : 'Water Intake History'}:
+                  </span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap">
+                    {formatNum(totalConsumedMl)} {labels.mlUnit} {lang === 'bn' ? '(আজ)' : '(Today)'}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
-                <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                  {labels.goalLabel}:
-                </span>
-                <span className="text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap">
-                  {formatNum(goalGlasses)} {labels.glassesUnit} ({formatNum(goalMl / 1000, 1)} {labels.litersUnit})
-                </span>
-              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+                  darkMode
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
+                    : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                )}
+              >
+                <HistoryIcon size={12} />
+                <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
+              </button>
             </div>
-
-            <button
-              onClick={handleOpenGoalModal}
-              className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap",
-                darkMode
-                  ? "bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30"
-                  : "bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
-              )}
-            >
-              <Target size={12} />
-              <span>{lang === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Edit Goal'}</span>
-            </button>
-          </div>
-
-          {/* History Small-Sized Card after Daily Target */}
-          <div className={cn(
-            "mt-2 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-xs",
-            darkMode
-              ? "bg-emerald-950/30 border-emerald-500/20 hover:border-emerald-500/30"
-              : "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/60"
-          )}>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-emerald-500/20">
-                <HistoryIcon size={14} />
-              </div>
-              <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
-                <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                  {lang === 'bn' ? 'পানি পানের ইতিহাস' : 'Water Intake History'}:
-                </span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap">
-                  {formatNum(totalConsumedMl)} {labels.mlUnit} {lang === 'bn' ? '(আজ)' : '(Today)'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(true)}
-              className={cn(
-                "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
-                darkMode
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
-                  : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
-              )}
-            >
-              <HistoryIcon size={12} />
-              <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
-            </button>
           </div>
         </div>
       </div>
@@ -1416,25 +1545,49 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                     <div className="space-y-2">
                       {history.map((record, index) => {
                         const recPercent = Math.min(100, Math.round((record.consumedMl / (record.goalMl || 1)) * 100));
+                        const isAchieved = record.consumedMl >= (record.goalMl || 1);
                         return (
                           <div 
                             key={`${record.date}-${index}`}
                             className={cn(
-                              "p-3 rounded-xl border flex flex-col gap-1.5 transition-all",
-                              darkMode ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"
+                              "p-3 rounded-xl border flex flex-col gap-1.5 transition-all shadow-2xs",
+                              darkMode 
+                                ? (isAchieved ? "bg-emerald-950/20 border-emerald-500/25" : "bg-white/5 border-white/10") 
+                                : (isAchieved ? "bg-emerald-50/70 border-emerald-200" : "bg-gray-50 border-gray-200")
                             )}
                           >
                             <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-gray-900 dark:text-white">
-                                {record.date}
-                              </span>
-                              <span className="font-extrabold text-blue-600 dark:text-blue-400">
-                                {formatNum(record.consumedMl)} / {formatNum(record.goalMl)} {labels.mlUnit} ({formatNum(recPercent)}%)
-                              </span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <div className={cn(
+                                  "w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[10px]",
+                                  isAchieved ? "bg-emerald-500 text-white" : "bg-blue-500/20 text-blue-500"
+                                )}>
+                                  {isAchieved ? <Check size={12} strokeWidth={3} /> : <Droplet size={11} className="fill-current" />}
+                                </div>
+                                <span className="font-bold text-gray-900 dark:text-white truncate">
+                                  {formatHistoryDate(record.date)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={cn(
+                                  "font-extrabold text-xs",
+                                  isAchieved ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"
+                                )}>
+                                  {formatNum(record.consumedMl)} / {formatNum(record.goalMl)} {labels.mlUnit}
+                                </span>
+                                <span className={cn(
+                                  "text-[10px] font-black px-1.5 py-0.5 rounded-md border",
+                                  isAchieved 
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/30" 
+                                    : "bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/30"
+                                )}>
+                                  {formatNum(recPercent)}%
+                                </span>
+                              </div>
                             </div>
                             <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
                               <div 
-                                className="h-full rounded-full bg-blue-500"
+                                className={cn("h-full rounded-full transition-all", isAchieved ? "bg-emerald-500" : "bg-blue-500")}
                                 style={{ width: `${recPercent}%` }}
                               />
                             </div>

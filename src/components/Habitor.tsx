@@ -29,6 +29,7 @@ import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react'
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
@@ -69,7 +70,7 @@ export interface HabitItem {
   id: string;
   title: string;
   subtitle?: string;
-  emoji: string;
+  emoji?: string;
   createdAt: string;
 }
 
@@ -381,7 +382,9 @@ function HabitRowItem({
         className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer group/title hover:opacity-90 transition-opacity"
         title={lang === 'bn' ? 'অ্যানালিটিক্স দেখতে ক্লিক করুন' : 'Click to view habit analytics'}
       >
-        <span className="text-xl shrink-0 select-none group-hover/title:scale-110 transition-transform">{habit.emoji}</span>
+        {habit.emoji ? (
+          <span className="text-xl shrink-0 select-none group-hover/title:scale-110 transition-transform">{habit.emoji}</span>
+        ) : null}
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
             <h3 className={cn(
@@ -493,38 +496,43 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
     }
   }, [completedLogs, isLoaded]);
 
-  // Initial load from Firestore
+  // Initial load and auth sync with Firestore
   useEffect(() => {
-    const loadFirestoreData = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        setIsLoaded(true);
-        return;
-      }
-      try {
-        // Load Habits
-        const habitsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habits'));
-        if (habitsDoc.exists()) {
-          const data = habitsDoc.data();
-          if (data.habits && Array.isArray(data.habits)) {
-            setHabits(data.habits);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Load Habits
+          const habitsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habits'));
+          if (habitsDoc.exists()) {
+            const data = habitsDoc.data();
+            if (data.habits && Array.isArray(data.habits)) {
+              setHabits(data.habits);
+              localStorage.setItem('ratbod_habits_v1', JSON.stringify(data.habits));
+            }
+          } else {
+            // First time login - upload existing local habits to firestore
+            setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits }, { merge: true }).catch(e => {});
           }
-        }
-        
-        // Load Logs
-        const logsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'));
-        if (logsDoc.exists()) {
-          const data = logsDoc.data();
-          if (data.completedLogs) {
-            setCompletedLogs(data.completedLogs);
+          
+          // Load Logs
+          const logsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'));
+          if (logsDoc.exists()) {
+            const data = logsDoc.data();
+            if (data.completedLogs) {
+              setCompletedLogs(data.completedLogs);
+              localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(data.completedLogs));
+            }
+          } else {
+            setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs }, { merge: true }).catch(e => {});
           }
+        } catch (e) {
+          console.error("Failed to load habits from firestore", e);
         }
-      } catch (e) {
-        console.error("Failed to load habits from firestore", e);
       }
       setIsLoaded(true);
-    };
-    loadFirestoreData();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Week Days Saturday to Friday
@@ -534,7 +542,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newSubtitle, setNewSubtitle] = useState('');
-  const [newEmoji, setNewEmoji] = useState('✨');
+  const [newEmoji, setNewEmoji] = useState('');
 
   // Modal: Edit Habit
   const [editingHabit, setEditingHabit] = useState<HabitItem | null>(null);
@@ -721,32 +729,80 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const newItem: HabitItem = {
-      id: 'h_' + Date.now(),
-      title: newTitle.trim(),
-      subtitle: newSubtitle.trim() || undefined,
-      emoji: newEmoji.trim() || '📌',
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const newItem: HabitItem = {
+        id: 'h_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        title: newTitle.trim(),
+        subtitle: newSubtitle.trim() || undefined,
+        emoji: newEmoji.trim() || undefined,
+        createdAt: new Date().toISOString()
+      };
 
-    setHabits(prev => [...prev, newItem]);
-    setNewTitle('');
-    setNewSubtitle('');
-    setNewEmoji('✨');
-    setIsAddModalOpen(false);
+      const updatedHabits = [...habits, newItem];
+      setHabits(updatedHabits);
+      localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
+
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true }).catch(err => {
+          console.error("Failed to save habit to firestore:", err);
+        });
+      }
+
+      setNewTitle('');
+      setNewSubtitle('');
+      setNewEmoji('');
+      setIsAddModalOpen(false);
+    } catch (err) {
+      console.error("Error creating new habit:", err);
+    }
   };
 
   const handleUpdateHabit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingHabit || !editingHabit.title.trim()) return;
 
-    setHabits(prev => prev.map(h => h.id === editingHabit.id ? editingHabit : h));
-    setEditingHabit(null);
+    try {
+      const updatedHabits = habits.map(h => h.id === editingHabit.id ? {
+        ...editingHabit,
+        title: editingHabit.title.trim(),
+        subtitle: editingHabit.subtitle?.trim() || undefined,
+        emoji: editingHabit.emoji?.trim() || undefined,
+      } : h);
+      setHabits(updatedHabits);
+      localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
+
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true }).catch(err => {
+          console.error("Failed to update habit in firestore:", err);
+        });
+      }
+
+      setEditingHabit(null);
+    } catch (err) {
+      console.error("Error updating habit:", err);
+    }
   };
 
   const handleDeleteHabit = (id: string) => {
-    setHabits(prev => prev.filter(h => h.id !== id));
-    setMenuOpenHabitId(null);
+    try {
+      const updatedHabits = habits.filter(h => h.id !== id);
+      setHabits(updatedHabits);
+      localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
+
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true }).catch(err => {
+          console.error("Failed to delete habit from firestore:", err);
+        });
+      }
+
+      setDeletingHabit(null);
+      setMenuOpenHabitId(null);
+    } catch (err) {
+      console.error("Error deleting habit:", err);
+    }
   };
 
   const completedCount = completedTodaySet.size;
@@ -917,15 +973,16 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 <div className="flex gap-2">
                   <div className="w-16">
                     <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
-                      Emoji
+                      {lang === 'bn' ? 'ইমোজি' : 'Emoji'}
                     </label>
                     <input
                       type="text"
+                      placeholder=""
                       value={newEmoji}
                       onChange={(e) => setNewEmoji(e.target.value)}
                       className={cn(
                         "w-full p-2 rounded-xl text-center text-lg border font-bold focus:outline-none focus:border-rose-500",
-                        darkMode ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"
+                        darkMode ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                       )}
                     />
                   </div>
@@ -1016,15 +1073,16 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
                 <div className="flex gap-2">
                   <div className="w-16">
                     <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 block mb-1">
-                      Emoji
+                      {lang === 'bn' ? 'ইমোজি' : 'Emoji'}
                     </label>
                     <input
                       type="text"
-                      value={editingHabit.emoji}
+                      placeholder=""
+                      value={editingHabit.emoji || ''}
                       onChange={(e) => setEditingHabit({ ...editingHabit, emoji: e.target.value })}
                       className={cn(
                         "w-full p-2 rounded-xl text-center text-lg border font-bold focus:outline-none focus:border-rose-500",
-                        darkMode ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"
+                        darkMode ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                       )}
                     />
                   </div>
@@ -1099,7 +1157,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
               <div className="flex items-center justify-between border-b pb-3 border-gray-200/20">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center text-xl shrink-0">
-                    {analyticsHabit.emoji}
+                    {analyticsHabit.emoji ? analyticsHabit.emoji : <CheckCircle2 size={20} className="text-rose-500" />}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-base font-black tracking-tight truncate text-rose-500 dark:text-rose-400">
