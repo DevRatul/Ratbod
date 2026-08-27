@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -78,6 +78,14 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   });
   const [showSleepHistoryModal, setShowSleepHistoryModal] = useState<boolean>(false);
   const [sleepSavedToast, setSleepSavedToast] = useState<boolean>(false);
+  const [isSleepDropdownOpen, setIsSleepDropdownOpen] = useState<boolean>(false);
+  const [selectedSleepDate, setSelectedSleepDate] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   const goalMl = goalGlasses * glassVolumeMl;
   const totalConsumedMl = entries.reduce((acc, curr) => acc + curr.amountMl, 0);
@@ -569,10 +577,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const sleepDuration = calculateSleepDuration(sleepBedTime, sleepWakeTime);
 
   const handleLogSleepRecord = () => {
-    const currentToday = getLocalDateString(new Date());
+    const targetDate = selectedSleepDate || getLocalDateString(new Date());
     const newRecord: SleepRecord = {
       id: String(Date.now()),
-      date: currentToday,
+      date: targetDate,
       bedTime: sleepBedTime,
       wakeTime: sleepWakeTime,
       totalMinutes: sleepDuration.totalMinutes,
@@ -581,8 +589,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     };
 
     setSleepRecords(prev => {
-      const filtered = prev.filter(r => r.date !== currentToday);
-      const updated = [newRecord, ...filtered].slice(0, 60);
+      const filtered = prev.filter(r => r.date !== targetDate);
+      const updated = [newRecord, ...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 60);
       localStorage.setItem('ratbod_sleep_records', JSON.stringify(updated));
       return updated;
     });
@@ -919,191 +927,6 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         >
           <span>{lang === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Edit Goal'}</span>
         </button>
-      </div>
-
-      {/* Sleep Calculation & Sleep History Section */}
-      <div 
-        id="sleep-calculator-section"
-        className={cn(
-          "p-4 sm:p-5 rounded-2xl border space-y-3.5 transition-all shadow-xs w-full",
-          darkMode 
-            ? "bg-white/5 border-white/10" 
-            : "bg-white border-black/5 shadow-xs"
-        )}
-      >
-        {/* Header with Moon icon */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-gray-200/20 dark:border-white/5">
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs",
-              darkMode
-                ? "bg-[#181a20] text-indigo-300 border-indigo-500/30"
-                : "bg-indigo-50 text-indigo-600 border-indigo-200 shadow-xs"
-            )}>
-              <Moon size={16} />
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
-                {lang === 'bn' ? 'স্লিপ ক্যালকুলেটর ও রেকর্ড' : 'Sleep Calculator & Schedule'}
-              </h3>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                {lang === 'bn' ? 'দৈনিক ঘুমের হিসাব ও ইতিহাস সংরক্ষণ করুন' : 'Calculate rest duration & maintain daily sleep logs'}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick status pill */}
-          <div className={cn(
-            "text-[10.5px] font-black px-2.5 py-1 rounded-full border flex items-center gap-1 shrink-0",
-            sleepDuration.hours >= 7 && sleepDuration.hours <= 9
-              ? (darkMode ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200")
-              : (darkMode ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border-indigo-200")
-          )}>
-            <Sparkles size={11} />
-            <span>
-              {sleepDuration.hours >= 7 && sleepDuration.hours <= 9
-                ? (lang === 'bn' ? 'উপযুক্ত ঘুম' : 'Optimal Rest')
-                : (sleepDuration.hours < 7 ? (lang === 'bn' ? 'কম ঘুম' : 'Short Sleep') : (lang === 'bn' ? 'বেশি ঘুম' : 'Extended'))}
-            </span>
-          </div>
-        </div>
-
-        {/* Inputs & Duration Calculation Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {/* Field 1: Go to Bed */}
-          <div className={cn(
-            "p-3 rounded-xl border flex flex-col justify-between gap-1.5",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                <Moon size={13} className="text-indigo-400" />
-                {lang === 'bn' ? 'ঘুমাতে যাওয়ার সময়' : 'Go to Bed Time'}
-              </span>
-            </div>
-            <input
-              type="time"
-              value={sleepBedTime}
-              onChange={(e) => {
-                setSleepBedTime(e.target.value);
-                localStorage.setItem('ratbod_sleep_bed', e.target.value);
-              }}
-              className={cn(
-                "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center font-mono",
-                darkMode
-                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
-                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
-              )}
-              title={lang === 'bn' ? 'ঘুমাতে যাওয়ার সময়' : 'Go to bed time'}
-            />
-          </div>
-
-          {/* Field 2: Wake Up */}
-          <div className={cn(
-            "p-3 rounded-xl border flex flex-col justify-between gap-1.5",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                <Clock size={13} className="text-amber-400" />
-                {lang === 'bn' ? 'ঘুম থেকে ওঠার সময়' : 'Wake Up Time'}
-              </span>
-            </div>
-            <input
-              type="time"
-              value={sleepWakeTime}
-              onChange={(e) => {
-                setSleepWakeTime(e.target.value);
-                localStorage.setItem('ratbod_sleep_wake', e.target.value);
-              }}
-              className={cn(
-                "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center font-mono",
-                darkMode
-                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
-                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
-              )}
-              title={lang === 'bn' ? 'ঘুম থেকে ওঠার সময়' : 'Wake up time'}
-            />
-          </div>
-
-          {/* Stat Box: Total Sleeping Time & Save action */}
-          <div className={cn(
-            "p-3 rounded-xl border flex flex-col justify-between gap-1.5",
-            darkMode ? "bg-indigo-950/20 border-indigo-500/25" : "bg-indigo-50/70 border-indigo-200"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200">
-                {lang === 'bn' ? 'মোট ঘুমের সময়' : 'Total Sleeping Time'}
-              </span>
-              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                {lang === 'bn' ? sleepDuration.displayBn : sleepDuration.display}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogSleepRecord}
-              className={cn(
-                "w-full py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95",
-                sleepSavedToast
-                  ? "bg-emerald-600 text-white"
-                  : (darkMode 
-                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30" 
-                      : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20")
-              )}
-            >
-              {sleepSavedToast ? (
-                <>
-                  <Check size={13} strokeWidth={3} />
-                  <span>{lang === 'bn' ? 'সংরক্ষিত!' : 'Saved to History!'}</span>
-                </>
-              ) : (
-                <>
-                  <Plus size={13} />
-                  <span>{lang === 'bn' ? 'আজকের ঘুম সংরক্ষণ' : 'Save Sleep Record'}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Sleep History Bar (Matching Water Intake History format exactly) */}
-        <div className="pt-2 border-t border-gray-200/20 dark:border-white/5">
-          <div className={cn(
-            "px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-xs",
-            darkMode
-              ? "bg-indigo-950/30 border-indigo-500/20 hover:border-indigo-500/30"
-              : "bg-indigo-50/70 border-indigo-200/80 hover:bg-indigo-100/60"
-          )}>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-indigo-500/20">
-                <HistoryIcon size={14} />
-              </div>
-              <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
-                <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                  {lang === 'bn' ? 'ঘুমের ইতিহাস' : 'Sleep History'}:
-                </span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold whitespace-nowrap">
-                  {lang === 'bn' ? sleepDuration.displayBn : sleepDuration.display} {lang === 'bn' ? '(আজ)' : '(Today)'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowSleepHistoryModal(true)}
-              className={cn(
-                "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
-                darkMode
-                  ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30"
-                  : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
-              )}
-            >
-              <HistoryIcon size={12} />
-              <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}
@@ -1467,6 +1290,239 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 <HistoryIcon size={12} />
                 <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
               </button>
+            </div>
+          </div>
+
+          {/* Sleep Calculation & History Section - Dropdown Style directly after Water Intake History */}
+          <div className="mt-3 pt-3 border-t border-gray-200/20 dark:border-white/5">
+            <div 
+              id="sleep-calculator-section"
+              className={cn(
+                "rounded-2xl border transition-all shadow-xs overflow-hidden",
+                darkMode 
+                  ? "bg-indigo-950/20 border-indigo-500/25 shadow-indigo-950/20" 
+                  : "bg-indigo-50/50 border-indigo-200/80 shadow-indigo-500/5"
+              )}
+            >
+              {/* Dropdown Header Bar (Clickable Accordion Trigger) */}
+              <button
+                type="button"
+                onClick={() => setIsSleepDropdownOpen(prev => !prev)}
+                className={cn(
+                  "w-full px-3.5 py-2.5 flex items-center justify-between gap-2 transition-all cursor-pointer text-left select-none",
+                  isSleepDropdownOpen 
+                    ? (darkMode ? "border-b border-indigo-500/20 bg-indigo-950/40" : "border-b border-indigo-200/80 bg-indigo-100/50") 
+                    : "hover:bg-indigo-500/10"
+                )}
+                aria-expanded={isSleepDropdownOpen}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-indigo-500/20">
+                    <Moon size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
+                      <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {lang === 'bn' ? 'স্লিপ অ্যানালিটিক্স (Sleep Analytics)' : 'Sleep Analytics'}:
+                      </span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-extrabold whitespace-nowrap">
+                        {lang === 'bn' ? sleepDuration.displayBn : sleepDuration.display}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={cn(
+                    "text-[10px] font-black px-2 py-0.5 rounded-full border hidden sm:inline-flex items-center gap-1",
+                    sleepDuration.hours >= 7 && sleepDuration.hours <= 9
+                      ? (darkMode ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200")
+                      : (darkMode ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border-indigo-200")
+                  )}>
+                    <Sparkles size={10} />
+                    {sleepDuration.hours >= 7 && sleepDuration.hours <= 9
+                      ? (lang === 'bn' ? 'উপযুক্ত ঘুম' : 'Optimal')
+                      : (sleepDuration.hours < 7 ? (lang === 'bn' ? 'স্বল্প ঘুম' : 'Short') : (lang === 'bn' ? 'দীর্ঘ ঘুম' : 'Extended'))}
+                  </span>
+                  <div className={cn(
+                    "w-6 h-6 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 transition-transform duration-200",
+                    isSleepDropdownOpen ? "rotate-180" : ""
+                  )}>
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+              </button>
+
+              {/* Dropdown Content Area */}
+              <AnimatePresence>
+                {isSleepDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="p-3 sm:p-4 space-y-3"
+                  >
+                    {/* Inputs in One Row: Field 1 (Go to Bed) & Field 2 (Wake Up) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* Field 1: Go to Bed */}
+                      <div className={cn(
+                        "p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between gap-1.5",
+                        darkMode ? "bg-white/5 border-white/5" : "bg-white border-indigo-100"
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                            <Moon size={13} className="text-indigo-400 shrink-0" />
+                            <span className="truncate">{lang === 'bn' ? 'ঘুমানোর সময়' : 'Go to Bed'}</span>
+                          </span>
+                        </div>
+                        <input
+                          type="time"
+                          value={sleepBedTime}
+                          onChange={(e) => {
+                            setSleepBedTime(e.target.value);
+                            localStorage.setItem('ratbod_sleep_bed', e.target.value);
+                          }}
+                          className={cn(
+                            "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center font-mono",
+                            darkMode
+                              ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
+                              : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
+                          )}
+                          title={lang === 'bn' ? 'ঘুমাতে যাওয়ার সময়' : 'Go to bed time'}
+                        />
+                      </div>
+
+                      {/* Field 2: Wake Up */}
+                      <div className={cn(
+                        "p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between gap-1.5",
+                        darkMode ? "bg-white/5 border-white/5" : "bg-white border-indigo-100"
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                            <Clock size={13} className="text-amber-400 shrink-0" />
+                            <span className="truncate">{lang === 'bn' ? 'ওঠার সময়' : 'Wake Up'}</span>
+                          </span>
+                        </div>
+                        <input
+                          type="time"
+                          value={sleepWakeTime}
+                          onChange={(e) => {
+                            setSleepWakeTime(e.target.value);
+                            localStorage.setItem('ratbod_sleep_wake', e.target.value);
+                          }}
+                          className={cn(
+                            "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center font-mono",
+                            darkMode
+                              ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
+                              : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
+                          )}
+                          title={lang === 'bn' ? 'ঘুম থেকে ওঠার সময়' : 'Wake up time'}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stat Box & Save Action Row (Date + Total Duration + Save button) */}
+                    <div className={cn(
+                      "p-3 rounded-xl border flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5",
+                      darkMode ? "bg-indigo-950/40 border-indigo-500/30" : "bg-indigo-100/70 border-indigo-200"
+                    )}>
+                      {/* Date Selector */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Calendar size={13} className="text-indigo-400 shrink-0" />
+                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 shrink-0">
+                          {lang === 'bn' ? 'তারিখ:' : 'Date:'}
+                        </span>
+                        <input
+                          type="date"
+                          value={selectedSleepDate}
+                          onChange={(e) => setSelectedSleepDate(e.target.value)}
+                          className={cn(
+                            "px-2 py-1 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center font-mono",
+                            darkMode
+                              ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
+                              : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
+                          )}
+                          title={lang === 'bn' ? 'রেকর্ড সংরক্ষণের তারিখ' : 'Record date'}
+                        />
+                      </div>
+
+                      {/* Total Duration stat */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200">
+                          {lang === 'bn' ? 'মোট:' : 'Total:'}
+                        </span>
+                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                          {lang === 'bn' ? sleepDuration.displayBn : sleepDuration.display}
+                        </span>
+                      </div>
+
+                      {/* Save Button */}
+                      <button
+                        type="button"
+                        onClick={handleLogSleepRecord}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ml-auto sm:ml-0",
+                          sleepSavedToast
+                            ? "bg-emerald-600 text-white"
+                            : (darkMode 
+                                ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30" 
+                                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20")
+                        )}
+                        title={lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save record'}
+                      >
+                        {sleepSavedToast ? (
+                          <>
+                            <Check size={13} strokeWidth={3} />
+                            <span>{lang === 'bn' ? 'সংরক্ষিত!' : 'Saved!'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={13} />
+                            <span>{lang === 'bn' ? 'Save' : 'Save'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Sleep History Row */}
+                    <div className={cn(
+                      "px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-xs",
+                      darkMode
+                        ? "bg-indigo-950/40 border-indigo-500/20 hover:border-indigo-500/30"
+                        : "bg-white border-indigo-200 hover:bg-indigo-50/50"
+                    )}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-indigo-500/20">
+                          <HistoryIcon size={14} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold leading-tight">
+                          <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                            {lang === 'bn' ? 'ঘুমের ইতিহাস' : 'Sleep History'}:
+                          </span>
+                          <span className="text-indigo-600 dark:text-indigo-400 font-extrabold whitespace-nowrap">
+                            {lang === 'bn' ? sleepDuration.displayBn : sleepDuration.display} {lang === 'bn' ? '(আজ)' : '(Today)'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowSleepHistoryModal(true)}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+                          darkMode
+                            ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30"
+                            : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
+                        )}
+                      >
+                        <HistoryIcon size={12} />
+                        <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -2028,7 +2084,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                         {lang === 'bn' ? 'এখনো কোনো রেকর্ড সংরক্ষণ করা হয়নি।' : 'No sleep records saved yet.'}
                       </p>
                       <p className="text-[10.5px] opacity-75">
-                        {lang === 'bn' ? 'স্লিপ ক্যালকুলেটরে "সংরক্ষণ" বাটনে চাপ দিলে আপনার রেকর্ড এখানে যুক্ত হবে।' : 'Click "Save Sleep Record" on the sleep card to log your daily sleep history.'}
+                        {lang === 'bn' ? 'স্লিপ অ্যানালিটিক্সে "Save" বাটনে চাপ দিলে আপনার রেকর্ড এখানে যুক্ত হবে।' : 'Click "Save" on the sleep card to log your daily sleep history.'}
                       </p>
                     </div>
                   ) : (
