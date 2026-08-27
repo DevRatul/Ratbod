@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -51,6 +51,14 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [showAlarmModal, setShowAlarmModal] = useState<boolean>(false);
   const [customTimerInput, setCustomTimerInput] = useState<string>('');
+
+  // Sleep Calculator State (one-liner)
+  const [sleepBedTime, setSleepBedTime] = useState<string>(() => {
+    return localStorage.getItem('ratbod_sleep_bed') || '23:00';
+  });
+  const [sleepWakeTime, setSleepWakeTime] = useState<string>(() => {
+    return localStorage.getItem('ratbod_sleep_wake') || '07:00';
+  });
 
   const goalMl = goalGlasses * glassVolumeMl;
   const totalConsumedMl = entries.reduce((acc, curr) => acc + curr.amountMl, 0);
@@ -135,6 +143,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
           setHistory(sortedHistory.slice(0, 60));
           if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
+          if (parsed.sleepBedTime) setSleepBedTime(parsed.sleepBedTime);
+          if (parsed.sleepWakeTime) setSleepWakeTime(parsed.sleepWakeTime);
         }
       } catch (e) {
         console.error("Failed to load water tracker data", e);
@@ -197,7 +207,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         todayEntries: entries,
         todayDate,
         history,
-        reminderActive
+        reminderActive,
+        sleepBedTime,
+        sleepWakeTime
       };
       
       localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(dataToSave));
@@ -209,7 +221,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     } catch (e) {
       console.error("Failed to save water tracker data", e);
     }
-  }, [isLoaded, goalGlasses, glassVolumeMl, entries, history, reminderActive]);
+  }, [isLoaded, goalGlasses, glassVolumeMl, entries, history, reminderActive, sleepBedTime, sleepWakeTime]);
 
   // Audio Alarm chime synthesizer
   const playHydrationAlarmSound = () => {
@@ -330,8 +342,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       selectGoalTip: "Target: 12 glasses = 3.9 L (3,900 ml) or 16 glasses = 4.0 L. Choose a preset or customize below.",
       preset8: "8 Glasses (2.0 L)",
       preset10: "10 Glasses (2.5 L)",
-      preset12_39: "12 Glasses (3.9 L) ⭐ Target Goal",
-      preset16: "16 Glasses (4.0 L) ⭐ 4 Liters",
+      preset12_39: "12 glasses (3.9 L)",
+      preset16: "16 glasses (4 L)",
       orManualHeading: "Or Set Custom Goal Manually",
       customGlassesLabel: "Number of Glasses",
       customTotalMlLabel: "Total Water Target (ml)",
@@ -379,8 +391,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       selectGoalTip: "মূল লক্ষ্য: ১২ গ্লাস = ৩.৯ লিটার অথবা ১৬ গ্লাস = ৪.০ লিটার। প্রিসেট বা নিচে সেট করুন।",
       preset8: "৮ গ্লাস (২.০ লিটার)",
       preset10: "১০ গ্লাস (২.৫ লিটার)",
-      preset12_39: "১২ গ্লাস (৩.৯ লিটার) ⭐ মূল লক্ষ্য",
-      preset16: "১৬ গ্লাস (৪.০ লিটার) ⭐ ৪ লিটার",
+      preset12_39: "১২ গ্লাস (৩.৯ লিটার)",
+      preset16: "১৬ গ্লাস (৪ লিটার)",
       orManualHeading: "অথবা ম্যানুয়ালি পছন্দসই লক্ষ্য সেট করুন",
       customGlassesLabel: "গ্লাসের সংখ্যা",
       customTotalMlLabel: "মোট পানির লক্ষ্য (মিলি)",
@@ -491,6 +503,48 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
     return lastEntry.timestamp;
   };
+
+  // Helper to calculate total sleep duration
+  const calculateSleepDuration = (bed: string, wake: string) => {
+    if (!bed || !wake) {
+      return {
+        hours: 0,
+        minutes: 0,
+        totalMinutes: 0,
+        display: '0h 00m',
+        displayBn: '০ঘ ০০মি',
+      };
+    }
+    const [bedH, bedM] = bed.split(':').map(Number);
+    const [wakeH, wakeM] = wake.split(':').map(Number);
+    if (isNaN(bedH) || isNaN(bedM) || isNaN(wakeH) || isNaN(wakeM)) {
+      return {
+        hours: 0,
+        minutes: 0,
+        totalMinutes: 0,
+        display: '0h 00m',
+        displayBn: '০ঘ ০০মি',
+      };
+    }
+    let bedMinutes = bedH * 60 + bedM;
+    let wakeMinutes = wakeH * 60 + wakeM;
+    if (wakeMinutes < bedMinutes) {
+      wakeMinutes += 24 * 60; // Crosses midnight
+    }
+    const diff = wakeMinutes - bedMinutes;
+    const hours = Math.floor(diff / 60);
+    const minutes = diff % 60;
+    const padMin = String(minutes).padStart(2, '0');
+    return {
+      hours,
+      minutes,
+      totalMinutes: diff,
+      display: minutes > 0 ? `${hours}h ${padMin}m` : `${hours}h 00m`,
+      displayBn: minutes > 0 ? `${formatNum(hours)}ঘ ${formatNum(minutes)}মি` : `${formatNum(hours)}ঘ ০০মি`,
+    };
+  };
+
+  const sleepDuration = calculateSleepDuration(sleepBedTime, sleepWakeTime);
 
   // Play sound when water is consumed (crisp water drop swoop & pop)
   const playWaterDropSound = () => {
@@ -812,6 +866,94 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         >
           <span>{lang === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Edit Goal'}</span>
         </button>
+      </div>
+
+      {/* Compact Single-Row Sleep Calculator Section */}
+      <div 
+        id="sleep-calculator-section"
+        className={cn(
+          "p-2 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all shadow-xs w-full overflow-x-auto no-scrollbar flex-nowrap",
+          darkMode 
+            ? "bg-[#12141a] border-indigo-500/20 shadow-indigo-500/5" 
+            : "bg-indigo-50/40 border-indigo-200/80 shadow-indigo-500/5"
+        )}
+      >
+        {/* Title & Icon */}
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-nowrap shrink-0">
+          <div className={cn(
+            "w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs",
+            darkMode
+              ? "bg-[#181a20] text-indigo-300 border-indigo-500/30"
+              : "bg-white text-indigo-600 border-indigo-200 shadow-xs"
+          )}>
+            <Moon size={15} />
+          </div>
+          <span className="text-xs font-black text-gray-900 dark:text-white shrink-0 whitespace-nowrap">
+            {lang === 'bn' ? 'স্লিপ ক্যালকুলেটর' : 'Sleep Calculator'}:
+          </span>
+        </div>
+
+        {/* Two Fields (1. Go to Bed, 2. Wake Up) + Next Button (Total Sleeping Time) */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 flex-nowrap">
+          {/* Field 1: Go to Bed */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              {lang === 'bn' ? 'ঘুমানো' : 'Bed'}:
+            </span>
+            <input
+              type="time"
+              value={sleepBedTime}
+              onChange={(e) => {
+                setSleepBedTime(e.target.value);
+                localStorage.setItem('ratbod_sleep_bed', e.target.value);
+              }}
+              className={cn(
+                "w-[76px] sm:w-[86px] px-1.5 py-1 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center",
+                darkMode
+                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
+                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
+              )}
+              title={lang === 'bn' ? 'ঘুমাতে যাওয়ার সময়' : 'Go to bed time'}
+            />
+          </div>
+
+          {/* Field 2: Wake Up */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              {lang === 'bn' ? 'জাগা' : 'Wake'}:
+            </span>
+            <input
+              type="time"
+              value={sleepWakeTime}
+              onChange={(e) => {
+                setSleepWakeTime(e.target.value);
+                localStorage.setItem('ratbod_sleep_wake', e.target.value);
+              }}
+              className={cn(
+                "w-[76px] sm:w-[86px] px-1.5 py-1 rounded-lg text-xs font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs text-center",
+                darkMode
+                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
+                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
+              )}
+              title={lang === 'bn' ? 'ঘুম থেকে ওঠার সময়' : 'Wake up time'}
+            />
+          </div>
+
+          {/* Next Button showing Total Sleeping Time */}
+          <button
+            type="button"
+            className={cn(
+              "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 border shadow-2xs whitespace-nowrap active:scale-95 cursor-pointer",
+              darkMode
+                ? "bg-[#181a20] text-white border-indigo-500/50 hover:border-indigo-400 hover:bg-[#22252d]"
+                : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+            )}
+            title={lang === 'bn' ? 'মোট ঘুমের সময়' : 'Total sleeping time'}
+          >
+            <Clock size={13} className={darkMode ? "text-indigo-400 shrink-0" : "text-white shrink-0"} />
+            <span>{lang === 'bn' ? `মোট ঘুম: ${sleepDuration.displayBn}` : `Total Sleep: ${sleepDuration.display}`}</span>
+          </button>
+        </div>
       </div>
 
       {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}

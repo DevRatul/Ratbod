@@ -832,8 +832,10 @@ export default function App() {
       {/* Header */}
       <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 transition-all duration-300">
         <div className={cn(
-          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition-colors duration-300",
-          darkMode ? "bg-[#0F0F0F]/85 border-white/15 shadow-black/60" : "bg-white/85 border-black/10 shadow-gray-300/60"
+          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+          darkMode 
+            ? "bg-[#0F0F0F]/45 border-white/10 shadow-2xl shadow-black/40" 
+            : "bg-white/45 border-black/5 shadow-xl shadow-gray-300/40"
         )}>
           <button 
             type="button"
@@ -1416,8 +1418,10 @@ export default function App() {
       <div 
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
-          darkMode ? "bg-[#0F0F0F]/90 border-white/15 text-white" : "bg-white/90 border-black/10 text-gray-900",
-          "py-2 px-1.5 shadow-2xl shadow-black/40"
+          darkMode 
+            ? "bg-[#0F0F0F]/50 border-white/10 text-white shadow-2xl shadow-black/60" 
+            : "bg-white/55 border-black/5 text-gray-900 shadow-2xl shadow-gray-400/30",
+          "py-2 px-1.5"
         )}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">

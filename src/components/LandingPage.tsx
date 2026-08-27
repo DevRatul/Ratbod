@@ -224,8 +224,10 @@ export default function LandingPage({
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 transition-all duration-300">
         <div className={cn(
-          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 shadow-2xl transition-colors duration-300",
-          darkMode ? "bg-[#0F0F0F]/85 border-white/15 shadow-black/60" : "bg-white/85 border-black/10 shadow-gray-300/60"
+          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+          darkMode 
+            ? "bg-[#0F0F0F]/45 border-white/10 shadow-2xl shadow-black/40" 
+            : "bg-white/45 border-black/5 shadow-xl shadow-gray-300/40"
         )}>
           {/* Clickable Logo that reloads */}
           <button 
