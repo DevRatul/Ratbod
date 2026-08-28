@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, Sparkles, CheckCircle, Heart, Activity } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, Sparkles, CheckCircle, Heart, Activity, Clock, Timer, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Language, translations } from '../utils/translations';
 
 function cn(...inputs: ClassValue[]) {
@@ -18,11 +19,27 @@ function cn(...inputs: ClassValue[]) {
 
 type BreathingPhase = 'idle' | 'inhale' | 'hold' | 'exhale' | 'completed';
 
-// 4-7-8 Technique Durations in Seconds
+export interface BreathingSessionRecord {
+  id: string;
+  time: string; // e.g. "10:30 AM"
+  date: string; // YYYY-MM-DD
+  setsCompleted: number;
+  durationSeconds: number;
+  timestamp: number;
+}
+
+// 4-7-8 Technique Durations in Seconds (Total cycle duration = 19 seconds)
 const PATTERN = {
   inhale: 4,
   hold: 7,
   exhale: 8,
+};
+
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 let audioCtx: AudioContext | null = null;
@@ -133,6 +150,18 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     return num.toString();
   };
 
+  const formatDuration = (totalSecs: number) => {
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    if (m === 0) {
+      return lang === 'bn' ? `${formatNum(s)} সেকেন্ড` : `${s}s`;
+    }
+    if (s === 0) {
+      return lang === 'bn' ? `${formatNum(m)} মিনিট` : `${m}m`;
+    }
+    return lang === 'bn' ? `${formatNum(m)} মি. ${formatNum(s)} সে.` : `${m}m ${s}s`;
+  };
+
   const [phase, setPhase] = useState<BreathingPhase>('idle');
   const [isActive, setIsActive] = useState<boolean>(false);
   const [currentCycle, setCurrentCycle] = useState<number>(1);
@@ -140,11 +169,24 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   const [soundMode, setSoundMode] = useState<'muted' | 'tones' | 'voice'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ratbod_sound_mode');
-      return (saved as 'muted' | 'tones' | 'voice') || 'tones';
+      return (saved as 'muted' | 'tones' | 'voice') || 'muted';
     }
-    return 'tones';
+    return 'muted';
   });
   const [completedSessionsCount, setCompletedSessionsCount] = useState<number>(0);
+  const [todaySessions, setTodaySessions] = useState<BreathingSessionRecord[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ratbod_breathing_today_sessions');
+        if (saved) {
+          const parsed: BreathingSessionRecord[] = JSON.parse(saved);
+          const today = getLocalDateString(new Date());
+          return parsed.filter(p => p.date === today);
+        }
+      } catch (e) {}
+    }
+    return [];
+  });
 
   // Precision animation state
   const [progress, setProgress] = useState<number>(0); // 0.0 to 1.0 continuously
@@ -199,19 +241,20 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   }, [soundMode, isLoaded]);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = async (userObj = auth.currentUser) => {
       let loadedSessions = null;
       let loadedSoundMode = null;
+      let loadedTodaySessions: BreathingSessionRecord[] | null = null;
       
-      const user = auth.currentUser;
-      if (user) {
+      if (userObj) {
         try {
-          const docRef = doc(db, 'users', user.uid, 'appData', 'breathing');
+          const docRef = doc(db, 'users', userObj.uid, 'appData', 'breathing');
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data();
             if (data.completedSessionsCount !== undefined) loadedSessions = data.completedSessionsCount;
             if (data.soundMode !== undefined) loadedSoundMode = data.soundMode;
+            if (Array.isArray(data.todaySessions)) loadedTodaySessions = data.todaySessions;
           }
         } catch (e) {}
       }
@@ -227,9 +270,32 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
       if (loadedSoundMode) {
         setSoundMode(loadedSoundMode);
       }
+
+      if (!loadedTodaySessions) {
+        try {
+          const savedSessions = localStorage.getItem('ratbod_breathing_today_sessions');
+          if (savedSessions) {
+            loadedTodaySessions = JSON.parse(savedSessions);
+          }
+        } catch (e) {}
+      }
+
+      if (loadedTodaySessions && Array.isArray(loadedTodaySessions)) {
+        const todayStr = getLocalDateString(new Date());
+        const validToday = loadedTodaySessions.filter(p => p.date === todayStr);
+        setTodaySessions(validToday);
+      }
+
       setIsLoaded(true);
     };
+
     loadData();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) loadData(user);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Main High-Precision Sync Animation Loop
@@ -339,10 +405,35 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     const newCount = completedSessionsCount + 1;
     setCompletedSessionsCount(newCount);
     localStorage.setItem('ratbod_breathing_sessions', newCount.toString());
+
+    // Record session into today's history
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    const dateStr = getLocalDateString(now);
+    const sessionDuration = targetCycles * (PATTERN.inhale + PATTERN.hold + PATTERN.exhale); // 19s per cycle
+
+    const newRecord: BreathingSessionRecord = {
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      time: timeStr,
+      date: dateStr,
+      setsCompleted: targetCycles,
+      durationSeconds: sessionDuration,
+      timestamp: Date.now()
+    };
+
+    const updatedSessions = [newRecord, ...todaySessions];
+    setTodaySessions(updatedSessions);
+    localStorage.setItem('ratbod_breathing_today_sessions', JSON.stringify(updatedSessions));
+
     const user = auth.currentUser;
     if (user) {
-      setDoc(doc(db, 'users', user.uid, 'appData', 'breathing'), { completedSessionsCount: newCount }, { merge: true }).catch(e => {});
+      setDoc(doc(db, 'users', user.uid, 'appData', 'breathing'), { 
+        completedSessionsCount: newCount,
+        todaySessions: updatedSessions
+      }, { merge: true }).catch(e => {});
     }
+
+    window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
   };
 
   const handleStartPause = (e?: React.MouseEvent) => {
@@ -576,7 +667,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
               darkMode ? "bg-gray-800 border-gray-700 text-gray-300" : "bg-gray-100 border-gray-200 text-gray-700"
             )}>
               <span className={cn("font-normal", darkMode ? "text-gray-500" : "text-gray-500")}>{lang === 'bn' ? 'সেট:' : 'Sets:'}</span>
-              {[2, 4, 8].map((num) => (
+              {[2, 4, 8, 12].map((num) => (
                 <button
                   key={num}
                   onClick={() => {
@@ -795,6 +886,113 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
             <span>{t.clinicalFitnessTitle}: {t.clinicalFitnessText}</span>
           </p>
         </div>
+      </div>
+
+      {/* Today's Sessions History Card */}
+      <div className={cn(
+        "p-4 sm:p-5 rounded-2xl border transition-all",
+        darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/40" : "bg-white border-gray-200 shadow-sm"
+      )}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200/40 dark:border-white/5">
+          <div className="flex items-center gap-2.5">
+            <div className={cn(
+              "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border",
+              darkMode ? "bg-teal-500/10 text-teal-400 border-teal-500/20" : "bg-teal-50 text-teal-600 border-teal-200"
+            )}>
+              <Clock size={16} />
+            </div>
+            <div>
+              <h3 className={cn("text-sm sm:text-base font-black tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
+                {lang === 'bn' ? 'আজকের সেশন ইতিহাস' : "Today's Sessions History"}
+              </h3>
+              <p className={cn("text-[10px] sm:text-xs font-medium", darkMode ? "text-gray-400" : "text-gray-500")}>
+                {lang === 'bn' ? 'আজকের সম্পন্ন হওয়া শ্বাসচর্চার তালিকা' : 'Completed deep breathing logs for today'}
+              </p>
+            </div>
+          </div>
+
+          {/* Summary Metric Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className={cn(
+              "px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5",
+              darkMode ? "bg-gray-800 border-gray-700 text-gray-300" : "bg-gray-100 border-gray-200 text-gray-700"
+            )}>
+              <Timer size={12} className="text-teal-500" />
+              <span>{lang === 'bn' ? 'মোট সময়:' : 'Total Time:'} <strong className={darkMode ? "text-white" : "text-gray-900"}>{formatDuration(todaySessions.reduce((acc, s) => acc + (s.durationSeconds || 0), 0))}</strong></span>
+            </div>
+            <div className={cn(
+              "px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5",
+              darkMode ? "bg-gray-800 border-gray-700 text-gray-300" : "bg-gray-100 border-gray-200 text-gray-700"
+            )}>
+              <Sparkles size={12} className="text-sky-500" />
+              <span>{lang === 'bn' ? 'মোট সেট:' : 'Total Sets:'} <strong className={darkMode ? "text-white" : "text-gray-900"}>{formatNum(todaySessions.reduce((acc, s) => acc + (s.setsCompleted || 0), 0))}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sessions Content List */}
+        {todaySessions.length === 0 ? (
+          <div className="py-7 text-center flex flex-col items-center justify-center gap-2">
+            <div className={cn(
+              "w-9 h-9 rounded-full flex items-center justify-center border",
+              darkMode ? "bg-gray-800/60 border-gray-700 text-gray-500" : "bg-gray-50 border-gray-200 text-gray-400"
+            )}>
+              <Wind size={16} className="opacity-60" />
+            </div>
+            <p className={cn("text-xs font-semibold max-w-xs", darkMode ? "text-gray-400" : "text-gray-600")}>
+              {lang === 'bn' 
+                ? 'আজকে এখনও কোনো সেশন সম্পন্ন করা হয়নি। উপরে একটি সেশন শুরু করুন!' 
+                : 'No sessions completed today yet. Complete a breathing cycle above to record your history!'}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-2 max-h-72 overflow-y-auto pr-1">
+            {todaySessions.map((session, index) => (
+              <div
+                key={session.id || index}
+                className={cn(
+                  "px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-3 transition-all",
+                  darkMode ? "bg-black/40 border-white/5 hover:border-white/10" : "bg-gray-50/80 border-gray-200/80 hover:bg-gray-50"
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={cn(
+                    "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border text-emerald-500",
+                    darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-200"
+                  )}>
+                    <Check size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-xs font-extrabold tracking-tight truncate", darkMode ? "text-white" : "text-gray-900")}>
+                        {formatNum(session.setsCompleted)} {lang === 'bn' ? 'সেট ৪-৭-৮ শ্বাসচর্চা' : 'Sets 4-7-8 Breathing'}
+                      </span>
+                      <span className={cn(
+                        "text-[9px] font-black uppercase px-1.5 py-0.5 rounded border tracking-wider",
+                        darkMode ? "bg-teal-500/10 text-teal-400 border-teal-500/20" : "bg-teal-50 text-teal-700 border-teal-200"
+                      )}>
+                        {lang === 'bn' ? 'সম্পন্ন' : 'Completed'}
+                      </span>
+                    </div>
+                    <p className={cn("text-[10px] font-medium flex items-center gap-1.5 mt-0.5", darkMode ? "text-gray-400" : "text-gray-500")}>
+                      <Clock size={10} />
+                      <span>{session.time}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className={cn("text-xs font-black font-mono", darkMode ? "text-teal-400" : "text-teal-700")}>
+                    {formatDuration(session.durationSeconds)}
+                  </span>
+                  <p className={cn("text-[9px] font-bold uppercase", darkMode ? "text-gray-400" : "text-gray-500")}>
+                    {lang === 'bn' ? `${formatNum(session.setsCompleted)} ধাপ` : `${session.setsCompleted} cycles`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

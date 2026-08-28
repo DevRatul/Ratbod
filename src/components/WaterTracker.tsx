@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
@@ -40,9 +41,31 @@ interface WaterTrackerProps {
 }
 
 export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
-  // Goal state in glasses and glass size (default 12 glasses = 3000 ml = 3.0 Liters)
-  const [goalGlasses, setGoalGlasses] = useState<number>(12);
-  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(250); // 12 glasses * 250ml = 3000ml (3.0 Liters)
+  // Goal state in glasses and glass size (reads user-selected target from localStorage immediately on boot)
+  const [goalGlasses, setGoalGlasses] = useState<number>(() => {
+    try {
+      const savedData = localStorage.getItem('ratbod_water_tracker_data');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (typeof parsed.goalGlasses === 'number' && parsed.goalGlasses > 0) {
+          return parsed.goalGlasses;
+        }
+      }
+    } catch (e) {}
+    return 12;
+  });
+  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(() => {
+    try {
+      const savedData = localStorage.getItem('ratbod_water_tracker_data');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (typeof parsed.glassVolumeMl === 'number' && parsed.glassVolumeMl > 0) {
+          return parsed.glassVolumeMl;
+        }
+      }
+    } catch (e) {}
+    return 250;
+  });
   const [entries, setEntries] = useState<WaterEntry[]>([]);
   const [history, setHistory] = useState<DayHistory[]>([]);
   const [reminderActive, setReminderActive] = useState<boolean>(false);
@@ -51,9 +74,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
   // Modal custom goal state
-  const [modalGlasses, setModalGlasses] = useState<string>('12');
-  const [modalTotalMl, setModalTotalMl] = useState<string>('3000');
-  const [modalGlassVolume, setModalGlassVolume] = useState<string>('250');
+  const [modalGlasses, setModalGlasses] = useState<string>(() => goalGlasses.toString());
+  const [modalTotalMl, setModalTotalMl] = useState<string>(() => (goalGlasses * glassVolumeMl).toString());
+  const [modalGlassVolume, setModalGlassVolume] = useState<string>(() => glassVolumeMl.toString());
 
   // Manual Hydration Timer state (30 min, 45 min, 50 min, 90 min presets)
   const [timerMinutes, setTimerMinutes] = useState<number>(30);
@@ -102,16 +125,15 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return `${year}-${month}-${day}`;
   };
 
-  // Load from Firestore & LocalStorage
+  // Load from Firestore & LocalStorage (persists user-chosen goal strictly)
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = async (userObj = auth.currentUser) => {
       try {
         let parsed: any = null;
-        const user = auth.currentUser;
         
-        if (user) {
+        if (userObj) {
           try {
-            const docRef = doc(db, 'users', user.uid, 'appData', 'waterTracker');
+            const docRef = doc(db, 'users', userObj.uid, 'appData', 'waterTracker');
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               parsed = docSnap.data();
@@ -127,12 +149,12 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         }
 
         if (parsed) {
-          if ((parsed.goalGlasses === 10 && parsed.glassVolumeMl === 400) || (parsed.goalGlasses === 12 && parsed.glassVolumeMl === 325) || (parsed.goalGlasses === 16 && parsed.glassVolumeMl === 250)) {
-            setGoalGlasses(12);
-            setGlassVolumeMl(250);
-          } else {
-            if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
-            if (parsed.glassVolumeMl) setGlassVolumeMl(parsed.glassVolumeMl);
+          // Strictly respect user-configured target goal values
+          if (typeof parsed.goalGlasses === 'number' && parsed.goalGlasses > 0) {
+            setGoalGlasses(parsed.goalGlasses);
+          }
+          if (typeof parsed.glassVolumeMl === 'number' && parsed.glassVolumeMl > 0) {
+            setGlassVolumeMl(parsed.glassVolumeMl);
           }
 
           const currentToday = getLocalDateString(new Date());
@@ -147,7 +169,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             // Date changed since last session: archive the previous day's intake into history
             if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
               const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
-              const oldGoal = (parsed.goalGlasses || 16) * (parsed.glassVolumeMl || 250);
+              const oldGoal = (parsed.goalGlasses || goalGlasses) * (parsed.glassVolumeMl || glassVolumeMl);
               
               const existingIdx = loadedHistory.findIndex(h => h.date === parsed.todayDate);
               if (existingIdx >= 0) {
@@ -179,7 +201,18 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       }
       setIsLoaded(true);
     };
+
+    // Initial load
     loadData();
+
+    // Listen to Firebase Auth state updates
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loadData(user);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Real-time day rollover checker (archives previous day if midnight passes while app is open)
@@ -873,17 +906,48 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     const v = parseFloat(modalGlassVolume) || 250;
     const total = parseFloat(modalTotalMl);
 
+    let finalG = goalGlasses;
+    let finalV = v;
+
     if (!isNaN(g) && g > 0 && !isNaN(v) && v > 0) {
-      setGoalGlasses(g);
-      setGlassVolumeMl(v);
-      setShowGoalModal(false);
-      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
+      finalG = g;
+      finalV = v;
     } else if (!isNaN(total) && total > 0 && !isNaN(v) && v > 0) {
-      setGoalGlasses(Math.round((total / v) * 10) / 10);
-      setGlassVolumeMl(v);
-      setShowGoalModal(false);
-      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
+      finalG = Math.round((total / v) * 10) / 10;
+      finalV = v;
     }
+
+    setGoalGlasses(finalG);
+    setGlassVolumeMl(finalV);
+    setShowGoalModal(false);
+
+    try {
+      const todayDate = getLocalDateString(new Date());
+      const currentSaved = localStorage.getItem('ratbod_water_tracker_data');
+      let baseObj: any = {};
+      if (currentSaved) {
+        try { baseObj = JSON.parse(currentSaved); } catch (e) {}
+      }
+      const dataToSave = {
+        ...baseObj,
+        goalGlasses: finalG,
+        glassVolumeMl: finalV,
+        todayEntries: entries,
+        todayDate,
+        history,
+        reminderActive,
+        sleepBedTime,
+        sleepWakeTime,
+        sleepRecords
+      };
+      localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(dataToSave));
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), dataToSave, { merge: true }).catch(e => {});
+      }
+    } catch (e) {}
+
+    window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
   };
 
   return (

@@ -222,7 +222,7 @@ export default function LandingPage({
       )}
     >
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 transition-all duration-300">
+      <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300">
         <div className={cn(
           "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode 
@@ -249,7 +249,7 @@ export default function LandingPage({
             <a 
               href="#health-calculator-section" 
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors flex items-center gap-1",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors flex items-center gap-1",
                 darkMode ? "text-gray-300 hover:text-white hover:bg-white/10" : "text-gray-700 hover:text-gray-900 hover:bg-white"
               )}
             >
@@ -259,7 +259,7 @@ export default function LandingPage({
             <a 
               href="#habit-tracker-section" 
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors flex items-center gap-1",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors flex items-center gap-1",
                 darkMode ? "text-gray-300 hover:text-white hover:bg-white/10" : "text-gray-700 hover:text-gray-900 hover:bg-white"
               )}
             >
@@ -269,7 +269,7 @@ export default function LandingPage({
             <a 
               href="#water-tracker-section" 
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors flex items-center gap-1",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors flex items-center gap-1",
                 darkMode ? "text-gray-300 hover:text-white hover:bg-white/10" : "text-gray-700 hover:text-gray-900 hover:bg-white"
               )}
             >

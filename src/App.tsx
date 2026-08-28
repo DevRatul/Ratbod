@@ -878,7 +878,7 @@ export default function App() {
       darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
-      <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 transition-all duration-300">
+      <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300">
         <div className={cn(
           "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode 
@@ -904,7 +904,7 @@ export default function App() {
             <button
               onClick={handleHealthMenuClick}
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer",
                 activeTab === 'calculator'
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
@@ -915,7 +915,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab('results')}
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'results'
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
@@ -927,7 +927,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab('water')}
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'water'
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
@@ -939,7 +939,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab('breathing')}
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'breathing'
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
@@ -951,7 +951,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab('groceries')}
               className={cn(
-                "px-3 py-1 rounded-lg transition-colors cursor-pointer",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer",
                 activeTab === 'groceries'
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
@@ -1123,7 +1123,7 @@ export default function App() {
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 !mb-[16px]">
           {/* Latest Entry Card - Height 99px */}
           <div className={cn("relative p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl border flex flex-col justify-between h-[99px] overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
             {/* Iconic Watermark */}
@@ -1238,7 +1238,7 @@ export default function App() {
         </div>
 
         {/* Quick Check & Health Analytics */}
-        <div className={cn("p-4 sm:p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
+        <div className={cn("p-4 sm:p-6 rounded-3xl border !mt-[16px]", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
             {/* Left Side: Quick Check Form */}
             <div className="lg:col-span-5 flex flex-col justify-between h-full">
@@ -1398,38 +1398,40 @@ export default function App() {
             "flex flex-col items-center justify-center gap-3 text-center w-full",
             activeTab !== 'calculator' ? "hidden md:flex" : "flex"
           )}>
-            {/* UNIT Switcher Pill (Replaces LANG) */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
-              <div className={cn(
-                "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
-              )}>
-                <button 
-                  onClick={() => setUnit('metric')}
-                  className={cn(
-                    "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                    unit === 'metric' 
-                      ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                      : "text-gray-400 hover:text-gray-200"
-                  )}
-                  title="Metric System"
-                >
-                  M
-                </button>
-                <button 
-                  onClick={() => setUnit('imperial')}
-                  className={cn(
-                    "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                    unit === 'imperial' 
-                      ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                      : "text-gray-400 hover:text-gray-200"
-                  )}
-                  title="Imperial System"
-                >
-                  I
-                </button>
+            {/* UNIT Switcher Pill (Only in Health / Calculator view) */}
+            {activeTab === 'calculator' && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
+                <div className={cn(
+                  "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
+                )}>
+                  <button 
+                    onClick={() => setUnit('metric')}
+                    className={cn(
+                      "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                      unit === 'metric' 
+                        ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                        : "text-gray-400 hover:text-gray-200"
+                    )}
+                    title="Metric System"
+                  >
+                    M
+                  </button>
+                  <button 
+                    onClick={() => setUnit('imperial')}
+                    className={cn(
+                      "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                      unit === 'imperial' 
+                        ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                        : "text-gray-400 hover:text-gray-200"
+                    )}
+                    title="Imperial System"
+                  >
+                    I
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Policy Links */}
             <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
