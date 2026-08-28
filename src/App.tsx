@@ -34,7 +34,8 @@ import {
   TrendingDown,
   TrendingUp,
   Minus,
-  LogOut
+  LogOut,
+  ArrowUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -1383,65 +1384,88 @@ export default function App() {
       {/* Footer */}
       <footer className={cn(
         "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
-        darkMode ? "border-white/5" : "border-black/5",
-        activeTab !== 'calculator' ? "hidden md:block" : "block"
+        darkMode ? "border-white/5" : "border-black/5"
       )}>
         <div className="flex flex-col items-center justify-center gap-3 text-center">
-          {/* Logo */}
+          {/* Logo - Displayed across all tabs and views */}
           <div className="flex items-center gap-1.5">
             <Activity size={14} className="text-gray-700 dark:text-gray-300" />
             <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATBOD</span>
           </div>
 
-          {/* UNIT Switcher Pill (Replaces LANG) */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
-            <div className={cn(
-              "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
-            )}>
-              <button 
-                onClick={() => setUnit('metric')}
-                className={cn(
-                  "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                  unit === 'metric' 
-                    ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                    : "text-gray-400 hover:text-gray-200"
-                )}
-                title="Metric System"
-              >
-                M
-              </button>
-              <button 
-                onClick={() => setUnit('imperial')}
-                className={cn(
-                  "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                  unit === 'imperial' 
-                    ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                    : "text-gray-400 hover:text-gray-200"
-                )}
-                title="Imperial System"
-              >
-                I
-              </button>
-            </div>
-          </div>
-
-          {/* Policy Links */}
-          <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
-          </div>
-
-          {/* Copyright */}
-          <p className={cn(
-            "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
-            darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
+          {/* Unit Toggle, Policies, & Copyright: always shown on desktop, on mobile only in Health tab */}
+          <div className={cn(
+            "flex flex-col items-center justify-center gap-3 text-center w-full",
+            activeTab !== 'calculator' ? "hidden md:flex" : "flex"
           )}>
-            © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
-          </p>
+            {/* UNIT Switcher Pill (Replaces LANG) */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
+              <div className={cn(
+                "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
+              )}>
+                <button 
+                  onClick={() => setUnit('metric')}
+                  className={cn(
+                    "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                    unit === 'metric' 
+                      ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                      : "text-gray-400 hover:text-gray-200"
+                  )}
+                  title="Metric System"
+                >
+                  M
+                </button>
+                <button 
+                  onClick={() => setUnit('imperial')}
+                  className={cn(
+                    "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                    unit === 'imperial' 
+                      ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                      : "text-gray-400 hover:text-gray-200"
+                  )}
+                  title="Imperial System"
+                >
+                  I
+                </button>
+              </div>
+            </div>
+
+            {/* Policy Links */}
+            <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
+            </div>
+
+            {/* Copyright */}
+            <p className={cn(
+              "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
+              darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
+            )}>
+              © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
+            </p>
+          </div>
         </div>
       </footer>
+
+      {/* Floating Go to Top Button - Mobile View Only for Health (Home) Section */}
+      {activeTab === 'calculator' && (
+        <button
+          type="button"
+          id="health_scroll_to_top_btn"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className={cn(
+            "fixed bottom-20 right-4 z-40 md:hidden w-10 h-10 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-90 flex items-center justify-center cursor-pointer select-none",
+            darkMode
+              ? "bg-[#161616]/90 border-white/20 text-white shadow-black/70 hover:bg-[#222]"
+              : "bg-white/95 border-gray-200 text-gray-800 shadow-gray-400/40 hover:bg-gray-50"
+          )}
+          aria-label="Go to top"
+        >
+          <ArrowUp size={18} className="text-primary shrink-0" />
+        </button>
+      )}
 
       
     <ProfileModal
