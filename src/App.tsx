@@ -844,13 +844,13 @@ export default function App() {
     <AnimatePresence>
       {showSavedNotification && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed top-5 sm:top-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-2xl shadow-emerald-600/40 flex items-center gap-2.5 border border-emerald-400 select-none pointer-events-none"
+          className="fixed bottom-[74px] sm:bottom-20 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-emerald-600 text-white font-bold text-xs sm:text-sm shadow-2xl shadow-emerald-600/40 flex items-center gap-2 border border-emerald-400 select-none pointer-events-none whitespace-nowrap"
         >
-          <CheckCircle2 size={18} className="shrink-0" />
+          <CheckCircle2 size={16} className="shrink-0" />
           <span>{lang === 'bn' ? 'সফলভাবে সংরক্ষিত হয়েছে' : 'Successfully Saved'}</span>
         </motion.div>
       )}
@@ -1150,11 +1150,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Goal Progress Card - Height 120px */}
-          <div className={cn("relative p-3 rounded-2xl sm:rounded-3xl border flex flex-col justify-between h-[120px] col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border border-emerald-500/30 shadow-md shadow-emerald-500/10")}>
+          {/* Goal Progress Card - Height 99px */}
+          <div className={cn("relative p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl border flex flex-col justify-between h-[99px] col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border border-emerald-500/30 shadow-md shadow-emerald-500/10")}>
              {/* Iconic Watermark */}
              <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-               <Target size={80} />
+               <Target size={70} />
              </div>
 
              <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
@@ -1164,7 +1164,7 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <span className={cn(
-                    "text-xl sm:text-2xl font-black tracking-tight leading-none",
+                    "text-lg sm:text-xl font-black tracking-tight leading-none",
                     !latestHistoryEntry 
                       ? "text-gray-400" 
                       : (goalProgress.percent < 0 ? "text-red-500" : "text-emerald-500")
@@ -1179,9 +1179,9 @@ export default function App() {
                 {latestHistoryEntry && goalProgress.remainingWeight !== null && (
                   <div className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {goalProgress.trend === 'down' ? <TrendingDown className="text-primary" size={14} /> : 
-                       goalProgress.trend === 'up' ? <TrendingUp className="text-red-500" size={14} /> : 
-                       <Minus className="text-gray-400" size={14} />}
+                      {goalProgress.trend === 'down' ? <TrendingDown className="text-primary" size={13} /> : 
+                       goalProgress.trend === 'up' ? <TrendingUp className="text-red-500" size={13} /> : 
+                       <Minus className="text-gray-400" size={13} />}
                       <span className={cn(
                         "text-[22px] font-black tracking-tight leading-none",
                         goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
@@ -1192,16 +1192,11 @@ export default function App() {
                           ? (lang === 'bn' ? '🎉 লক্ষ্য অর্জিত' : '🎉 Reached')
                           : (
                             <>
-                              {formatNum(goalProgress.remainingWeight)} <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+                              {formatNum(goalProgress.remainingWeight)} <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                             </>
                           )}
                       </span>
                     </div>
-                    <p className="text-[9px] text-gray-500 font-semibold leading-tight">
-                      {goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
-                        ? (lang === 'bn' ? 'লক্ষ্য সম্পন্ন' : 'Target Achieved') 
-                        : (lang === 'bn' ? 'আর বাকি আছে' : 'More to go')}
-                    </p>
                   </div>
                 )}
               </div>
@@ -1216,9 +1211,9 @@ export default function App() {
               </div>
               {/* Days remaining and goal amount font size 14px */}
               <div className="flex items-center justify-between text-[14px] text-gray-900 dark:text-gray-100 font-bold leading-tight">
-                <span>{lang === 'bn' ? 'লক্ষ্য:' : 'Goal:'} {latestHistoryEntry ? formatNum(goalProgress.target) : '--'} {unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+                <span className="truncate">{lang === 'bn' ? 'লক্ষ্য:' : 'Goal:'} {latestHistoryEntry ? formatNum(goalProgress.target) : '--'} {unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                 {latestHistoryEntry && goalProgress.daysRemaining !== null && (
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight text-[14px]">
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight text-[14px] shrink-0">
                     {goalProgress.daysRemaining > 0 ? (lang === 'bn' ? `${formatNum(goalProgress.daysRemaining)} দিন` : `${goalProgress.daysRemaining} days`) : (lang === 'bn' ? 'শেষ' : 'Ended')}
                   </span>
                 )}
@@ -1228,18 +1223,18 @@ export default function App() {
         </div>
 
         {/* Quick Measurement & Health Analytics */}
-        <div className={cn("p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className={cn("p-4 sm:p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
             {/* Left Side: Quick Measurement Form */}
             <div className="lg:col-span-5 flex flex-col justify-between h-full">
               <div>
-                <div className="flex items-center gap-2 mb-6 text-lg font-bold">
+                <div className="flex items-center gap-2 mb-5 text-base sm:text-lg font-bold">
                   <Scale size={20} className="opacity-70" /> {lang === 'bn' ? 'দ্রুত পরিমাপ' : 'Quick Measurement'}
                 </div>
                 
                 {/* Inputs */}
-                <div className="space-y-5">
-                  <div className="space-y-2">
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="space-y-1.5 sm:space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.weight} *</label>
                     <div className="relative">
                       <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
@@ -1247,15 +1242,15 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.waist} *</label>
                       <div className="relative">
                         <input type="number" value={waist} onChange={(e) => setWaist(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{unit === 'metric' ? 'cm' : 'in'}</span>
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.neck} *</label>
                       <div className="relative">
                         <input type="number" value={neck} onChange={(e) => setNeck(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
@@ -1265,7 +1260,7 @@ export default function App() {
                   </div>
                   
                   {gender === 'female' && (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.hip} (Female) *</label>
                       <div className="relative">
                         <input type="number" value={hip} onChange={(e) => setHip(e.target.value)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")} placeholder="0.0" />
@@ -1274,7 +1269,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">{t.activityLevel} *</label>
                     <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)} className={cn("w-full border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer", darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white")}>
                       {activityOptions.map(opt => <option key={opt.value} value={opt.value} className={darkMode ? "bg-[#0F0F0F]" : "bg-white"}>{opt.label}</option>)}
@@ -1291,7 +1286,7 @@ export default function App() {
                   "w-full mt-6 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
                   !weight || parseFloat(weight) <= 0
                     ? "bg-gray-500/20 text-gray-400 cursor-not-allowed" 
-                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 cursor-pointer"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 cursor-pointer active:scale-[0.99]"
                 )}
               >
                 <Save size={18} />
@@ -1300,20 +1295,26 @@ export default function App() {
             </div>
 
             {/* Right Side: Health Analytics */}
-            <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l pt-6 lg:pt-0 lg:pl-8 border-gray-200 dark:border-white/5 flex flex-col justify-between h-full">
+            <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l pt-5 lg:pt-0 lg:pl-8 border-gray-200 dark:border-white/5 flex flex-col justify-start">
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2 text-lg font-bold">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-base sm:text-lg font-bold">
                     <Activity size={20} className="text-emerald-500" />
                     {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ' : 'Health Analytics'}
                   </div>
                   <span className="text-[11px] font-bold text-gray-400">
-                    {dashboardMetrics ? (lang === 'bn' ? 'রিয়েল-টাইম হিসাব' : 'Live Calculated') : (lang === 'bn' ? 'অপেক্ষা করছে' : 'Awaiting Input')}
+                    {dashboardMetrics 
+                      ? (lang === 'bn' ? 'রিয়েল-টাইম হিসাব' : 'Live Calculated') 
+                      : (lang === 'bn' ? 'ইনপুটের অপেক্ষায়' : 'Waiting for input')}
                   </span>
                 </div>
 
-                {dashboardMetrics ? (
-                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
+                {dashboardMetrics && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 mt-2"
+                  >
                     <div className={cn("relative p-4 rounded-2xl overflow-hidden shadow-sm transition-all", darkMode ? "bg-gradient-to-br from-[#1A1A1A] to-[#111] border border-white/10" : "bg-white border border-gray-200 shadow-sm shadow-gray-200/50")}>
                       <div className="absolute -right-3 -top-3 opacity-10 text-emerald-500 pointer-events-none">
                         <Activity size={64} />
@@ -1345,17 +1346,7 @@ export default function App() {
                       <div className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1 flex items-center gap-1"><Heart size={12}/> {lang === 'bn' ? 'বিএমআই' : 'BMI'}</div>
                       <div className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{formatNum(dashboardMetrics.bmi.toFixed(1))}</div>
                     </div>
-                  </div>
-                ) : (
-                  <div className={cn(
-                    "p-8 rounded-2xl border flex flex-col items-center justify-center text-center space-y-3",
-                    darkMode ? "bg-black/30 border-white/5" : "bg-gray-50 border border-gray-200"
-                  )}>
-                    <Activity size={36} className="text-gray-400 opacity-60" />
-                    <p className="text-sm font-bold text-gray-400 max-w-xs">
-                      {lang === 'bn' ? 'স্বাস্থ্য বিশ্লেষণ দেখতে আপনার পরিমাপ দিন' : 'Enter measurements to see real-time BMR, TDEE, Body Fat & BMI analytics'}
-                    </p>
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </div>
