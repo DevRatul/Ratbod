@@ -137,6 +137,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
       setGoal(goalData as Goal);
       setIsEditing(false);
       if (onGoalUpdate) onGoalUpdate();
+      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (error) {
       alert('Failed to save goal');
     } finally {

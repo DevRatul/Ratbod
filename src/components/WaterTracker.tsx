@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -40,9 +40,9 @@ interface WaterTrackerProps {
 }
 
 export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
-  // Goal state in glasses and glass size (default 10 glasses = 4000 ml = 4.0 Liters)
-  const [goalGlasses, setGoalGlasses] = useState<number>(16);
-  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(250); // 10 glasses * 400ml = 4000ml (4.0 Liters)
+  // Goal state in glasses and glass size (default 12 glasses = 3000 ml = 3.0 Liters)
+  const [goalGlasses, setGoalGlasses] = useState<number>(12);
+  const [glassVolumeMl, setGlassVolumeMl] = useState<number>(250); // 12 glasses * 250ml = 3000ml (3.0 Liters)
   const [entries, setEntries] = useState<WaterEntry[]>([]);
   const [history, setHistory] = useState<DayHistory[]>([]);
   const [reminderActive, setReminderActive] = useState<boolean>(false);
@@ -51,8 +51,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
   // Modal custom goal state
-  const [modalGlasses, setModalGlasses] = useState<string>('16');
-  const [modalTotalMl, setModalTotalMl] = useState<string>('4000');
+  const [modalGlasses, setModalGlasses] = useState<string>('12');
+  const [modalTotalMl, setModalTotalMl] = useState<string>('3000');
   const [modalGlassVolume, setModalGlassVolume] = useState<string>('250');
 
   // Manual Hydration Timer state (30 min, 45 min, 50 min, 90 min presets)
@@ -127,8 +127,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         }
 
         if (parsed) {
-          if (parsed.goalGlasses === 10 && parsed.glassVolumeMl === 400) {
-            setGoalGlasses(16);
+          if ((parsed.goalGlasses === 10 && parsed.glassVolumeMl === 400) || (parsed.goalGlasses === 12 && parsed.glassVolumeMl === 325) || (parsed.goalGlasses === 16 && parsed.glassVolumeMl === 250)) {
+            setGoalGlasses(12);
             setGlassVolumeMl(250);
           } else {
             if (parsed.goalGlasses) setGoalGlasses(parsed.goalGlasses);
@@ -369,11 +369,11 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       undo: "Undo Last",
       resetToday: "Reset Today",
       setGoalTitle: "Set Daily Water Goal",
-      selectGoalTip: "Target: 12 glasses = 3.9 L (3,900 ml) or 16 glasses = 4.0 L. Choose a preset or customize below.",
+      selectGoalTip: "Target: 12 glasses = 3.0 L (3,000 ml) or 16 glasses = 4.0 L. Choose a preset or customize below.",
       preset8: "8 Glasses (2.0 L)",
       preset10: "10 Glasses (2.5 L)",
-      preset12_39: "12 glasses (3.9 L)",
-      preset16: "16 glasses (4 L)",
+      preset12_30: "12 Glasses (3.0 L)",
+      preset16: "16 Glasses (4.0 L)",
       orManualHeading: "Or Set Custom Goal Manually",
       customGlassesLabel: "Number of Glasses",
       customTotalMlLabel: "Total Water Target (ml)",
@@ -418,11 +418,11 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       undo: "আগেরটি মুছুন",
       resetToday: "আজকের হিসাব রিসেট",
       setGoalTitle: "দৈনিক পানির লক্ষ্য নির্ধারণ",
-      selectGoalTip: "মূল লক্ষ্য: ১২ গ্লাস = ৩.৯ লিটার অথবা ১৬ গ্লাস = ৪.০ লিটার। প্রিসেট বা নিচে সেট করুন।",
+      selectGoalTip: "মূল লক্ষ্য: ১২ গ্লাস = ৩.০ লিটার অথবা ১৬ গ্লাস = ৪.০ লিটার। প্রিসেট বা নিচে সেট করুন।",
       preset8: "৮ গ্লাস (২.০ লিটার)",
       preset10: "১০ গ্লাস (২.৫ লিটার)",
-      preset12_39: "১২ গ্লাস (৩.৯ লিটার)",
-      preset16: "১৬ গ্লাস (৪ লিটার)",
+      preset12_30: "১২ গ্লাস (৩.০ লিটার)",
+      preset16: "১৬ গ্লাস (৪.০ লিটার)",
       orManualHeading: "অথবা ম্যানুয়ালি পছন্দসই লক্ষ্য সেট করুন",
       customGlassesLabel: "গ্লাসের সংখ্যা",
       customTotalMlLabel: "মোট পানির লক্ষ্য (মিলি)",
@@ -597,6 +597,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
     setSleepSavedToast(true);
     setTimeout(() => setSleepSavedToast(false), 2500);
+    window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
   };
 
   const handleDeleteSleepRecord = (id: string) => {
@@ -876,10 +877,12 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       setGoalGlasses(g);
       setGlassVolumeMl(v);
       setShowGoalModal(false);
+      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } else if (!isNaN(total) && total > 0 && !isNaN(v) && v > 0) {
       setGoalGlasses(Math.round((total / v) * 10) / 10);
       setGlassVolumeMl(v);
       setShowGoalModal(false);
+      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     }
   };
 
@@ -1568,7 +1571,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                   {[
                     { glasses: 8, vol: 250, totalMl: 2000, label: labels.preset8 },
                     { glasses: 10, vol: 250, totalMl: 2500, label: labels.preset10 },
-                    { glasses: 12, vol: 325, totalMl: 3900, label: labels.preset12_39 },
+                    { glasses: 12, vol: 250, totalMl: 3000, label: labels.preset12_30 },
                     { glasses: 16, vol: 250, totalMl: 4000, label: labels.preset16 },
                   ].map((opt, idx) => {
                     const isSelected = (parseFloat(modalGlasses) === opt.glasses && Math.abs(parseFloat(modalTotalMl) - opt.totalMl) < 10);
@@ -2159,6 +2162,21 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
         )}
       </AnimatePresence>
+      {/* Floating Go to Top Button - Mobile View Only for Water Section */}
+      <button
+        type="button"
+        id="water_scroll_to_top_btn"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className={cn(
+          "fixed bottom-20 right-4 z-40 md:hidden w-10 h-10 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-90 flex items-center justify-center cursor-pointer select-none",
+          darkMode
+            ? "bg-[#161616]/90 border-white/20 text-white shadow-black/70 hover:bg-[#222]"
+            : "bg-white/95 border-gray-200 text-gray-800 shadow-gray-400/40 hover:bg-gray-50"
+        )}
+        aria-label="Go to top"
+      >
+        <ArrowUp size={18} className="text-blue-500 shrink-0" />
+      </button>
     </div>
   );
 }

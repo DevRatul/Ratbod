@@ -753,6 +753,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       setNewSubtitle('');
       setNewEmoji('');
       setIsAddModalOpen(false);
+      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (err) {
       console.error("Error creating new habit:", err);
     }
@@ -780,6 +781,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       }
 
       setEditingHabit(null);
+      window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (err) {
       console.error("Error updating habit:", err);
     }

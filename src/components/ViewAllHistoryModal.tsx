@@ -63,9 +63,9 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
         "flex-1 w-full max-w-6xl mx-auto flex flex-col overflow-hidden relative",
         darkMode ? "bg-[#0A0A0A] md:rounded-3xl md:border border-white/5" : "bg-white md:rounded-3xl md:shadow-2xl md:border border-black/5"
       )}>
-        {/* Header with Back Button - Always visible at top */}
+        {/* Header with Back Button - Always visible with top margin matching header menu height */}
         <div className={cn(
-          "flex items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3.5 border-b z-20 shrink-0 sticky top-0",
+          "flex items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3.5 border-b z-20 shrink-0 sticky top-0 mt-[calc(env(safe-area-inset-top,0px)+56px)] sm:mt-14",
           darkMode ? "border-white/10 bg-[#0A0A0A]/95 backdrop-blur" : "border-gray-200 bg-white/95 backdrop-blur"
         )}>
           {/* Back Button */}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { 
   Calculator, 
   Download, 
@@ -128,6 +128,23 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [showSavedNotification, setShowSavedNotification] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Global trigger for Successfully Saved toast notification
+  const triggerSavedToast = useCallback(() => {
+    setShowSavedNotification(true);
+    setTimeout(() => {
+      setShowSavedNotification(false);
+    }, 2500);
+  }, []);
+
+  // Listen for global save events
+  useEffect(() => {
+    const handleToastEvent = () => {
+      triggerSavedToast();
+    };
+    window.addEventListener('ratbod_saved_toast', handleToastEvent);
+    return () => window.removeEventListener('ratbod_saved_toast', handleToastEvent);
+  }, [triggerSavedToast]);
 
   // Persist activeTab to localStorage
   useEffect(() => {
@@ -817,10 +834,7 @@ export default function App() {
       e.preventDefault();
       e.stopPropagation();
     }
-    try {
-      localStorage.setItem('ratbod_active_tab', 'calculator');
-    } catch (err) {}
-    window.location.reload();
+    handleHealthMenuClick();
   };
 
   if (activeTab === 'home') {
@@ -1209,11 +1223,11 @@ export default function App() {
                    style={{ width: `${latestHistoryEntry ? Math.max(0, Math.min(100, goalProgress.percent)) : 0}%` }} 
                  />
               </div>
-              {/* Days remaining and goal amount font size 14px */}
-              <div className="flex items-center justify-between text-[14px] text-gray-900 dark:text-gray-100 font-bold leading-tight">
+              {/* Days remaining and goal amount font size 11px */}
+              <div className="flex items-center justify-between text-[11px] text-gray-900 dark:text-gray-100 font-bold leading-tight">
                 <span className="truncate">{lang === 'bn' ? 'লক্ষ্য:' : 'Goal:'} {latestHistoryEntry ? formatNum(goalProgress.target) : '--'} {unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                 {latestHistoryEntry && goalProgress.daysRemaining !== null && (
-                  <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight text-[14px] shrink-0">
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight text-[11px] shrink-0">
                     {goalProgress.daysRemaining > 0 ? (lang === 'bn' ? `${formatNum(goalProgress.daysRemaining)} দিন` : `${goalProgress.daysRemaining} days`) : (lang === 'bn' ? 'শেষ' : 'Ended')}
                   </span>
                 )}
@@ -1222,14 +1236,14 @@ export default function App() {
           </div>
         </div>
 
-        {/* Quick Measurement & Health Analytics */}
+        {/* Quick Check & Health Analytics */}
         <div className={cn("p-4 sm:p-6 rounded-3xl border", darkMode ? "bg-[#0F0F0F] border-white/10" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-            {/* Left Side: Quick Measurement Form */}
+            {/* Left Side: Quick Check Form */}
             <div className="lg:col-span-5 flex flex-col justify-between h-full">
               <div>
                 <div className="flex items-center gap-2 mb-5 text-base sm:text-lg font-bold">
-                  <Scale size={20} className="opacity-70" /> {lang === 'bn' ? 'দ্রুত পরিমাপ' : 'Quick Measurement'}
+                  <Scale size={20} className="opacity-70" /> {lang === 'bn' ? 'দ্রুত চেক' : 'Quick Check'}
                 </div>
                 
                 {/* Inputs */}
@@ -1359,15 +1373,18 @@ export default function App() {
         {/* Goals */}
         <Goals darkMode={darkMode} unit={unit} currentWeight={latestHistoryEntry?.weight || metricData.weight} currentBodyFat={dashboardMetrics?.bodyFat || metrics?.bodyFat} lang={lang} onGoalUpdate={() => setHistoryRefreshTrigger(prev => prev + 1)} />
 
-        {/* Quick Steps */}
-        <QuickSteps darkMode={darkMode} lang={lang} onSave={() => setHistoryRefreshTrigger(prev => prev + 1)} />
+        {/* Quick Steps - Available only on Fridays */}
+        {new Date().getDay() === 5 && (
+          <QuickSteps darkMode={darkMode} lang={lang} onSave={() => setHistoryRefreshTrigger(prev => prev + 1)} />
+        )}
         
       </main>
 
       {/* Footer */}
       <footer className={cn(
         "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
-        darkMode ? "border-white/5" : "border-black/5"
+        darkMode ? "border-white/5" : "border-black/5",
+        activeTab !== 'calculator' ? "hidden md:block" : "block"
       )}>
         <div className="flex flex-col items-center justify-center gap-3 text-center">
           {/* Logo */}
@@ -1442,7 +1459,7 @@ export default function App() {
                 unit={unit}
       />
     </div>
-      {/* Mobile Sticky Tab Navigation */}
+      {/* Mobile Sticky Tab Navigation: 1. Groceries, 2. Breathing, 3. Water, 4. Habitor, 5. Health (Home) */}
       <div 
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
@@ -1453,42 +1470,20 @@ export default function App() {
         )}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">
+          {/* 1. Groceries (First left side) */}
           <button 
-            id="tab_calculator"
-            onClick={handleHealthMenuClick}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
-              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
-            )}
-          >
-            <Heart size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
-          </button>
-          
-          <button 
-            id="tab_results"
-            onClick={() => setActiveTab('results')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
-              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
-            )}
-          >
-            <Flame size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
-          </button>
-
-          <button 
-            id="tab_water"
-            onClick={() => setActiveTab('water')}
+            id="tab_groceries"
+            onClick={() => setActiveTab('groceries')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              activeTab === 'water' ? "text-blue-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            <Droplet size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabWater}</span>
+            <ShoppingBag size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
           </button>
-          
+
+          {/* 2. Breathing */}
           <button 
             id="tab_breathing"
             onClick={() => setActiveTab('breathing')}
@@ -1501,16 +1496,43 @@ export default function App() {
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
           </button>
 
+          {/* 3. Water */}
           <button 
-            id="tab_groceries"
-            onClick={() => setActiveTab('groceries')}
+            id="tab_water"
+            onClick={() => setActiveTab('water')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              activeTab === 'water' ? "text-blue-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            <ShoppingBag size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
+            <Droplet size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabWater}</span>
+          </button>
+
+          {/* 4. Habitor */}
+          <button 
+            id="tab_results"
+            onClick={() => setActiveTab('results')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
+              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <Flame size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
+          </button>
+
+          {/* 5. Health (Right last bottom, Home menu) */}
+          <button 
+            id="tab_calculator"
+            onClick={handleHealthMenuClick}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
+              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <Heart size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
           </button>
         </div>
       </div>

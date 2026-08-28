@@ -291,6 +291,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
     setDesiredQty('');
     setDesiredPrice('');
     setLastModified('qty');
+    window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
   };
 
   const handleDeleteItem = (id: string) => {
