@@ -126,6 +126,7 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showSavedNotification, setShowSavedNotification] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Persist activeTab to localStorage
@@ -443,6 +444,12 @@ export default function App() {
 
     setHistoryRefreshTrigger(prev => prev + 1);
     
+    // Show Successfully Saved notification popup
+    setShowSavedNotification(true);
+    setTimeout(() => {
+      setShowSavedNotification(false);
+    }, 3000);
+
     // Reset quick measurement fields after saving
     setWeight('');
     setWaist('');
@@ -676,23 +683,33 @@ export default function App() {
   ], [t]);
 
   const dashboardMetrics = useMemo(() => {
-    if (!metricData.height || !metricData.age || !metricData.weight || metricData.weight <= 0) return null;
+    const parsedWeight = parseFloat(weight);
+    if (!parsedWeight || parsedWeight <= 0) return null;
 
-    const bmr = calculateBMR(metricData);
-    const tdee = calculateTDEE(bmr, metricData.activityLevel);
-    const idealWeight = calculateIdealWeight(metricData.height, metricData.gender);
-    const idealFatRange = getIdealBodyFatRange(metricData.gender, metricData.age);
+    const effectiveHeight = metricData.height || 170;
+    const effectiveAge = metricData.age || 25;
 
-    const kgDiff = metricData.weight - idealWeight.kg;
-    const lbDiff = (metricData.weight * 2.20462) - idealWeight.lb;
+    const currentMetricData = {
+      ...metricData,
+      height: effectiveHeight,
+      age: effectiveAge
+    };
+
+    const bmr = calculateBMR(currentMetricData);
+    const tdee = calculateTDEE(bmr, currentMetricData.activityLevel);
+    const idealWeight = calculateIdealWeight(effectiveHeight, currentMetricData.gender);
+    const idealFatRange = getIdealBodyFatRange(currentMetricData.gender, effectiveAge);
+
+    const kgDiff = currentMetricData.weight - idealWeight.kg;
+    const lbDiff = (currentMetricData.weight * 2.20462) - idealWeight.lb;
     
     let type: 'lose' | 'gain' | 'maintain' = 'maintain';
     if (Math.abs(kgDiff) < 0.1) type = 'maintain';
     else if (kgDiff > 0) type = 'lose';
     else type = 'gain';
 
-    const bmiVal = calculateBMI(metricData.weight, metricData.height);
-    const bodyFatVal = calculateBodyFat(metricData) || 0;
+    const bmiVal = calculateBMI(currentMetricData.weight, effectiveHeight);
+    const bodyFatVal = calculateBodyFat(currentMetricData) || 0;
 
     return {
       bmi: bmiVal,
@@ -708,7 +725,7 @@ export default function App() {
       },
       category: getBMICategory(bmiVal)
     };
-  }, [metricData]);
+  }, [metricData, weight]);
 
   const displayWeight = latestHistoryEntry 
     ? (unit === 'metric' ? latestHistoryEntry.weight : latestHistoryEntry.weight * 2.20462) 
@@ -823,6 +840,22 @@ export default function App() {
 
   return (
     <>
+    {/* Notification Toast */}
+    <AnimatePresence>
+      {showSavedNotification && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+          className="fixed top-5 sm:top-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-2xl shadow-emerald-600/40 flex items-center gap-2.5 border border-emerald-400 select-none pointer-events-none"
+        >
+          <CheckCircle2 size={18} className="shrink-0" />
+          <span>{lang === 'bn' ? 'সফলভাবে সংরক্ষিত হয়েছে' : 'Successfully Saved'}</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <div 
       style={{ colorScheme: darkMode ? 'dark' : 'light' }}
       className={cn(
@@ -1075,60 +1108,63 @@ export default function App() {
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+          {/* Latest Entry Card - Height 99px */}
+          <div className={cn("relative p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl border flex flex-col justify-between h-[99px] overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
             {/* Iconic Watermark */}
             <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-              <Scale size={91} />
+              <Scale size={70} />
             </div>
 
             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               <span className="truncate">{lang === 'bn' ? 'সর্বশেষ এন্ট্রি' : 'Latest Entry'}</span>
             </div>
             <div className="relative z-10">
-              <div className={cn("text-xl sm:text-2xl font-black", darkMode ? "text-white" : "text-gray-900")}>
-                {displayWeight !== null ? formatNum(displayWeight) : '--'} <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+              <div className={cn("text-lg sm:text-xl font-black leading-tight", darkMode ? "text-white" : "text-gray-900")}>
+                {displayWeight !== null ? formatNum(displayWeight) : '--'} <span className="text-[11px] sm:text-xs font-bold text-gray-900 dark:text-gray-100">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
               </div>
-              <div className="text-[10px] sm:text-xs font-bold text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-1.5 truncate">
+              <div className="text-[9px] sm:text-[10px] font-bold text-gray-900 dark:text-gray-100 mt-0.5 flex items-center gap-1.5 truncate">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
                 <span className="truncate">{latestHistoryEntry ? formatRelativeDate(latestHistoryEntry.date) : (lang === 'bn' ? 'কোনো তথ্য নেই' : 'No data')}</span>
               </div>
             </div>
           </div>
 
-          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
+          {/* Health Status Card - Height 99px */}
+          <div className={cn("relative p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl border flex flex-col justify-between h-[99px] overflow-hidden", darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50")}>
             {/* Iconic Watermark */}
             <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-              <Heart size={91} />
+              <Heart size={70} />
             </div>
 
             <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               <span className="truncate">{lang === 'bn' ? 'স্বাস্থ্যের অবস্থা' : 'Health Status'}</span>
             </div>
             <div className="relative z-10">
-              <div className={cn("text-base sm:text-xl font-black capitalize truncate", darkMode ? "text-white" : "text-gray-900")}>
+              <div className={cn("text-sm sm:text-base font-black capitalize truncate leading-tight", darkMode ? "text-white" : "text-gray-900")}>
                 {displayCategory ? translateCategory(displayCategory) : (latestHistoryEntry ? (lang === 'bn' ? 'স্বাভাবিক' : 'Normal') : '--')}
               </div>
-              <div className="text-[10px] sm:text-xs font-bold text-gray-900 dark:text-gray-100 mt-1 truncate">
+              <div className="text-[9px] sm:text-[10px] font-bold text-gray-900 dark:text-gray-100 mt-0.5 truncate">
                 BMI: {displayBmi ? formatNum(displayBmi.toFixed(1)) : '--'}
               </div>
             </div>
           </div>
 
-          <div className={cn("relative p-4 rounded-3xl border flex flex-col justify-between h-32 col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border border-emerald-500/30 shadow-md shadow-emerald-500/10")}>
+          {/* Goal Progress Card - Height 120px */}
+          <div className={cn("relative p-3 rounded-2xl sm:rounded-3xl border flex flex-col justify-between h-[120px] col-span-2 md:col-span-1 overflow-hidden", darkMode ? "bg-[#0F0F0F] border-green-500/30 shadow-lg shadow-green-500/10" : "bg-white border border-emerald-500/30 shadow-md shadow-emerald-500/10")}>
              {/* Iconic Watermark */}
              <div className="absolute -right-2 -top-2 opacity-15 pointer-events-none text-gray-400/80 dark:text-gray-600/80">
-               <Target size={91} />
+               <Target size={80} />
              </div>
 
              <div className="relative z-10 flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
               <span>{lang === 'bn' ? 'লক্ষ্যের অগ্রগতি' : 'Goal Progress'}</span>
             </div>
-            <div className="relative z-10 space-y-1.5">
+            <div className="relative z-10 space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <span className={cn(
-                    "text-2xl font-black tracking-tight",
+                    "text-xl sm:text-2xl font-black tracking-tight leading-none",
                     !latestHistoryEntry 
                       ? "text-gray-400" 
                       : (goalProgress.percent < 0 ? "text-red-500" : "text-emerald-500")
@@ -1139,15 +1175,15 @@ export default function App() {
                   </span>
                 </div>
                 
-                {/* Amount of kg/lb more to go styled like Health Goals Section */}
+                {/* Amount of kg/lb more to go - Font size 22px */}
                 {latestHistoryEntry && goalProgress.remainingWeight !== null && (
-                  <div className="text-right space-y-0.5">
+                  <div className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {goalProgress.trend === 'down' ? <TrendingDown className="text-primary" size={13} /> : 
-                       goalProgress.trend === 'up' ? <TrendingUp className="text-red-500" size={13} /> : 
-                       <Minus className="text-gray-400" size={13} />}
+                      {goalProgress.trend === 'down' ? <TrendingDown className="text-primary" size={14} /> : 
+                       goalProgress.trend === 'up' ? <TrendingUp className="text-red-500" size={14} /> : 
+                       <Minus className="text-gray-400" size={14} />}
                       <span className={cn(
-                        "text-sm font-bold tracking-tight",
+                        "text-[22px] font-black tracking-tight leading-none",
                         goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
                           ? "text-emerald-500"
                           : (goalProgress.trend === 'down' ? "text-primary" : goalProgress.trend === 'up' ? "text-red-500" : (darkMode ? "text-white" : "text-gray-900"))
@@ -1156,12 +1192,12 @@ export default function App() {
                           ? (lang === 'bn' ? '🎉 লক্ষ্য অর্জিত' : '🎉 Reached')
                           : (
                             <>
-                              {formatNum(goalProgress.remainingWeight)} <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
+                              {formatNum(goalProgress.remainingWeight)} <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                             </>
                           )}
                       </span>
                     </div>
-                    <p className="text-[9px] text-gray-500 font-medium">
+                    <p className="text-[9px] text-gray-500 font-semibold leading-tight">
                       {goalProgress.isAchieved || goalProgress.remainingWeight <= 0.05
                         ? (lang === 'bn' ? 'লক্ষ্য সম্পন্ন' : 'Target Achieved') 
                         : (lang === 'bn' ? 'আর বাকি আছে' : 'More to go')}
@@ -1178,10 +1214,11 @@ export default function App() {
                    style={{ width: `${latestHistoryEntry ? Math.max(0, Math.min(100, goalProgress.percent)) : 0}%` }} 
                  />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-gray-900 dark:text-gray-100 font-bold">
+              {/* Days remaining and goal amount font size 14px */}
+              <div className="flex items-center justify-between text-[14px] text-gray-900 dark:text-gray-100 font-bold leading-tight">
                 <span>{lang === 'bn' ? 'লক্ষ্য:' : 'Goal:'} {latestHistoryEntry ? formatNum(goalProgress.target) : '--'} {unit === 'metric' ? (lang === 'bn' ? 'কেজি' : 'kg') : (lang === 'bn' ? 'পাউন্ড' : 'lb')}</span>
                 {latestHistoryEntry && goalProgress.daysRemaining !== null && (
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight">
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-extrabold tracking-tight text-[14px]">
                     {goalProgress.daysRemaining > 0 ? (lang === 'bn' ? `${formatNum(goalProgress.daysRemaining)} দিন` : `${goalProgress.daysRemaining} days`) : (lang === 'bn' ? 'শেষ' : 'Ended')}
                   </span>
                 )}
