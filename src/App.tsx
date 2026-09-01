@@ -1108,7 +1108,7 @@ export default function App() {
 
       {/* Breathing Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'breathing' ? "block" : "hidden"
       )}>
         <BreathingTimer darkMode={darkMode} lang={lang} />
@@ -1116,7 +1116,7 @@ export default function App() {
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -1124,7 +1124,7 @@ export default function App() {
 
       {/* Water Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'water' ? "block" : "hidden"
       )}>
         <WaterTracker darkMode={darkMode} lang={lang} />
@@ -1132,14 +1132,14 @@ export default function App() {
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} />
       </div>
 
       <main className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12 space-y-8 overflow-x-hidden",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12 space-y-8 overflow-x-hidden",
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
@@ -1403,7 +1403,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
+        "max-w-5xl mx-auto px-6 py-[10px] sm:py-6 border-t transition-colors",
         darkMode ? "border-white/5" : "border-black/5"
       )}>
         <div className="flex flex-col items-center justify-center gap-3 text-center">

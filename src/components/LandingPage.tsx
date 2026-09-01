@@ -1300,7 +1300,7 @@ export default function LandingPage({
 
       {/* Footer matching logged-in inner footer style exactly */}
       <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-6 border-t transition-colors",
+        "max-w-5xl mx-auto px-6 py-[10px] sm:py-6 border-t transition-colors",
         darkMode ? "border-white/5" : "border-black/5"
       )}>
         <div className="flex flex-col items-center justify-center gap-3 text-center">
