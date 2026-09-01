@@ -812,7 +812,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="space-y-2.5 max-w-2xl mx-auto pb-10">
+    <div className="space-y-2.5 max-w-2xl mx-auto pb-0 sm:pb-10">
       {/* Horizontal Saturday to Friday Week Bar */}
       <div className={cn(
         "p-2 sm:p-2.5 rounded-2xl border transition-all",

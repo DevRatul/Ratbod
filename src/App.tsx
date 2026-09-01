@@ -35,7 +35,8 @@ import {
   TrendingUp,
   Minus,
   LogOut,
-  ArrowUp
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -128,7 +129,26 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showSavedNotification, setShowSavedNotification] = useState(false);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Monitor scroll position for floating action button in mobile view
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolledDown(window.scrollY > 200);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleScrollToggle = () => {
+    if (isScrolledDown) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    }
+  };
 
   // Global trigger for Successfully Saved toast notification
   const triggerSavedToast = useCallback(() => {
@@ -1088,7 +1108,7 @@ export default function App() {
 
       {/* Breathing Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
         activeTab === 'breathing' ? "block" : "hidden"
       )}>
         <BreathingTimer darkMode={darkMode} lang={lang} />
@@ -1096,7 +1116,7 @@ export default function App() {
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -1104,7 +1124,7 @@ export default function App() {
 
       {/* Water Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
         activeTab === 'water' ? "block" : "hidden"
       )}>
         <WaterTracker darkMode={darkMode} lang={lang} />
@@ -1112,14 +1132,14 @@ export default function App() {
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} />
       </div>
 
       <main className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-12 space-y-8 overflow-x-hidden",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-2 sm:pb-12 space-y-8 overflow-x-hidden",
         (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
@@ -1451,21 +1471,26 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Floating Go to Top Button - Mobile View Only for Health (Home) Section */}
+      {/* Floating Scroll Toggle Button (Down when at top, Up when scrolled) - Mobile View Only for Health (Home) Section */}
       {activeTab === 'calculator' && (
         <button
           type="button"
-          id="health_scroll_to_top_btn"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          id="health_scroll_toggle_btn"
+          onClick={handleScrollToggle}
           className={cn(
             "fixed bottom-20 right-4 z-40 md:hidden w-10 h-10 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-90 flex items-center justify-center cursor-pointer select-none",
             darkMode
               ? "bg-[#161616]/90 border-white/20 text-white shadow-black/70 hover:bg-[#222]"
               : "bg-white/95 border-gray-200 text-gray-800 shadow-gray-400/40 hover:bg-gray-50"
           )}
-          aria-label="Go to top"
+          aria-label={isScrolledDown ? (lang === 'bn' ? 'উপরে যান' : 'Go to top') : (lang === 'bn' ? 'নিচে যান' : 'Go to bottom')}
+          title={isScrolledDown ? (lang === 'bn' ? 'উপরে যান' : 'Go to top') : (lang === 'bn' ? 'নিচে যান' : 'Go to bottom')}
         >
-          <ArrowUp size={18} className="text-primary shrink-0" />
+          {isScrolledDown ? (
+            <ArrowUp size={18} className="text-primary shrink-0 transition-transform duration-200" />
+          ) : (
+            <ArrowDown size={18} className="text-primary shrink-0 transition-transform duration-200" />
+          )}
         </button>
       )}
 

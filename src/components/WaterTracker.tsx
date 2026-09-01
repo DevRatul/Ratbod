@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -116,6 +116,25 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const progressPercent = Math.min(100, Math.round((totalConsumedMl / (goalMl || 1)) * 100));
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
+
+  // Monitor scroll position for floating action button in mobile view
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolledDown(window.scrollY > 200);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleScrollToggle = () => {
+    if (isScrolledDown) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    }
+  };
 
   // Helper to get local YYYY-MM-DD date string (respects user's actual timezone)
   const getLocalDateString = (d: Date = new Date()): string => {
@@ -951,7 +970,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto pb-6 w-full overflow-x-hidden">
+    <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto pb-0 sm:pb-6 w-full overflow-x-hidden">
 
       {/* Compact Single-Row Set Goal Section (Positioned Directly Above 'Consume Today') */}
       <div className={cn(
@@ -2226,20 +2245,25 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
         )}
       </AnimatePresence>
-      {/* Floating Go to Top Button - Mobile View Only for Water Section */}
+      {/* Floating Scroll Toggle Button (Down when at top, Up when scrolled) - Mobile View Only for Water Section */}
       <button
         type="button"
-        id="water_scroll_to_top_btn"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        id="water_scroll_toggle_btn"
+        onClick={handleScrollToggle}
         className={cn(
           "fixed bottom-20 right-4 z-40 md:hidden w-10 h-10 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-90 flex items-center justify-center cursor-pointer select-none",
           darkMode
             ? "bg-[#161616]/90 border-white/20 text-white shadow-black/70 hover:bg-[#222]"
             : "bg-white/95 border-gray-200 text-gray-800 shadow-gray-400/40 hover:bg-gray-50"
         )}
-        aria-label="Go to top"
+        aria-label={isScrolledDown ? (lang === 'bn' ? 'উপরে যান' : 'Go to top') : (lang === 'bn' ? 'নিচে যান' : 'Go to bottom')}
+        title={isScrolledDown ? (lang === 'bn' ? 'উপরে যান' : 'Go to top') : (lang === 'bn' ? 'নিচে যান' : 'Go to bottom')}
       >
-        <ArrowUp size={18} className="text-blue-500 shrink-0" />
+        {isScrolledDown ? (
+          <ArrowUp size={18} className="text-blue-500 shrink-0 transition-transform duration-200" />
+        ) : (
+          <ArrowDown size={18} className="text-blue-500 shrink-0 transition-transform duration-200" />
+        )}
       </button>
     </div>
   );

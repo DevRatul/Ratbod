@@ -552,7 +552,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   const strokeOffset = circumference * (1 - progress);
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto pb-6">
+    <div className="space-y-4 max-w-4xl mx-auto pb-0 sm:pb-6">
       {/* Header Banner - Ultra Slim & Minimalist */}
       <div className={cn(
         "px-3 py-2 sm:px-4 sm:py-2 rounded-xl border transition-all relative overflow-hidden",
