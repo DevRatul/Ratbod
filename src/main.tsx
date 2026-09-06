@@ -5,6 +5,7 @@ import "./index.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import AuthScreen from "./components/Auth/AuthScreen";
 import LandingPage from "./components/LandingPage";
+import SmoothLoader from "./components/SmoothLoader";
 import { getInitialTheme, saveManualTheme, isSunsetTime, applyThemeToDOM } from "./utils/theme";
 
 function AppRoot() {
@@ -46,14 +47,7 @@ function AppRoot() {
   };
   
   if (loading) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors ${darkMode ? "bg-black text-white" : "bg-[#F5F5F5] text-gray-900"}`}>
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-xs font-bold uppercase tracking-widest opacity-60">Loading...</span>
-        </div>
-      </div>
-    );
+    return <SmoothLoader darkMode={darkMode} message="Loading RatboD..." />;
   }
   
   if (!user) {

@@ -332,10 +332,10 @@ export default function LandingPage({
             </div>
 
             <button
-              onClick={() => handleNavigate('calculator')}
+              onClick={onLogin}
               className="px-4 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-md shadow-primary/25 cursor-pointer transition-all active:scale-95 shrink-0"
             >
-              {lang === 'bn' ? 'অ্যাপে প্রবেশ' : 'Launch App'}
+              {lang === 'bn' ? 'লগইন' : 'Sign In'}
             </button>
           </div>
         </div>

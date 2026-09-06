@@ -196,8 +196,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       if (user) {
         try {
           const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
+          const [docSnap, histSnap, goalSnap] = await Promise.all([
+            getDoc(docRef),
+            getDoc(doc(db, 'users', user.uid, 'appData', 'history')).catch(() => null),
+            getDoc(doc(db, 'users', user.uid, 'appData', 'goals')).catch(() => null)
+          ]);
+
+          if (docSnap && docSnap.exists()) {
             const data = docSnap.data();
             if (data.name !== undefined) setName(data.name || '');
             if (data.gender !== undefined) setGender(data.gender || 'male');
@@ -210,22 +215,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
             if (data.lang !== undefined) setLang(data.lang || 'en');
             loadedFromDb = true;
+          }
 
-            // Load history & goals from Firestore
-            try {
-              const histSnap = await getDoc(doc(db, 'users', user.uid, 'appData', 'history'));
-              if (histSnap.exists() && Array.isArray(histSnap.data().history)) {
-                setHistoryList(histSnap.data().history);
-                localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history));
-              }
-              const goalSnap = await getDoc(doc(db, 'users', user.uid, 'appData', 'goals'));
-              if (goalSnap.exists() && goalSnap.data().goal) {
-                setSavedGoal(goalSnap.data().goal);
-                localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal));
-              }
-            } catch (err) {
-              console.error('Error loading history/goals from db:', err);
-            }
+          // Load history & goals from Firestore
+          if (histSnap && histSnap.exists() && Array.isArray(histSnap.data().history)) {
+            setHistoryList(histSnap.data().history);
+            try { localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history)); } catch {}
+          }
+          if (goalSnap && goalSnap.exists() && goalSnap.data().goal) {
+            setSavedGoal(goalSnap.data().goal);
+            try { localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal)); } catch {}
           }
         } catch (e) {
           console.error('Error loading profile:', e);
@@ -1069,20 +1068,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
-                          setActiveTab('home');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className={cn(
-                          "hidden md:flex w-full text-left px-4 py-3 text-sm font-bold items-center gap-3 transition-colors",
-                          darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
-                        )}
-                      >
-                        <Activity size={16} className="text-primary" />
-                        {lang === 'bn' ? 'হোম' : 'Home'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
                           setIsProfileOpen(true);
                         }}
                         className={cn(
@@ -1526,7 +1511,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           darkMode 
             ? "bg-[#0F0F0F]/50 border-white/10 text-white shadow-2xl shadow-black/60" 
             : "bg-white/55 border-black/5 text-gray-900 shadow-2xl shadow-gray-400/30",
-          "py-2 px-1.5"
+          "pt-2 pb-[11px] px-1.5"
         )}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">
