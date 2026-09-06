@@ -52,14 +52,12 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
       await loginWithGoogle(forceRedirect);
     } catch (err: any) {
       console.error('Google Sign-in error:', err);
-      const isPopupBlocked = 
-        err?.code === 'auth/popup-blocked' || 
-        err?.code === 'auth/popup-closed-by-user' ||
-        err?.code === 'auth/cancelled-popup-request';
-
-      if (isPopupBlocked) {
+      if (err?.code === 'auth/popup-closed-by-user') {
+        // User voluntarily closed the window, no error needed
+        setError(null);
+      } else if (err?.code === 'auth/popup-blocked') {
         setShowRedirectOption(true);
-        setError('Pop-up window was blocked or closed. Please use Direct Mobile Sign-In below.');
+        setError('The Google sign-in pop-up was blocked by your browser. Please allow pop-ups for this site, or try the direct sign-in button below.');
       } else {
         setError(err.message || 'An error occurred during Google sign in.');
       }

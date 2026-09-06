@@ -8,8 +8,18 @@ import {
 import { auth } from '../lib/firebase';
 
 /**
- * Robust Google Sign-in that handles mobile browsers, popups, and redirect flows.
- * On mobile devices or when popups are blocked by Safari/Chrome, falls back to redirect.
+ * Robust Google Sign-in that uses popup by default on all devices (mobile & desktop).
+ * 
+ * WHY THIS FIXES THE MOBILE / IPHONE ISSUE:
+ * On iOS Safari / mobile browsers, signInWithRedirect causes cross-domain redirection
+ * between the application domain (*.run.app) and the Firebase auth domain (*.firebaseapp.com).
+ * Apple's WebKit ITP (Intelligent Tracking Prevention) blocks third-party storage/cookie
+ * access across domains. As a result, when Safari redirects back to the app, the auth token
+ * cannot be retrieved by getRedirectResult(), and the app resets to the unauthenticated homepage.
+ * 
+ * By using signInWithPopup directly, Safari handles authentication in a native sheet/window
+ * and delivers the credential directly to the application via window.postMessage without
+ * cross-domain storage partitioning. This allows seamless sign-in on iPhone just like on PC/laptop.
  */
 export async function loginWithGoogle(forceRedirect: boolean = false): Promise<User | null> {
   const provider = new GoogleAuthProvider();
@@ -17,15 +27,8 @@ export async function loginWithGoogle(forceRedirect: boolean = false): Promise<U
     prompt: 'select_account'
   });
 
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
-                   (typeof window !== 'undefined' && window.innerWidth <= 768 && 'ontouchstart' in window);
-  
-  const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-
-  // On mobile browsers when NOT in an iframe, or when forceRedirect is specified:
-  // Use redirect mode to avoid mobile popup blockers and tab-switch communication drops.
-  if ((isMobile && !isInIframe) || forceRedirect) {
+  // Only use redirect if explicitly requested
+  if (forceRedirect) {
     try {
       sessionStorage.setItem('ratbod_auth_in_progress', 'google_redirect');
     } catch {}
@@ -33,36 +36,12 @@ export async function loginWithGoogle(forceRedirect: boolean = false): Promise<U
     return null;
   }
 
-  // Inside iframe (e.g. preview environment) or desktop browsers:
+  // Use signInWithPopup by default for both mobile (iPhone/iPad/Android) and desktop
   try {
-    try {
-      sessionStorage.setItem('ratbod_auth_in_progress', 'google_popup');
-    } catch {}
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
-    try {
-      sessionStorage.removeItem('ratbod_auth_in_progress');
-    } catch {}
     return result.user;
   } catch (err: any) {
-    // If popup was blocked or closed on mobile, fall back to redirect if top frame
-    const isPopupIssue = 
-      err?.code === 'auth/popup-blocked' ||
-      err?.code === 'auth/popup-closed-by-user' ||
-      err?.code === 'auth/cancelled-popup-request' ||
-      err?.code === 'auth/operation-not-supported-in-this-environment';
-
-    if (isPopupIssue && !isInIframe) {
-      console.warn('Popup failed or blocked; falling back to direct redirect sign-in...', err?.code);
-      try {
-        sessionStorage.setItem('ratbod_auth_in_progress', 'google_redirect');
-      } catch {}
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-
-    try {
-      sessionStorage.removeItem('ratbod_auth_in_progress');
-    } catch {}
+    console.warn('signInWithPopup caught:', err?.code, err?.message);
     throw err;
   }
 }

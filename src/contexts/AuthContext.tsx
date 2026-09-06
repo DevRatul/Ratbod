@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
 
-    // Check redirect result first (crucial for mobile devices returning from Google sign-in)
+    // Check redirect result (if returning from redirect)
     getRedirectResult(auth)
       .then((result) => {
         if (!isMounted) return;
@@ -45,12 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           sessionStorage.removeItem('ratbod_auth_in_progress');
         } catch {}
-        console.error('Firebase redirect result error:', err);
-        setAuthError(err?.message || 'Google sign-in was not completed.');
-        setLoading(false);
+        console.warn('Firebase redirect result:', err?.message || err);
       });
 
-    // Listen to onAuthStateChanged
+    // Listen to onAuthStateChanged (authoritative session state)
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!isMounted) return;
       setUser(currentUser);
