@@ -24,6 +24,7 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'motion/react';
+import { getInitialTheme, saveManualTheme, applyThemeToDOM } from '../utils/theme';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -46,13 +47,24 @@ export default function LandingPage({
   lang: propLang, 
   setLang: propSetLang 
 }: LandingPageProps) {
-  const [internalDarkMode, setInternalDarkMode] = useState(true);
+  const [internalDarkMode, setInternalDarkMode] = useState(() => getInitialTheme());
   const [internalLang, setInternalLang] = useState<'en' | 'bn'>('en');
 
   const darkMode = propDarkMode !== undefined ? propDarkMode : internalDarkMode;
   const setDarkMode = propSetDarkMode || setInternalDarkMode;
   const lang = propLang !== undefined ? propLang : internalLang;
   const setLang = propSetLang || setInternalLang;
+
+  const handleToggleTheme = () => {
+    const nextVal = !darkMode;
+    saveManualTheme(nextVal);
+    applyThemeToDOM(nextVal);
+    if (propSetDarkMode) {
+      propSetDarkMode(nextVal);
+    } else {
+      setInternalDarkMode(nextVal);
+    }
+  };
 
   const handleNavigate = (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing') => {
     try {
@@ -281,7 +293,7 @@ export default function LandingPage({
           {/* Actions: Theme Toggle, Lang Toggle, Launch App */}
           <div className="flex items-center gap-2 sm:gap-3">
             <button 
-              onClick={() => setDarkMode(!darkMode)}
+              onClick={handleToggleTheme}
               className={cn(
                 "p-1.5 rounded-full transition-all cursor-pointer",
                 darkMode ? "bg-white/5 text-primary hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -1072,7 +1084,7 @@ export default function LandingPage({
                   { title: 'Quick Multi-Glass Logging', desc: 'One-tap 300, 400, 250 & 100 ml presets' },
                   { title: 'Dynamic Wave Tumbler', desc: 'Real-time sea water animated liquid level' },
                   { title: 'Daily Goal Customization', desc: 'Adjust target glasses or liter thresholds' },
-                  { title: 'Itemized Intake History', desc: 'Timestamped logs with undo & reset' }
+                  { title: 'Itemized Intake History', desc: 'Timestamped logs with undo, redo & reset' }
                 ].map((f, i) => (
                   <div key={i} className={cn(
                     "p-3.5 rounded-2xl border space-y-1",

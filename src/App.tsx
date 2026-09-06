@@ -69,17 +69,29 @@ import QuickSteps from './components/QuickSteps';
 import ProfileModal from './components/ProfileModal';
 import LandingPage from './components/LandingPage';
 import { translations } from './utils/translations';
+import { getInitialTheme, saveManualTheme, applyThemeToDOM, isSunsetTime } from './utils/theme';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function App() {
-  const [darkMode, setDarkMode] = useState(() => {
-    const currentHour = new Date().getHours();
-    const isDaytime = currentHour >= 6 && currentHour < 18;
-    return !isDaytime;
-  });
+interface AppProps {
+  darkMode?: boolean;
+  setDarkMode?: (val: boolean) => void;
+}
+
+export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMode }: AppProps = {}) {
+  const [internalDarkMode, setInternalDarkMode] = useState<boolean>(() => getInitialTheme());
+  const darkMode = propDarkMode !== undefined ? propDarkMode : internalDarkMode;
+  const setDarkMode = (val: boolean) => {
+    saveManualTheme(val);
+    applyThemeToDOM(val);
+    if (propSetDarkMode) {
+      propSetDarkMode(val);
+    } else {
+      setInternalDarkMode(val);
+    }
+  };
   const [lang, setLang] = useState<'en' | 'bn'>('en');
   const t = translations[lang];
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
@@ -240,10 +252,7 @@ export default function App() {
           // Quick measurement fields reset on reload
           const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
           const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
-          const rawDarkMode = localStorage.getItem('ratbod_darkmode');
-          const currentHour = new Date().getHours();
-          const isDaytime = currentHour >= 6 && currentHour < 18;
-          const savedDarkMode = rawDarkMode === null ? !isDaytime : rawDarkMode === 'true';
+          const savedDarkMode = getInitialTheme();
           const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
 
           setName(savedName);

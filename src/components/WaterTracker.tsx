@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -67,6 +67,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return 250;
   });
   const [entries, setEntries] = useState<WaterEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<WaterEntry[]>([]);
   const [history, setHistory] = useState<DayHistory[]>([]);
   const [reminderActive, setReminderActive] = useState<boolean>(false);
   const [customMlInput, setCustomMlInput] = useState<string>('');
@@ -418,7 +419,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       addBottle: "+1 Bottle (750 ml)",
       addCustom: "Custom Amount",
       addBtn: "Add Water",
-      undo: "Undo Last",
+      undo: "Undo",
+      redo: "Redo",
       resetToday: "Reset Today",
       setGoalTitle: "Set Daily Water Goal",
       selectGoalTip: "Target: 12 glasses = 3.0 L (3,000 ml) or 16 glasses = 4.0 L. Choose a preset or customize below.",
@@ -467,7 +469,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       addBottle: "+১ বোতল (৭৫০ মিলি)",
       addCustom: "পছন্দমতো পরিমাণ",
       addBtn: "পানি যোগ করুন",
-      undo: "আগেরটি মুছুন",
+      undo: "আনডু",
+      redo: "রিডু",
       resetToday: "আজকের হিসাব রিসেট",
       setGoalTitle: "দৈনিক পানির লক্ষ্য নির্ধারণ",
       selectGoalTip: "মূল লক্ষ্য: ১২ গ্লাস = ৩.০ লিটার অথবা ১৬ গ্লাস = ৪.০ লিটার। প্রিসেট বা নিচে সেট করুন।",
@@ -854,6 +857,60 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
   };
 
+  // Play distinct "redo" forward/restore sound (ascending swoop)
+  const playRedoSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      const play = () => {
+        const now = ctx.currentTime;
+
+        // 1. Primary ascending swoop tone (sine 260Hz -> 880Hz)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.16);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.17);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.18);
+
+        // 2. Sub-harmonic chime tone
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(200, now);
+        osc2.frequency.exponentialRampToValueAtTime(620, now + 0.14);
+
+        gain2.gain.setValueAtTime(0.2, now);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+
+        osc2.start(now);
+        osc2.stop(now + 0.15);
+      };
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(play).catch(play);
+      } else {
+        play();
+      }
+    } catch {
+      // Audio context fallback
+    }
+  };
+
   const handleAddWater = (amountMl: number) => {
     const previousConsumed = totalConsumedMl;
     const newTotal = previousConsumed + amountMl;
@@ -874,6 +931,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       createdAt: now
     };
     setEntries(prev => [newEntry, ...prev]);
+    setRedoStack([]); // Clear redo stack on new water entry
   };
 
   const handleCustomAdd = (e: React.FormEvent) => {
@@ -889,19 +947,35 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     if (playSound) {
       playUndoSound();
     }
+    const found = entries.find(item => item.id === id);
+    if (found) {
+      setRedoStack(prev => [found, ...prev]);
+    }
     setEntries(prev => prev.filter(item => item.id !== id));
   };
 
   const handleUndoLast = () => {
     if (entries.length > 0) {
       playUndoSound();
+      const removed = entries[0];
+      setRedoStack(prev => [removed, ...prev]);
       setEntries(prev => prev.slice(1));
+    }
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length > 0) {
+      playRedoSound();
+      const [restored, ...rest] = redoStack;
+      setRedoStack(rest);
+      setEntries(prev => [restored, ...prev]);
     }
   };
 
   const handleResetToday = () => {
     if (entries.length === 0) return;
     playUndoSound();
+    setRedoStack(entries);
     setEntries([]);
   };
 
@@ -1299,21 +1373,40 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             </div>
           </form>
 
-          {/* Control Actions Row (Undo & Reset) */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              onClick={handleUndoLast}
-              disabled={entries.length === 0}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
-                darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              )}
-            >
-              <RotateCcw size={13} />
-              <span>{labels.undo}</span>
-            </button>
+          {/* Control Actions Row (Undo, Redo & Reset) */}
+          <div className="flex items-center justify-between pt-1 gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={handleUndoLast}
+                disabled={entries.length === 0}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                  darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                )}
+                title={labels.undo}
+              >
+                <RotateCcw size={13} />
+                <span>{labels.undo}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                  darkMode ? "bg-white/5 text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                )}
+                title={labels.redo}
+              >
+                <RotateCw size={13} />
+                <span>{labels.redo}</span>
+              </button>
+            </div>
 
             <button
+              type="button"
               onClick={handleResetToday}
               disabled={entries.length === 0}
               className={cn(
