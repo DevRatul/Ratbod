@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -379,7 +379,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       setNowTime(Date.now());
-    }, 30000);
+    }, 10000); // 10s ticker for reactive updating when reaching 50 mins
     return () => clearInterval(interval);
   }, []);
 
@@ -585,6 +585,25 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
     return lastEntry.timestamp;
   };
+
+  // Helper to get elapsed minutes since last water intake
+  const getLastIntakeMinutes = (): number | null => {
+    if (entries.length === 0) return null;
+    const lastEntry = entries[0];
+    let entryTimeMs = lastEntry.createdAt;
+    if (!entryTimeMs) {
+      const parsedId = Number(lastEntry.id);
+      if (!isNaN(parsedId) && parsedId > 1600000000000) {
+        entryTimeMs = parsedId;
+      }
+    }
+    if (!entryTimeMs) return null;
+    const diffMs = Math.max(0, nowTime - entryTimeMs);
+    return Math.floor(diffMs / (1000 * 60));
+  };
+
+  const lastIntakeMinutes = getLastIntakeMinutes();
+  const isIntakeOverdue = lastIntakeMinutes !== null && lastIntakeMinutes >= 50;
 
   // Helper to calculate total sleep duration
   const calculateSleepDuration = (bed: string, wake: string) => {
@@ -1027,27 +1046,59 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             {labels.consumed}
           </span>
 
-          {/* Last Water Intake with Clock Icon showing Time Ago (Black border in dark mode, relative clean border in light mode) */}
-          <div 
+          {/* Last Water Intake with Clock Icon showing Time Ago (Acts as Red Theme / Red Button with Blinking Border when >= 50 minutes) */}
+          <motion.button 
+            type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              const el = document.getElementById('water_glasses_container');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
             className={cn(
-              "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate shadow-2xs",
-              entries.length > 0
-                ? (darkMode 
-                    ? "bg-[#181a20] border-black text-white" 
-                    : "bg-gray-100 border-gray-300 text-gray-900")
-                : (darkMode 
-                    ? "bg-[#181a20] border-black text-white" 
-                    : "bg-gray-100 border-gray-300 text-gray-900")
+              "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate cursor-pointer",
+              isIntakeOverdue
+                ? "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border-red-500 animate-blink-red shadow-md shadow-red-500/30"
+                : (entries.length > 0
+                    ? (darkMode 
+                        ? "bg-[#181a20] border-black text-white hover:bg-white/10" 
+                        : "bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200/80 shadow-2xs")
+                    : (darkMode 
+                        ? "bg-[#181a20] border-black text-white" 
+                        : "bg-gray-100 border-gray-300 text-gray-900 shadow-2xs"))
             )}
-            title={entries.length > 0 ? `${labels.lastIntake}: ${entries[0].timestamp}` : undefined}
+            title={
+              isIntakeOverdue
+                ? (lang === 'bn' 
+                    ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ৫০ মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
+                    : `Alert: ${formatLastIntakeTimeAgo()} since last intake. Over 50 minutes—time to take water seriously! Tap to drink water.`)
+                : (entries.length > 0 ? `${labels.lastIntake}: ${entries[0].timestamp}` : undefined)
+            }
           >
-            <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-600 shrink-0")} />
-            <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
-          </div>
+            {isIntakeOverdue ? (
+              <>
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                <Clock size={15} className="text-white shrink-0 animate-pulse" />
+                <span className="truncate tracking-tight font-black text-white drop-shadow-xs">
+                  {formatLastIntakeTimeAgo()}
+                </span>
+              </>
+            ) : (
+              <>
+                <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-600 shrink-0")} />
+                <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
+              </>
+            )}
+          </motion.button>
         </div>
 
         {/* Glass Cup with Liquid Fill: Left [300ml] [400ml] - Center [Cup] - Right [250ml] [100ml] - Zero horizontal scroll on mobile */}
-        <div className="relative my-0.5 sm:my-1 flex flex-col items-center justify-center w-full">
+        <div id="water_glasses_container" className="relative my-0.5 sm:my-1 flex flex-col items-center justify-center w-full">
           <div className="grid grid-cols-[1fr_1fr_auto_1fr_1fr] sm:flex sm:items-center sm:justify-center items-center justify-items-center gap-1 sm:gap-2.5 w-full max-w-full py-1">
             
             {/* Left Outer: 300 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
