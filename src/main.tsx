@@ -10,8 +10,7 @@ import {
   getInitialTheme, 
   getThemeMode, 
   isSunsetTime, 
-  applyThemeToDOM, 
-  tryDetectGeolocation 
+  applyThemeToDOM 
 } from "./utils/theme";
 
 function AppRoot() {
@@ -38,11 +37,8 @@ function AppRoot() {
     applyThemeToDOM(darkMode);
   }, [darkMode]);
 
-  // Periodic ticker to check if sunset occurred or sunrise arrived
+  // Periodic ticker to check if sunset occurred or sunrise arrived (only if sunrise-to-sunset is enabled)
   useEffect(() => {
-    // Attempt non-intrusive geolocation detection for pinpoint solar precision
-    tryDetectGeolocation();
-
     const checkSunset = () => {
       try {
         const mode = getThemeMode();

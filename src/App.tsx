@@ -36,7 +36,9 @@ import {
   Minus,
   LogOut,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Check,
+  SunMedium
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -77,7 +79,9 @@ import {
   isSunsetTime, 
   getThemeMode, 
   setThemeMode, 
-  isDarkModeForMode 
+  isDarkModeForMode,
+  isSunriseToSunsetEnabled,
+  toggleSunriseSunset
 } from './utils/theme';
 
 function cn(...inputs: ClassValue[]) {
@@ -154,7 +158,20 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isSunriseToSunset, setIsSunriseToSunset] = useState<boolean>(() => isSunriseToSunsetEnabled());
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const handleToggleSunriseSunset = () => {
+    const next = toggleSunriseSunset(darkMode, (newDark) => {
+      setDarkMode(newDark);
+    });
+    setIsSunriseToSunset(next);
+    if (next) {
+      const darkNow = isSunsetTime();
+      applyThemeToDOM(darkNow);
+      setDarkMode(darkNow);
+    }
+  };
   const [showSavedNotification, setShowSavedNotification] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -1196,7 +1213,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       className={cn(
-                        "absolute right-0 top-12 w-48 rounded-2xl shadow-xl border overflow-hidden z-50",
+                        "absolute right-0 top-12 w-56 rounded-2xl shadow-xl border overflow-hidden z-50",
                         darkMode ? "bg-[#111111] border-white/10" : "bg-white border-black/5"
                       )}
                     >
@@ -1206,13 +1223,39 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                           setIsProfileOpen(true);
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors",
+                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
                         )}
                       >
                         <UserIcon size={16} />
                         Profile
                       </button>
+
+                      <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
+
+                      {/* One-liner Sunrise to sunset setting with tick icon */}
+                      <button
+                        type="button"
+                        onClick={handleToggleSunriseSunset}
+                        className={cn(
+                          "w-full text-left px-4 py-3 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer select-none",
+                          darkMode ? "hover:bg-white/5 text-gray-200" : "hover:bg-gray-50 text-gray-800"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <SunMedium size={15} className="text-amber-500 shrink-0" />
+                          <span>Sunrise to sunset</span>
+                        </div>
+                        <div className={cn(
+                          "w-4 h-4 rounded flex items-center justify-center border transition-all",
+                          isSunriseToSunset 
+                            ? "bg-primary border-primary text-white shadow-sm" 
+                            : (darkMode ? "border-white/20 bg-white/5" : "border-gray-300 bg-white")
+                        )}>
+                          {isSunriseToSunset && <Check size={12} strokeWidth={3} />}
+                        </div>
+                      </button>
+
                       <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         onClick={() => {
@@ -1220,7 +1263,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                           auth.signOut();
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors",
+                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-red-500/10 text-red-400" : "hover:bg-red-50 text-red-600"
                         )}
                       >

@@ -11,8 +11,8 @@ export default defineConfig(({mode}) => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'favicon.svg'],
         manifest: {
           name: 'RaTooL - Body Metrics Tracker',
           short_name: 'RaTooL',
@@ -22,12 +22,31 @@ export default defineConfig(({mode}) => {
           display: 'standalone',
           icons: [
             {
-              src: 'mask-icon.svg',
+              src: '/icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/mask-icon.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
-              purpose: 'any maskable'
+              purpose: 'maskable'
             }
           ]
+        },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        },
+        devOptions: {
+          enabled: true,
         }
       })
     ],

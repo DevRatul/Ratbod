@@ -16,6 +16,49 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Explicit Service Worker and PWA routes to ensure /sw.js never 404s
+app.get("/sw.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  const distSw = path.join(process.cwd(), "dist", "sw.js");
+  const publicSw = path.join(process.cwd(), "public", "sw.js");
+  if (fs.existsSync(distSw)) {
+    return res.sendFile(distSw);
+  } else if (fs.existsSync(publicSw)) {
+    return res.sendFile(publicSw);
+  } else {
+    return res.send(`
+      self.addEventListener('install', (e) => self.skipWaiting());
+      self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+    `);
+  }
+});
+
+app.get(/^\/workbox-[a-zA-Z0-9]+\.js$/, (req, res, next) => {
+  const filename = req.path.replace(/^\//, '');
+  const distFile = path.join(process.cwd(), "dist", filename);
+  if (fs.existsSync(distFile)) {
+    res.setHeader("Content-Type", "application/javascript");
+    return res.sendFile(distFile);
+  }
+  next();
+});
+
+app.get("/registerSW.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  const distReg = path.join(process.cwd(), "dist", "registerSW.js");
+  if (fs.existsSync(distReg)) {
+    return res.sendFile(distReg);
+  }
+  return res.send(`
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      });
+    }
+  `);
+});
+
 // Firebase Auth Reverse Proxy to bypass iOS Safari / PWA ITP storage partitioning
 app.all(["/__/auth/*", "/__/auth"], async (req, res) => {
   try {

@@ -97,18 +97,39 @@ export function isSunsetTime(date: Date = new Date()): boolean {
 }
 
 /**
+ * Returns whether the "Sunrise to Sunset" automatic setting is enabled.
+ */
+export function isSunriseToSunsetEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const setting = localStorage.getItem('ratool_sunrise_sunset') || localStorage.getItem('ratbod_sunrise_sunset');
+    if (setting !== null) {
+      return setting === 'true';
+    }
+    // Backward compatibility: if mode was explicitly 'auto', but check if manually disabled
+    const mode = localStorage.getItem('ratool_theme_mode') || localStorage.getItem('ratbod_theme_mode');
+    return mode === 'auto';
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
  * Returns current ThemeMode ('auto' | 'light' | 'dark').
- * Defaults to 'auto' (Sunset to Sunrise).
  */
 export function getThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'auto';
+  if (typeof window === 'undefined') return 'light';
+  if (isSunriseToSunsetEnabled()) return 'auto';
   try {
     const mode = localStorage.getItem('ratool_theme_mode') || localStorage.getItem('ratbod_theme_mode');
-    if (mode === 'light' || mode === 'dark' || mode === 'auto') {
+    if (mode === 'light' || mode === 'dark') {
       return mode;
     }
+    const isDark = localStorage.getItem('ratool_darkmode') || localStorage.getItem('ratbod_darkmode');
+    if (isDark === 'true') return 'dark';
+    if (isDark === 'false') return 'light';
   } catch (e) {}
-  return 'auto';
+  return 'light';
 }
 
 /**
@@ -119,9 +140,97 @@ export function setThemeMode(mode: ThemeMode): void {
   try {
     localStorage.setItem('ratool_theme_mode', mode);
     localStorage.setItem('ratbod_theme_mode', mode);
-    localStorage.removeItem('ratool_theme_manual');
-    localStorage.removeItem('ratbod_theme_manual');
+    if (mode === 'auto') {
+      localStorage.setItem('ratool_sunrise_sunset', 'true');
+      localStorage.setItem('ratbod_sunrise_sunset', 'true');
+    } else {
+      localStorage.setItem('ratool_sunrise_sunset', 'false');
+      localStorage.setItem('ratbod_sunrise_sunset', 'false');
+      localStorage.setItem('ratool_darkmode', (mode === 'dark').toString());
+      localStorage.setItem('ratbod_darkmode', (mode === 'dark').toString());
+    }
   } catch (e) {}
+}
+
+/**
+ * Enables Sunrise-to-Sunset mode.
+ * Location permission will occur ONLY ONCE for a user when this option is turned on.
+ * When off, no location permission is ever called.
+ */
+export function enableSunriseToSunset(onThemeCalculated?: (isDark: boolean) => void): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    localStorage.setItem('ratool_sunrise_sunset', 'true');
+    localStorage.setItem('ratbod_sunrise_sunset', 'true');
+    localStorage.setItem('ratool_theme_mode', 'auto');
+    localStorage.setItem('ratbod_theme_mode', 'auto');
+
+    // Only request geolocation ONCE when the user turns on this setting
+    const hasRequestedGeo = localStorage.getItem('ratool_geo_requested') === 'true' || 
+                            localStorage.getItem('ratbod_geo_requested') === 'true';
+
+    if (!hasRequestedGeo && navigator.geolocation) {
+      localStorage.setItem('ratool_geo_requested', 'true');
+      localStorage.setItem('ratbod_geo_requested', 'true');
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            try {
+              localStorage.setItem('ratool_user_lat', pos.coords.latitude.toFixed(2));
+              localStorage.setItem('ratool_user_lng', pos.coords.longitude.toFixed(2));
+              localStorage.setItem('ratbod_user_lat', pos.coords.latitude.toFixed(2));
+              localStorage.setItem('ratbod_user_lng', pos.coords.longitude.toFixed(2));
+              
+              // Recalculate with newly saved coordinates
+              const newDark = isSunsetTime();
+              applyThemeToDOM(newDark);
+              if (onThemeCalculated) onThemeCalculated(newDark);
+            } catch (e) {}
+          },
+          () => {},
+          { timeout: 8000, maximumAge: 86400000 }
+        );
+      } catch (e) {}
+    }
+
+    const isDark = isSunsetTime();
+    applyThemeToDOM(isDark);
+    if (onThemeCalculated) onThemeCalculated(isDark);
+  } catch (e) {}
+  return true;
+}
+
+/**
+ * Disables Sunrise-to-Sunset mode and locks in the current manual theme.
+ */
+export function disableSunriseToSunset(currentDarkMode: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('ratool_sunrise_sunset', 'false');
+    localStorage.setItem('ratbod_sunrise_sunset', 'false');
+    const mode = currentDarkMode ? 'dark' : 'light';
+    localStorage.setItem('ratool_theme_mode', mode);
+    localStorage.setItem('ratbod_theme_mode', mode);
+    localStorage.setItem('ratool_darkmode', currentDarkMode.toString());
+    localStorage.setItem('ratbod_darkmode', currentDarkMode.toString());
+  } catch (e) {}
+}
+
+/**
+ * Toggles Sunrise-to-Sunset mode. Returns the new state (true if enabled, false if disabled).
+ */
+export function toggleSunriseSunset(
+  currentDarkMode: boolean,
+  onThemeCalculated?: (isDark: boolean) => void
+): boolean {
+  const currentlyEnabled = isSunriseToSunsetEnabled();
+  if (currentlyEnabled) {
+    disableSunriseToSunset(currentDarkMode);
+    return false;
+  } else {
+    enableSunriseToSunset(onThemeCalculated);
+    return true;
+  }
 }
 
 /**
@@ -141,17 +250,28 @@ export function getInitialTheme(): boolean {
 }
 
 /**
- * Backwards-compatibility helper for manual toggle.
+ * Manual toggle triggered from header icon.
+ * Saves manual choice and sets mode to 'dark' or 'light'.
  */
 export function saveManualTheme(isDark: boolean): void {
-  setThemeMode(isDark ? 'dark' : 'light');
+  if (typeof window === 'undefined') return;
+  try {
+    const mode = isDark ? 'dark' : 'light';
+    localStorage.setItem('ratool_theme_mode', mode);
+    localStorage.setItem('ratbod_theme_mode', mode);
+    localStorage.setItem('ratool_darkmode', isDark.toString());
+    localStorage.setItem('ratbod_darkmode', isDark.toString());
+    // Manual click in header sets manual theme
+    localStorage.setItem('ratool_sunrise_sunset', 'false');
+    localStorage.setItem('ratbod_sunrise_sunset', 'false');
+  } catch (e) {}
 }
 
 /**
  * Resets back to automatic Sunset-to-Sunrise mode.
  */
 export function clearManualTheme(): void {
-  setThemeMode('auto');
+  enableSunriseToSunset();
 }
 
 /**
