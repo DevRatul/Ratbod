@@ -82,13 +82,13 @@ export default function LandingPage({
   // Demo Switcher Tabs: 1) Health Metrics, 2) Habit Tracker, 3) Water Intake
   const [activeDemoTab, setActiveDemoTab] = useState<'health' | 'habits' | 'water'>('health');
 
-  // Handle Logo Click -> Smooth reload
+  // Handle Logo Click -> Scroll smoothly to top
   const handleLogoClick = (e?: React.MouseEvent | React.TouchEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    window.location.reload();
+    scrollToTop();
   };
 
   // Built-in Interactive Health Calculator Demo State
@@ -243,14 +243,14 @@ export default function LandingPage({
             ? "bg-[#0F0F0F]/45 border-white/10 shadow-2xl shadow-black/40" 
             : "bg-white/45 border-black/5 shadow-xl shadow-gray-300/40"
         )}>
-          {/* Clickable Logo that reloads */}
+          {/* Clickable Logo */}
           <button 
             type="button"
             id="landing_ratool_logo_btn"
             onClick={handleLogoClick} 
             className="flex items-center gap-2 shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer text-left bg-transparent border-0 py-2 px-1 -ml-1 rounded-xl touch-manipulation relative z-10 select-none"
-            title="Reload RaTooL"
-            aria-label="Reload RaTooL"
+            title="RaTooL Home"
+            aria-label="RaTooL Home"
           >
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white shadow-sm shadow-primary/30 shrink-0">
               <Activity size={14} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User as UserIcon, Key, CheckCircle, AlertCircle, Check, SunMedium } from 'lucide-react';
 import { Gender } from '../utils/calculations';
 import { auth, db } from '../lib/firebase';
@@ -6,7 +6,14 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { isSunriseToSunsetEnabled, toggleSunriseSunset, isSunsetTime, applyThemeToDOM } from '../utils/theme';
+import { 
+  isSunriseToSunsetEnabled, 
+  toggleSunriseSunset, 
+  isSunsetTime, 
+  applyThemeToDOM,
+  saveAutoTheme,
+  saveManualTheme 
+} from '../utils/theme';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -45,7 +52,18 @@ export default function ProfileModal({
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [settingPassword, setSettingPassword] = useState(false);
-  const [internalSunriseToSunset, setInternalSunriseToSunset] = useState(() => isSunriseToSunsetEnabled());
+  const [internalSunriseToSunset, setInternalSunriseToSunset] = useState(() => {
+    if (propIsSunriseToSunset !== undefined) return propIsSunriseToSunset;
+    return isSunriseToSunsetEnabled();
+  });
+
+  useEffect(() => {
+    if (propIsSunriseToSunset !== undefined) {
+      setInternalSunriseToSunset(propIsSunriseToSunset);
+    } else {
+      setInternalSunriseToSunset(isSunriseToSunsetEnabled());
+    }
+  }, [isOpen, propIsSunriseToSunset]);
 
   const isSunriseToSunset = propIsSunriseToSunset !== undefined ? propIsSunriseToSunset : internalSunriseToSunset;
 
@@ -74,14 +92,19 @@ export default function ProfileModal({
     }
 
     const nextState = toggleSunriseSunset(darkMode, (newDark) => {
+      applyThemeToDOM(newDark);
+      saveAutoTheme(newDark);
       if (setDarkMode) setDarkMode(newDark);
     });
     setInternalSunriseToSunset(nextState);
     const darkNow = nextState ? isSunsetTime() : darkMode;
+    applyThemeToDOM(darkNow);
     if (nextState) {
-      applyThemeToDOM(darkNow);
-      if (setDarkMode) setDarkMode(darkNow);
+      saveAutoTheme(darkNow);
+    } else {
+      saveManualTheme(darkNow);
     }
+    if (setDarkMode) setDarkMode(darkNow);
 
     // Sync directly to Firestore for real-time multi-device propagation
     if (user) {

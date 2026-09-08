@@ -13,7 +13,8 @@ import {
   getThemeMode, 
   isSunsetTime, 
   applyThemeToDOM,
-  saveManualTheme 
+  saveManualTheme,
+  saveAutoTheme
 } from "./utils/theme";
 
 function AppRoot() {
@@ -49,12 +50,31 @@ function AppRoot() {
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+        const isRemoteSunrise = data.isSunriseToSunset !== undefined 
+          ? Boolean(data.isSunriseToSunset) 
+          : (data.themeMode === 'auto');
+
+        if (data.isSunriseToSunset !== undefined) {
+          try {
+            localStorage.setItem('ratool_sunrise_sunset', isRemoteSunrise.toString());
+            localStorage.setItem('ratbod_sunrise_sunset', isRemoteSunrise.toString());
+            if (isRemoteSunrise) {
+              localStorage.setItem('ratool_theme_mode', 'auto');
+              localStorage.setItem('ratbod_theme_mode', 'auto');
+            }
+          } catch (e) {}
+        }
+
         if (data.darkMode !== undefined) {
           const remoteDark = Boolean(data.darkMode);
           setDarkMode((prev) => {
             if (prev !== remoteDark) {
               isSyncingFromRemoteRef.current = true;
-              saveManualTheme(remoteDark);
+              if (isRemoteSunrise) {
+                saveAutoTheme(remoteDark);
+              } else {
+                saveManualTheme(remoteDark);
+              }
               applyThemeToDOM(remoteDark);
               setTimeout(() => {
                 isSyncingFromRemoteRef.current = false;
@@ -63,12 +83,6 @@ function AppRoot() {
             }
             return prev;
           });
-        }
-        if (data.isSunriseToSunset !== undefined) {
-          try {
-            localStorage.setItem('ratool_sunrise_sunset', Boolean(data.isSunriseToSunset).toString());
-            localStorage.setItem('ratbod_sunrise_sunset', Boolean(data.isSunriseToSunset).toString());
-          } catch (e) {}
         }
       }
     }, (err) => {
@@ -118,16 +132,20 @@ function AppRoot() {
     };
   }, []);
 
-  const handleToggleTheme = (val: boolean) => {
+  const handleToggleTheme = (val: boolean, isManual = true) => {
     setDarkMode(val);
     applyThemeToDOM(val);
-    saveManualTheme(val);
+    if (isManual) {
+      saveManualTheme(val);
+    } else {
+      saveAutoTheme(val);
+    }
     if (user && !isSyncingFromRemoteRef.current) {
       const docRef = doc(db, 'users', user.uid);
       setDoc(docRef, {
         darkMode: val,
-        themeMode: val ? 'dark' : 'light',
-        isSunriseToSunset: false,
+        themeMode: isManual ? (val ? 'dark' : 'light') : 'auto',
+        isSunriseToSunset: isManual ? false : true,
         updatedAt: serverTimestamp()
       }, { merge: true }).catch((err) => {
         console.warn("Failed to update theme in Firestore:", err);

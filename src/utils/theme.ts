@@ -268,6 +268,22 @@ export function saveManualTheme(isDark: boolean): void {
 }
 
 /**
+ * Saves current dark or light mode state during automatic Sunrise-to-Sunset mode
+ * without disabling the sunrise-to-sunset setting.
+ */
+export function saveAutoTheme(isDark: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('ratool_theme_mode', 'auto');
+    localStorage.setItem('ratbod_theme_mode', 'auto');
+    localStorage.setItem('ratool_sunrise_sunset', 'true');
+    localStorage.setItem('ratbod_sunrise_sunset', 'true');
+    localStorage.setItem('ratool_darkmode', isDark.toString());
+    localStorage.setItem('ratbod_darkmode', isDark.toString());
+  } catch (e) {}
+}
+
+/**
  * Resets back to automatic Sunset-to-Sunrise mode.
  */
 export function clearManualTheme(): void {

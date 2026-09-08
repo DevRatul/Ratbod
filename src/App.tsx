@@ -75,6 +75,7 @@ import { translations } from './utils/translations';
 import { 
   getInitialTheme, 
   saveManualTheme, 
+  saveAutoTheme,
   applyThemeToDOM, 
   isSunsetTime, 
   getThemeMode, 
@@ -90,7 +91,7 @@ function cn(...inputs: ClassValue[]) {
 
 interface AppProps {
   darkMode?: boolean;
-  setDarkMode?: (val: boolean) => void;
+  setDarkMode?: (val: boolean, isManual?: boolean) => void;
 }
 
 export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMode }: AppProps = {}) {
@@ -98,11 +99,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const darkMode = propDarkMode !== undefined ? propDarkMode : internalDarkMode;
   const isRemoteThemeSyncing = useRef(false);
 
-  const setDarkMode = (val: boolean) => {
-    saveManualTheme(val);
+  const setDarkMode = (val: boolean, isManual = true) => {
+    if (isManual) {
+      saveManualTheme(val);
+      setIsSunriseToSunset(false);
+    } else {
+      saveAutoTheme(val);
+    }
     applyThemeToDOM(val);
     if (propSetDarkMode) {
-      propSetDarkMode(val);
+      propSetDarkMode(val, isManual);
     } else {
       setInternalDarkMode(val);
     }
@@ -113,8 +119,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       const docRef = doc(db, 'users', user.uid);
       setDoc(docRef, {
         darkMode: val,
-        themeMode: val ? 'dark' : 'light',
-        isSunriseToSunset: false,
+        themeMode: isManual ? (val ? 'dark' : 'light') : 'auto',
+        isSunriseToSunset: isManual ? false : true,
         updatedAt: serverTimestamp()
       }, { merge: true }).catch(() => {});
     }
@@ -177,13 +183,18 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
   const handleToggleSunriseSunset = () => {
     const next = toggleSunriseSunset(darkMode, (newDark) => {
-      setDarkMode(newDark);
+      setDarkMode(newDark, false);
     });
     setIsSunriseToSunset(next);
     const darkNow = next ? isSunsetTime() : darkMode;
+    applyThemeToDOM(darkNow);
+
     if (next) {
-      applyThemeToDOM(darkNow);
-      setDarkMode(darkNow);
+      saveAutoTheme(darkNow);
+      setDarkMode(darkNow, false);
+    } else {
+      saveManualTheme(darkNow);
+      setDarkMode(darkNow, true);
     }
 
     const user = authUser || auth.currentUser;
@@ -275,25 +286,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       if (snapshot.exists()) {
         const data = snapshot.data();
 
-        // Real-time synchronization of light / dark mode across devices
-        if (data.darkMode !== undefined) {
-          const remoteDark = Boolean(data.darkMode);
-          if (remoteDark !== darkMode) {
-            isRemoteThemeSyncing.current = true;
-            saveManualTheme(remoteDark);
-            applyThemeToDOM(remoteDark);
-            if (propSetDarkMode) {
-              propSetDarkMode(remoteDark);
-            } else {
-              setInternalDarkMode(remoteDark);
-            }
-            setTimeout(() => {
-              isRemoteThemeSyncing.current = false;
-            }, 400);
-          }
-        }
-
         // Real-time synchronization of sunrise-to-sunset setting
+        const isRemoteSunrise = data.isSunriseToSunset !== undefined 
+          ? Boolean(data.isSunriseToSunset) 
+          : (data.themeMode === 'auto');
+
         if (data.isSunriseToSunset !== undefined) {
           const remoteSunrise = Boolean(data.isSunriseToSunset);
           setIsSunriseToSunset((prev) => {
@@ -301,11 +298,37 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               try {
                 localStorage.setItem('ratool_sunrise_sunset', remoteSunrise.toString());
                 localStorage.setItem('ratbod_sunrise_sunset', remoteSunrise.toString());
+                if (remoteSunrise) {
+                  localStorage.setItem('ratool_theme_mode', 'auto');
+                  localStorage.setItem('ratbod_theme_mode', 'auto');
+                }
               } catch (e) {}
               return remoteSunrise;
             }
             return prev;
           });
+        }
+
+        // Real-time synchronization of light / dark mode across devices
+        if (data.darkMode !== undefined) {
+          const remoteDark = Boolean(data.darkMode);
+          if (remoteDark !== darkMode) {
+            isRemoteThemeSyncing.current = true;
+            if (isRemoteSunrise) {
+              saveAutoTheme(remoteDark);
+            } else {
+              saveManualTheme(remoteDark);
+            }
+            applyThemeToDOM(remoteDark);
+            if (propSetDarkMode) {
+              propSetDarkMode(remoteDark, !isRemoteSunrise);
+            } else {
+              setInternalDarkMode(remoteDark);
+            }
+            setTimeout(() => {
+              isRemoteThemeSyncing.current = false;
+            }, 400);
+          }
         }
 
         // Real-time synchronization of active menu tab
@@ -340,14 +363,35 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             const data = snap.data();
+            const isRemoteSunrise = data.isSunriseToSunset !== undefined 
+              ? Boolean(data.isSunriseToSunset) 
+              : (data.themeMode === 'auto');
+
+            if (data.isSunriseToSunset !== undefined) {
+              const remoteSunrise = Boolean(data.isSunriseToSunset);
+              setIsSunriseToSunset(remoteSunrise);
+              try {
+                localStorage.setItem('ratool_sunrise_sunset', remoteSunrise.toString());
+                localStorage.setItem('ratbod_sunrise_sunset', remoteSunrise.toString());
+                if (remoteSunrise) {
+                  localStorage.setItem('ratool_theme_mode', 'auto');
+                  localStorage.setItem('ratbod_theme_mode', 'auto');
+                }
+              } catch (e) {}
+            }
+
             if (data.darkMode !== undefined) {
               const remoteDark = Boolean(data.darkMode);
               if (remoteDark !== darkMode) {
                 isRemoteThemeSyncing.current = true;
-                saveManualTheme(remoteDark);
+                if (isRemoteSunrise) {
+                  saveAutoTheme(remoteDark);
+                } else {
+                  saveManualTheme(remoteDark);
+                }
                 applyThemeToDOM(remoteDark);
                 if (propSetDarkMode) {
-                  propSetDarkMode(remoteDark);
+                  propSetDarkMode(remoteDark, !isRemoteSunrise);
                 } else {
                   setInternalDarkMode(remoteDark);
                 }
@@ -355,9 +399,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   isRemoteThemeSyncing.current = false;
                 }, 400);
               }
-            }
-            if (data.isSunriseToSunset !== undefined) {
-              setIsSunriseToSunset(Boolean(data.isSunriseToSunset));
             }
             if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
               setActiveTab((currentTab) => {
@@ -412,12 +453,44 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             // Quick measurement fields (weight, waist, neck, hip) intentionally start empty on reload
             if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
             if (data.unit !== undefined) setUnit(data.unit || 'metric');
-            if (data.themeMode) {
+
+            const isRemoteSunrise = data.isSunriseToSunset !== undefined 
+              ? Boolean(data.isSunriseToSunset) 
+              : (data.themeMode === 'auto');
+
+            if (data.isSunriseToSunset !== undefined) {
+              const remoteSunrise = Boolean(data.isSunriseToSunset);
+              setIsSunriseToSunset(remoteSunrise);
+              try {
+                localStorage.setItem('ratool_sunrise_sunset', remoteSunrise.toString());
+                localStorage.setItem('ratbod_sunrise_sunset', remoteSunrise.toString());
+                if (remoteSunrise) {
+                  localStorage.setItem('ratool_theme_mode', 'auto');
+                  localStorage.setItem('ratbod_theme_mode', 'auto');
+                }
+              } catch (e) {}
+            }
+
+            if (isRemoteSunrise || data.themeMode === 'auto') {
+              setThemeMode('auto');
+              const isDark = isSunsetTime();
+              saveAutoTheme(isDark);
+              applyThemeToDOM(isDark);
+              if (propSetDarkMode) propSetDarkMode(isDark, false);
+              else setInternalDarkMode(isDark);
+            } else if (data.themeMode) {
               setThemeMode(data.themeMode);
               const isDark = isDarkModeForMode(data.themeMode);
-              setDarkMode(isDark);
-            } else if (data.darkMode !== undefined && getThemeMode() !== 'auto') {
-              setDarkMode(data.darkMode);
+              saveManualTheme(isDark);
+              applyThemeToDOM(isDark);
+              if (propSetDarkMode) propSetDarkMode(isDark, true);
+              else setInternalDarkMode(isDark);
+            } else if (data.darkMode !== undefined) {
+              const isDark = Boolean(data.darkMode);
+              saveManualTheme(isDark);
+              applyThemeToDOM(isDark);
+              if (propSetDarkMode) propSetDarkMode(isDark, true);
+              else setInternalDarkMode(isDark);
             }
             if (data.lang !== undefined) setLang(data.lang || 'en');
 
@@ -570,9 +643,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         height,
         activityLevel,
         unit,
-        themeMode: getThemeMode(),
+        themeMode: isSunriseToSunset ? 'auto' : (darkMode ? 'dark' : 'light'),
         darkMode,
-        isSunriseToSunset,
+        isSunriseToSunset: Boolean(isSunriseToSunset),
         lang,
         lastMenuTab: activeTab,
         updatedAt: serverTimestamp()
@@ -1158,8 +1231,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="ratool_logo_btn"
             onClick={handleLogoClick} 
             className="flex items-center gap-2 shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer text-left bg-transparent border-0 py-2 px-1 -ml-1 rounded-xl touch-manipulation relative z-10 select-none"
-            title="Reload RaTooL"
-            aria-label="Reload RaTooL"
+            title="RaTooL Home"
+            aria-label="RaTooL Home"
           >
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white shadow-sm shadow-primary/30 shrink-0">
               <Activity size={14} />
