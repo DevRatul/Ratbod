@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -6,11 +6,14 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import AuthScreen from "./components/Auth/AuthScreen";
 import LandingPage from "./components/LandingPage";
 import SmoothLoader from "./components/SmoothLoader";
+import { db } from "./lib/firebase";
+import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { 
   getInitialTheme, 
   getThemeMode, 
   isSunsetTime, 
-  applyThemeToDOM 
+  applyThemeToDOM,
+  saveManualTheme 
 } from "./utils/theme";
 
 function AppRoot() {
@@ -24,6 +27,7 @@ function AppRoot() {
     return false;
   });
   const [darkMode, setDarkMode] = useState<boolean>(() => getInitialTheme());
+  const isSyncingFromRemoteRef = useRef(false);
 
   // Automatically keep Auth Screen visible if an auth error or redirect attempt occurred
   useEffect(() => {
@@ -36,6 +40,43 @@ function AppRoot() {
   useEffect(() => {
     applyThemeToDOM(darkMode);
   }, [darkMode]);
+
+  // Real-time synchronization of dark mode and theme across all devices of the logged-in user
+  useEffect(() => {
+    if (!user) return;
+
+    const docRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.darkMode !== undefined) {
+          const remoteDark = Boolean(data.darkMode);
+          setDarkMode((prev) => {
+            if (prev !== remoteDark) {
+              isSyncingFromRemoteRef.current = true;
+              saveManualTheme(remoteDark);
+              applyThemeToDOM(remoteDark);
+              setTimeout(() => {
+                isSyncingFromRemoteRef.current = false;
+              }, 300);
+              return remoteDark;
+            }
+            return prev;
+          });
+        }
+        if (data.isSunriseToSunset !== undefined) {
+          try {
+            localStorage.setItem('ratool_sunrise_sunset', Boolean(data.isSunriseToSunset).toString());
+            localStorage.setItem('ratbod_sunrise_sunset', Boolean(data.isSunriseToSunset).toString());
+          } catch (e) {}
+        }
+      }
+    }, (err) => {
+      console.warn("Real-time theme sync onSnapshot:", err);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Periodic ticker to check if sunset occurred or sunrise arrived (only if sunrise-to-sunset is enabled)
   useEffect(() => {
@@ -80,6 +121,18 @@ function AppRoot() {
   const handleToggleTheme = (val: boolean) => {
     setDarkMode(val);
     applyThemeToDOM(val);
+    saveManualTheme(val);
+    if (user && !isSyncingFromRemoteRef.current) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        darkMode: val,
+        themeMode: val ? 'dark' : 'light',
+        isSunriseToSunset: false,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch((err) => {
+        console.warn("Failed to update theme in Firestore:", err);
+      });
+    }
   };
   
   if (loading) {

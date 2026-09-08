@@ -18,6 +18,7 @@
         "unit": { "type": "string", "enum": ["metric", "imperial"] },
         "themeMode": { "type": "string", "enum": ["auto", "light", "dark"] },
         "darkMode": { "type": "boolean" },
+        "isSunriseToSunset": { "type": "boolean" },
         "lastMenuTab": { "type": "string", "enum": ["home", "calculator", "results", "groceries", "water", "goals", "breathing"], "maxLength": 30 },
         "lang": { "type": "string", "enum": ["en", "bn"] },
         "createdAt": { "type": "number" },

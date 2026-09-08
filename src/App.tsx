@@ -96,6 +96,8 @@ interface AppProps {
 export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMode }: AppProps = {}) {
   const [internalDarkMode, setInternalDarkMode] = useState<boolean>(() => getInitialTheme());
   const darkMode = propDarkMode !== undefined ? propDarkMode : internalDarkMode;
+  const isRemoteThemeSyncing = useRef(false);
+
   const setDarkMode = (val: boolean) => {
     saveManualTheme(val);
     applyThemeToDOM(val);
@@ -103,6 +105,18 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       propSetDarkMode(val);
     } else {
       setInternalDarkMode(val);
+    }
+
+    // Broadcast immediately to Firestore so other devices of this user update in real-time
+    const user = authUser || auth.currentUser;
+    if (user && !isRemoteThemeSyncing.current) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        darkMode: val,
+        themeMode: val ? 'dark' : 'light',
+        isSunriseToSunset: false,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
     }
   };
   const [lang, setLang] = useState<'en' | 'bn'>('en');
@@ -166,10 +180,21 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       setDarkMode(newDark);
     });
     setIsSunriseToSunset(next);
+    const darkNow = next ? isSunsetTime() : darkMode;
     if (next) {
-      const darkNow = isSunsetTime();
       applyThemeToDOM(darkNow);
       setDarkMode(darkNow);
+    }
+
+    const user = authUser || auth.currentUser;
+    if (user && !isRemoteThemeSyncing.current) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        isSunriseToSunset: next,
+        themeMode: next ? 'auto' : (darkNow ? 'dark' : 'light'),
+        darkMode: darkNow,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
     }
   };
   const [showSavedNotification, setShowSavedNotification] = useState(false);
@@ -241,7 +266,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     }
   }, [activeTab, authUser, isLoaded]);
 
-  // Real-time synchronization of last menu tab across all active devices of the same user
+  // Real-time synchronization of last menu tab and theme across all active devices of the same user
   useEffect(() => {
     if (!authUser) return;
 
@@ -249,6 +274,41 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+
+        // Real-time synchronization of light / dark mode across devices
+        if (data.darkMode !== undefined) {
+          const remoteDark = Boolean(data.darkMode);
+          if (remoteDark !== darkMode) {
+            isRemoteThemeSyncing.current = true;
+            saveManualTheme(remoteDark);
+            applyThemeToDOM(remoteDark);
+            if (propSetDarkMode) {
+              propSetDarkMode(remoteDark);
+            } else {
+              setInternalDarkMode(remoteDark);
+            }
+            setTimeout(() => {
+              isRemoteThemeSyncing.current = false;
+            }, 400);
+          }
+        }
+
+        // Real-time synchronization of sunrise-to-sunset setting
+        if (data.isSunriseToSunset !== undefined) {
+          const remoteSunrise = Boolean(data.isSunriseToSunset);
+          setIsSunriseToSunset((prev) => {
+            if (prev !== remoteSunrise) {
+              try {
+                localStorage.setItem('ratool_sunrise_sunset', remoteSunrise.toString());
+                localStorage.setItem('ratbod_sunrise_sunset', remoteSunrise.toString());
+              } catch (e) {}
+              return remoteSunrise;
+            }
+            return prev;
+          });
+        }
+
+        // Real-time synchronization of active menu tab
         if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
           setActiveTab((currentTab) => {
             if (currentTab !== data.lastMenuTab) {
@@ -269,9 +329,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     });
 
     return () => unsubscribe();
-  }, [authUser]);
+  }, [authUser, darkMode, propSetDarkMode]);
 
-  // Handle device wakeup / tab focus / visibility change to instantly pull latest menu tab
+  // Handle device wakeup / tab focus / visibility change to instantly pull latest menu tab & theme
   useEffect(() => {
     const handleReactivation = async () => {
       if (document.visibilityState === 'visible' && auth.currentUser) {
@@ -280,6 +340,25 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             const data = snap.data();
+            if (data.darkMode !== undefined) {
+              const remoteDark = Boolean(data.darkMode);
+              if (remoteDark !== darkMode) {
+                isRemoteThemeSyncing.current = true;
+                saveManualTheme(remoteDark);
+                applyThemeToDOM(remoteDark);
+                if (propSetDarkMode) {
+                  propSetDarkMode(remoteDark);
+                } else {
+                  setInternalDarkMode(remoteDark);
+                }
+                setTimeout(() => {
+                  isRemoteThemeSyncing.current = false;
+                }, 400);
+              }
+            }
+            if (data.isSunriseToSunset !== undefined) {
+              setIsSunriseToSunset(Boolean(data.isSunriseToSunset));
+            }
             if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
               setActiveTab((currentTab) => {
                 if (currentTab !== data.lastMenuTab) {
@@ -305,7 +384,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       document.removeEventListener('visibilitychange', handleReactivation);
       window.removeEventListener('focus', handleReactivation);
     };
-  }, []);
+  }, [darkMode, propSetDarkMode]);
 
   // Load from Firestore (fallback to localStorage) on auth state change
   useEffect(() => {
@@ -493,6 +572,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         unit,
         themeMode: getThemeMode(),
         darkMode,
+        isSunriseToSunset,
         lang,
         lastMenuTab: activeTab,
         updatedAt: serverTimestamp()
@@ -500,7 +580,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         console.error("Failed to sync profile to Firestore", e);
       });
     }
-  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, lang, isLoaded]);
+  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, isSunriseToSunset, lang, isLoaded]);
 
   useEffect(() => {
     // Set browser tab theme-color and iOS status bar style
@@ -1232,31 +1312,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       </button>
 
                       <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
-
-                      {/* One-liner Sunrise to sunset setting with tick icon */}
-                      <button
-                        type="button"
-                        onClick={handleToggleSunriseSunset}
-                        className={cn(
-                          "w-full text-left px-4 py-3 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer select-none",
-                          darkMode ? "hover:bg-white/5 text-gray-200" : "hover:bg-gray-50 text-gray-800"
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <SunMedium size={15} className="text-amber-500 shrink-0" />
-                          <span>Sunrise to sunset</span>
-                        </div>
-                        <div className={cn(
-                          "w-4 h-4 rounded flex items-center justify-center border transition-all",
-                          isSunriseToSunset 
-                            ? "bg-primary border-primary text-white shadow-sm" 
-                            : (darkMode ? "border-white/20 bg-white/5" : "border-gray-300 bg-white")
-                        )}>
-                          {isSunriseToSunset && <Check size={12} strokeWidth={3} />}
-                        </div>
-                      </button>
-
-                      <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
@@ -1680,7 +1735,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         setBirthdate={setBirthdate}
         height={height}
         setHeight={setHeight}
-                unit={unit}
+        unit={unit}
+        isSunriseToSunset={isSunriseToSunset}
+        onToggleSunriseSunset={handleToggleSunriseSunset}
       />
     </div>
       {/* Mobile Sticky Tab Navigation: 1. Groceries, 2. Breathing, 3. Water, 4. Habitor, 5. Health (Home) */}

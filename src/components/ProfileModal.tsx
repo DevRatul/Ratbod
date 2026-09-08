@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { X, User as UserIcon, Key, CheckCircle, AlertCircle, Check, SunMedium } from 'lucide-react';
 import { Gender } from '../utils/calculations';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -25,11 +26,15 @@ interface ProfileModalProps {
   height: string;
   setHeight: (h: string) => void;
   unit: 'metric' | 'imperial';
+  isSunriseToSunset?: boolean;
+  onToggleSunriseSunset?: () => void;
 }
 
 export default function ProfileModal({
   isOpen, onClose, darkMode, setDarkMode,
-  name, setName, gender, setGender, birthdate, setBirthdate, height, setHeight, unit
+  name, setName, gender, setGender, birthdate, setBirthdate, height, setHeight, unit,
+  isSunriseToSunset: propIsSunriseToSunset,
+  onToggleSunriseSunset: propOnToggleSunriseSunset
 }: ProfileModalProps) {
   if (!isOpen) return null;
 
@@ -40,7 +45,9 @@ export default function ProfileModal({
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [settingPassword, setSettingPassword] = useState(false);
-  const [isSunriseToSunset, setIsSunriseToSunset] = useState(() => isSunriseToSunsetEnabled());
+  const [internalSunriseToSunset, setInternalSunriseToSunset] = useState(() => isSunriseToSunsetEnabled());
+
+  const isSunriseToSunset = propIsSunriseToSunset !== undefined ? propIsSunriseToSunset : internalSunriseToSunset;
 
   const handleSendResetEmail = async () => {
     if (!email) {
@@ -61,14 +68,29 @@ export default function ProfileModal({
   };
 
   const handleToggleSunriseSunset = () => {
+    if (propOnToggleSunriseSunset) {
+      propOnToggleSunriseSunset();
+      return;
+    }
+
     const nextState = toggleSunriseSunset(darkMode, (newDark) => {
       if (setDarkMode) setDarkMode(newDark);
     });
-    setIsSunriseToSunset(nextState);
+    setInternalSunriseToSunset(nextState);
+    const darkNow = nextState ? isSunsetTime() : darkMode;
     if (nextState) {
-      const darkNow = isSunsetTime();
       applyThemeToDOM(darkNow);
       if (setDarkMode) setDarkMode(darkNow);
+    }
+
+    // Sync directly to Firestore for real-time multi-device propagation
+    if (user) {
+      setDoc(doc(db, 'users', user.uid), {
+        isSunriseToSunset: nextState,
+        themeMode: nextState ? 'auto' : (darkNow ? 'dark' : 'light'),
+        darkMode: darkNow,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
     }
   };
 
@@ -99,33 +121,39 @@ export default function ProfileModal({
               </div>
             )}
           </div>
-          <h2 className={cn("text-xl font-bold tracking-tight", darkMode ? "text-white" : "text-gray-900")}>Your Profile</h2>
-          {email && <p className={cn("text-xs font-medium mt-1 text-emerald-500 font-mono")}>{email}</p>}
+          <h2 className="text-2xl font-black">{name || 'User Profile'}</h2>
+          <p className={cn("text-xs mt-1", darkMode ? "text-gray-400" : "text-gray-500")}>
+            {email || 'Signed in via Firebase Auth'}
+          </p>
         </div>
 
-        <div className="space-y-4 px-1 pb-2">
-          <div className="space-y-1.5">
-            <label className={cn("text-[10px] font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Full Name</label>
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+          <div>
+            <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
+              Full Name
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={cn(
-                "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-sm",
+                "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
                 darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
               )}
-              placeholder="e.g. John Doe"
+              placeholder="Your Name"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className={cn("text-[10px] font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Gender</label>
+            <div>
+              <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
+                Gender
+              </label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as Gender)}
                 className={cn(
-                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-sm appearance-none",
+                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
                   darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                 )}
               >
@@ -133,25 +161,25 @@ export default function ProfileModal({
                 <option value="female">Female</option>
               </select>
             </div>
-
-            <div className="space-y-1.5">
-              <label className={cn("text-[10px] font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Birthdate</label>
+            <div>
+              <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
+                Birthdate
+              </label>
               <input
                 type="date"
                 value={birthdate}
                 onChange={(e) => setBirthdate(e.target.value)}
                 className={cn(
-                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-sm",
+                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
                   darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                 )}
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className={cn("text-[10px] font-bold uppercase tracking-wider flex justify-between", darkMode ? "text-gray-400" : "text-gray-600")}>
-              <span>Height</span>
-              <span>{unit === 'metric' ? 'cm' : 'inches'}</span>
+          <div>
+            <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
+              Height ({unit === 'metric' ? 'cm' : 'inches'})
             </label>
             <input
               type="number"
@@ -165,7 +193,7 @@ export default function ProfileModal({
             />
           </div>
 
-          {/* Sunrise to Sunset Setting: One-liner with tick icon */}
+          {/* Sunrise to Sunset Setting: One-liner with tick icon - ONLY available in Profile Edit section */}
           <div className="mt-4 pt-3 border-t border-white/10 dark:border-white/10 border-gray-100">
             <button
               type="button"
