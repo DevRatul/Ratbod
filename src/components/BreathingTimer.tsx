@@ -168,7 +168,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   const [targetCycles, setTargetCycles] = useState<number>(4);
   const [soundMode, setSoundMode] = useState<'muted' | 'tones' | 'voice'>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ratbod_sound_mode');
+      const saved = localStorage.getItem('ratool_sound_mode') || localStorage.getItem('ratbod_sound_mode');
       return (saved as 'muted' | 'tones' | 'voice') || 'muted';
     }
     return 'muted';
@@ -177,7 +177,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   const [todaySessions, setTodaySessions] = useState<BreathingSessionRecord[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('ratbod_breathing_today_sessions');
+        const saved = localStorage.getItem('ratool_breathing_today_sessions') || localStorage.getItem('ratbod_breathing_today_sessions');
         if (saved) {
           const parsed: BreathingSessionRecord[] = JSON.parse(saved);
           const today = getLocalDateString(new Date());
@@ -233,6 +233,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
   useEffect(() => {
     if (!isLoaded) return;
+    localStorage.setItem('ratool_sound_mode', soundMode);
     localStorage.setItem('ratbod_sound_mode', soundMode);
     const user = auth.currentUser;
     if (user) {
@@ -260,7 +261,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
       }
       
       if (loadedSessions === null) {
-        const savedCount = localStorage.getItem('ratbod_breathing_sessions');
+        const savedCount = localStorage.getItem('ratool_breathing_sessions') || localStorage.getItem('ratbod_breathing_sessions');
         if (savedCount) loadedSessions = parseInt(savedCount, 10);
       }
       if (loadedSessions !== null) {
@@ -273,7 +274,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
       if (!loadedTodaySessions) {
         try {
-          const savedSessions = localStorage.getItem('ratbod_breathing_today_sessions');
+          const savedSessions = localStorage.getItem('ratool_breathing_today_sessions') || localStorage.getItem('ratbod_breathing_today_sessions');
           if (savedSessions) {
             loadedTodaySessions = JSON.parse(savedSessions);
           }
@@ -404,6 +405,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     triggerVocalPhase('finish');
     const newCount = completedSessionsCount + 1;
     setCompletedSessionsCount(newCount);
+    localStorage.setItem('ratool_breathing_sessions', newCount.toString());
     localStorage.setItem('ratbod_breathing_sessions', newCount.toString());
 
     // Record session into today's history
@@ -423,6 +425,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
     const updatedSessions = [newRecord, ...todaySessions];
     setTodaySessions(updatedSessions);
+    localStorage.setItem('ratool_breathing_today_sessions', JSON.stringify(updatedSessions));
     localStorage.setItem('ratbod_breathing_today_sessions', JSON.stringify(updatedSessions));
 
     const user = auth.currentUser;
@@ -433,6 +436,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
       }, { merge: true }).catch(e => {});
     }
 
+    window.dispatchEvent(new CustomEvent('ratool_saved_toast'));
     window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
   };
 

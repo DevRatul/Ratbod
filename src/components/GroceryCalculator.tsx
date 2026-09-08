@@ -317,7 +317,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
 
     if (lang === 'bn') {
       content += border;
-      content += "             বাজারের ফর্দ (RatboD)\n";
+      content += "             বাজারের ফর্দ (RaTooL)\n";
       content += border;
       content += `তারিখ: ${new Date().toLocaleDateString('bn-BD')}\n`;
       content += `মোট পণ্য: ${formatNum(items.length, 0)} টি\n`;
@@ -335,11 +335,11 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       });
 
       content += "\n" + border;
-      content += "RatboD বাজার হিসাবকারী ব্যবহার করার জন্য ধন্যবাদ!\n";
+      content += "RaTooL বাজার হিসাবকারী ব্যবহার করার জন্য ধন্যবাদ!\n";
       content += border;
     } else {
       content += border;
-      content += "         GROCERY SHOPPING LIST (RatboD)\n";
+      content += "         GROCERY SHOPPING LIST (RaTooL)\n";
       content += border;
       content += `Date: ${new Date().toLocaleDateString()}\n`;
       content += `Total Items: ${items.length}\n`;
@@ -357,7 +357,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       });
 
       content += "\n" + border;
-      content += "Thank you for using RatboD Grocery Calculator!\n";
+      content += "Thank you for using RaTooL Grocery Calculator!\n";
       content += border;
     }
 
@@ -365,7 +365,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", lang === 'bn' ? "বাজারের_ফর্দ_RatboD.txt" : "grocery_list_ratbod.txt");
+    link.setAttribute("download", lang === 'bn' ? "বাজারের_ফর্দ_RaTooL.txt" : "grocery_list_ratool.txt");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

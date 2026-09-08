@@ -430,7 +430,7 @@ function HabitRowItem({
 
 export default function Habitor({ darkMode, lang }: HabitorProps) {
   const [habits, setHabits] = useState<HabitItem[]>(() => {
-    const saved = localStorage.getItem('ratbod_habits_v1');
+    const saved = localStorage.getItem('ratool_habits_v1') || localStorage.getItem('ratbod_habits_v1');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -450,6 +450,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
           
           if (missingDefaults.length > 0 || needsUpdate) {
             const merged = [...migratedParsed, ...missingDefaults];
+            localStorage.setItem('ratool_habits_v1', JSON.stringify(merged));
             localStorage.setItem('ratbod_habits_v1', JSON.stringify(merged));
             return merged;
           }
@@ -463,7 +464,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
   // Map of dateKey -> Set/Array of completed habit IDs
   const [completedLogs, setCompletedLogs] = useState<Record<string, string[]>>(() => {
-    const saved = localStorage.getItem('ratbod_habit_logs_v1');
+    const saved = localStorage.getItem('ratool_habit_logs_v1') || localStorage.getItem('ratbod_habit_logs_v1');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -480,6 +481,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   // Sync state to localStorage & Firestore
   useEffect(() => {
     if (!isLoaded) return;
+    localStorage.setItem('ratool_habits_v1', JSON.stringify(habits));
     localStorage.setItem('ratbod_habits_v1', JSON.stringify(habits));
     const user = auth.currentUser;
     if (user) {
@@ -489,6 +491,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
   useEffect(() => {
     if (!isLoaded) return;
+    localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(completedLogs));
     localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(completedLogs));
     const user = auth.currentUser;
     if (user) {
@@ -507,6 +510,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
             const data = habitsDoc.data();
             if (data.habits && Array.isArray(data.habits)) {
               setHabits(data.habits);
+              localStorage.setItem('ratool_habits_v1', JSON.stringify(data.habits));
               localStorage.setItem('ratbod_habits_v1', JSON.stringify(data.habits));
             }
           } else {
@@ -520,6 +524,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
             const data = logsDoc.data();
             if (data.completedLogs) {
               setCompletedLogs(data.completedLogs);
+              localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(data.completedLogs));
               localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(data.completedLogs));
             }
           } else {
@@ -740,6 +745,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
       const updatedHabits = [...habits, newItem];
       setHabits(updatedHabits);
+      localStorage.setItem('ratool_habits_v1', JSON.stringify(updatedHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
 
       const user = auth.currentUser;
@@ -753,6 +759,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       setNewSubtitle('');
       setNewEmoji('');
       setIsAddModalOpen(false);
+      window.dispatchEvent(new CustomEvent('ratool_saved_toast'));
       window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (err) {
       console.error("Error creating new habit:", err);
@@ -771,6 +778,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
         emoji: editingHabit.emoji?.trim() || undefined,
       } : h);
       setHabits(updatedHabits);
+      localStorage.setItem('ratool_habits_v1', JSON.stringify(updatedHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
 
       const user = auth.currentUser;
@@ -781,6 +789,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       }
 
       setEditingHabit(null);
+      window.dispatchEvent(new CustomEvent('ratool_saved_toast'));
       window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (err) {
       console.error("Error updating habit:", err);
@@ -791,6 +800,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
     try {
       const updatedHabits = habits.filter(h => h.id !== id);
       setHabits(updatedHabits);
+      localStorage.setItem('ratool_habits_v1', JSON.stringify(updatedHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
 
       const user = auth.currentUser;

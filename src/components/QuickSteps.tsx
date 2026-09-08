@@ -32,8 +32,9 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
       };
 
       // Save to localStorage
-      const localData = JSON.parse(localStorage.getItem('ratbod_steps_history') || '[]');
+      const localData = JSON.parse(localStorage.getItem('ratool_steps_history') || localStorage.getItem('ratbod_steps_history') || '[]');
       const updatedLocal = [newEntry, ...localData];
+      localStorage.setItem('ratool_steps_history', JSON.stringify(updatedLocal));
       localStorage.setItem('ratbod_steps_history', JSON.stringify(updatedLocal));
 
       // Save to Firestore if logged in
@@ -52,6 +53,7 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
 
       setSteps('');
       if (onSave) onSave();
+      window.dispatchEvent(new CustomEvent('ratool_saved_toast'));
       window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (e) {
       console.error("Error saving steps:", e);

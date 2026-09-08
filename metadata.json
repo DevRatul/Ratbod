@@ -1,6 +1,6 @@
 {
-  "name": "RatboD",
-  "description": "RatboD - Know Your Body. A comprehensive body metrics calculator with composition analysis, health goals, and PDF reports.",
-  "requestFramePermissions": [],
+  "name": "RaTooL",
+  "description": "RaTooL - Know Your Body. A comprehensive body metrics calculator with composition analysis, health goals, PDF reports, and automatic sunset-to-sunrise adaptive dark/light mode.",
+  "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

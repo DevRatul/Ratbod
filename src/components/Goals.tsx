@@ -91,11 +91,12 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
       }
 
       if (!data) {
-        const savedGoalJson = localStorage.getItem('ratbod_goals');
+        const savedGoalJson = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
         if (savedGoalJson) data = JSON.parse(savedGoalJson);
       }
 
       if (data) {
+        localStorage.setItem('ratool_goals', JSON.stringify(data));
         localStorage.setItem('ratbod_goals', JSON.stringify(data));
         setGoal(data);
         if (onGoalUpdate) onGoalUpdate();
@@ -127,6 +128,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
     };
 
     try {
+      localStorage.setItem('ratool_goals', JSON.stringify(goalData));
       localStorage.setItem('ratbod_goals', JSON.stringify(goalData));
       
       const user = auth.currentUser;
@@ -137,6 +139,7 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
       setGoal(goalData as Goal);
       setIsEditing(false);
       if (onGoalUpdate) onGoalUpdate();
+      window.dispatchEvent(new CustomEvent('ratool_saved_toast'));
       window.dispatchEvent(new CustomEvent('ratbod_saved_toast'));
     } catch (error) {
       alert('Failed to save goal');

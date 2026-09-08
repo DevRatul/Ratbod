@@ -56,7 +56,7 @@ import {
   type ActivityLevel,
   type BodyData
 } from './utils/calculations';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import GroceryCalculator from './components/GroceryCalculator';
@@ -68,8 +68,17 @@ import History from './components/History';
 import QuickSteps from './components/QuickSteps';
 import ProfileModal from './components/ProfileModal';
 import LandingPage from './components/LandingPage';
+import ThemeToggle from './components/ThemeToggle';
 import { translations } from './utils/translations';
-import { getInitialTheme, saveManualTheme, applyThemeToDOM, isSunsetTime } from './utils/theme';
+import { 
+  getInitialTheme, 
+  saveManualTheme, 
+  applyThemeToDOM, 
+  isSunsetTime, 
+  getThemeMode, 
+  setThemeMode, 
+  isDarkModeForMode 
+} from './utils/theme';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -112,25 +121,31 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const [historyList, setHistoryList] = useState<any[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+      const h = localStorage.getItem('ratool_history') || localStorage.getItem('ratbod_history');
+      return JSON.parse(h || '[]');
     } catch (e) {
       return [];
     }
   });
   const [savedGoal, setSavedGoal] = useState<any>(() => {
     try {
-      const g = localStorage.getItem('ratbod_goals');
+      const g = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
       return g ? JSON.parse(g) : null;
     } catch (e) {
       return null;
     }
   });
+  const VALID_TABS = ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'breathing'] as const;
+  type TabType = typeof VALID_TABS[number];
+  const isTabSyncingFromRemote = useRef(false);
+  const lastSyncedTabRef = useRef<string | null>(null);
+
   const [authUser, setAuthUser] = useState(auth.currentUser);
-  const [activeTab, setActiveTab] = useState<'home' | 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing'>(() => {
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
-      const saved = localStorage.getItem('ratbod_active_tab');
-      if (saved && ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'breathing'].includes(saved)) {
-        return saved as any;
+      const saved = localStorage.getItem('ratool_active_tab') || localStorage.getItem('ratbod_active_tab');
+      if (saved && (VALID_TABS as readonly string[]).includes(saved)) {
+        return saved as TabType;
       }
       return 'calculator';
     } catch (e) {
@@ -175,16 +190,105 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     const handleToastEvent = () => {
       triggerSavedToast();
     };
+    window.addEventListener('ratool_saved_toast', handleToastEvent);
     window.addEventListener('ratbod_saved_toast', handleToastEvent);
-    return () => window.removeEventListener('ratbod_saved_toast', handleToastEvent);
+    return () => {
+      window.removeEventListener('ratool_saved_toast', handleToastEvent);
+      window.removeEventListener('ratbod_saved_toast', handleToastEvent);
+    };
   }, [triggerSavedToast]);
 
-  // Persist activeTab to localStorage
+  // Persist activeTab to localStorage and sync to Firestore for logged in users across all devices
   useEffect(() => {
     try {
+      localStorage.setItem('ratool_active_tab', activeTab);
       localStorage.setItem('ratbod_active_tab', activeTab);
     } catch (e) {}
-  }, [activeTab]);
+
+    // If this tab change was triggered by an incoming sync from another device, don't echo back
+    if (isTabSyncingFromRemote.current) {
+      isTabSyncingFromRemote.current = false;
+      return;
+    }
+
+    const user = authUser || auth.currentUser;
+    if (user && isLoaded && lastSyncedTabRef.current !== activeTab) {
+      lastSyncedTabRef.current = activeTab;
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        lastMenuTab: activeTab,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch((err) => {
+        console.error("Failed to sync lastMenuTab to Firestore:", err);
+      });
+    }
+  }, [activeTab, authUser, isLoaded]);
+
+  // Real-time synchronization of last menu tab across all active devices of the same user
+  useEffect(() => {
+    if (!authUser) return;
+
+    const docRef = doc(db, 'users', authUser.uid);
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
+          setActiveTab((currentTab) => {
+            if (currentTab !== data.lastMenuTab) {
+              isTabSyncingFromRemote.current = true;
+              lastSyncedTabRef.current = data.lastMenuTab;
+              try {
+                localStorage.setItem('ratool_active_tab', data.lastMenuTab);
+                localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+              } catch (e) {}
+              return data.lastMenuTab;
+            }
+            return currentTab;
+          });
+        }
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}`);
+    });
+
+    return () => unsubscribe();
+  }, [authUser]);
+
+  // Handle device wakeup / tab focus / visibility change to instantly pull latest menu tab
+  useEffect(() => {
+    const handleReactivation = async () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) {
+        try {
+          const docRef = doc(db, 'users', auth.currentUser.uid);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
+              setActiveTab((currentTab) => {
+                if (currentTab !== data.lastMenuTab) {
+                  isTabSyncingFromRemote.current = true;
+                  lastSyncedTabRef.current = data.lastMenuTab;
+                  try {
+                    localStorage.setItem('ratool_active_tab', data.lastMenuTab);
+                    localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+                  } catch (e) {}
+                  return data.lastMenuTab;
+                }
+                return currentTab;
+              });
+            }
+          }
+        } catch (e) {}
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleReactivation);
+    window.addEventListener('focus', handleReactivation);
+    return () => {
+      document.removeEventListener('visibilitychange', handleReactivation);
+      window.removeEventListener('focus', handleReactivation);
+    };
+  }, []);
 
   // Load from Firestore (fallback to localStorage) on auth state change
   useEffect(() => {
@@ -212,19 +316,43 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             // Quick measurement fields (weight, waist, neck, hip) intentionally start empty on reload
             if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
             if (data.unit !== undefined) setUnit(data.unit || 'metric');
-            if (data.darkMode !== undefined) setDarkMode(data.darkMode);
+            if (data.themeMode) {
+              setThemeMode(data.themeMode);
+              const isDark = isDarkModeForMode(data.themeMode);
+              setDarkMode(isDark);
+            } else if (data.darkMode !== undefined && getThemeMode() !== 'auto') {
+              setDarkMode(data.darkMode);
+            }
             if (data.lang !== undefined) setLang(data.lang || 'en');
+
+            // Restore last visited menu tab across all devices of the same user
+            if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
+              isTabSyncingFromRemote.current = true;
+              lastSyncedTabRef.current = data.lastMenuTab;
+              setActiveTab(data.lastMenuTab);
+              try {
+                localStorage.setItem('ratool_active_tab', data.lastMenuTab);
+                localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+              } catch (e) {}
+            }
+
             loadedFromDb = true;
           }
 
           // Load history & goals from Firestore
           if (histSnap && histSnap.exists() && Array.isArray(histSnap.data().history)) {
             setHistoryList(histSnap.data().history);
-            try { localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history)); } catch {}
+            try {
+              localStorage.setItem('ratool_history', JSON.stringify(histSnap.data().history));
+              localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history));
+            } catch {}
           }
           if (goalSnap && goalSnap.exists() && goalSnap.data().goal) {
             setSavedGoal(goalSnap.data().goal);
-            try { localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal)); } catch {}
+            try {
+              localStorage.setItem('ratool_goals', JSON.stringify(goalSnap.data().goal));
+              localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal));
+            } catch {}
           }
         } catch (e) {
           console.error('Error loading profile:', e);
@@ -243,16 +371,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           // Keep fields empty for new user
         } else {
           // If no user load local
-          const savedName = localStorage.getItem('ratbod_name') || '';
-          const savedGender = localStorage.getItem('ratbod_gender') as Gender || 'male';
-          const savedBirthdate = localStorage.getItem('ratbod_birthdate') || '';
-          const savedAge = localStorage.getItem('ratbod_age') || '';
-          const savedHeight = localStorage.getItem('ratbod_height') || '';
+          const savedName = localStorage.getItem('ratool_name') || localStorage.getItem('ratbod_name') || '';
+          const savedGender = (localStorage.getItem('ratool_gender') || localStorage.getItem('ratbod_gender')) as Gender || 'male';
+          const savedBirthdate = localStorage.getItem('ratool_birthdate') || localStorage.getItem('ratbod_birthdate') || '';
+          const savedAge = localStorage.getItem('ratool_age') || localStorage.getItem('ratbod_age') || '';
+          const savedHeight = localStorage.getItem('ratool_height') || localStorage.getItem('ratbod_height') || '';
           // Quick measurement fields reset on reload
-          const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel || 'sedentary';
-          const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial' || 'metric';
+          const savedActivity = (localStorage.getItem('ratool_activity') || localStorage.getItem('ratbod_activity')) as ActivityLevel || 'sedentary';
+          const savedUnit = (localStorage.getItem('ratool_unit') || localStorage.getItem('ratbod_unit')) as 'metric' | 'imperial' || 'metric';
           const savedDarkMode = getInitialTheme();
-          const savedLang = localStorage.getItem('ratbod_lang') as 'en' | 'bn' || 'en';
+          const savedLang = (localStorage.getItem('ratool_lang') || localStorage.getItem('ratbod_lang')) as 'en' | 'bn' || 'en';
 
           setName(savedName);
           setGender(savedGender);
@@ -266,9 +394,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           setLang(savedLang);
 
           try {
-            const h = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-            setHistoryList(h);
-            const g = localStorage.getItem('ratbod_goals');
+            const h = localStorage.getItem('ratool_history') || localStorage.getItem('ratbod_history');
+            setHistoryList(JSON.parse(h || '[]'));
+            const g = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
             setSavedGoal(g ? JSON.parse(g) : null);
           } catch (e) {}
         }
@@ -282,11 +410,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   // Sync state with localStorage on refresh trigger
   useEffect(() => {
     try {
-      const h = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      setHistoryList(h);
+      const h = localStorage.getItem('ratool_history') || localStorage.getItem('ratbod_history');
+      setHistoryList(JSON.parse(h || '[]'));
     } catch (e) {}
     try {
-      const g = localStorage.getItem('ratbod_goals');
+      const g = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
       setSavedGoal(g ? JSON.parse(g) : null);
     } catch (e) {}
   }, [historyRefreshTrigger]);
@@ -295,14 +423,23 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   useEffect(() => {
     if (!isLoaded) return;
 
+    localStorage.setItem('ratool_name', name);
     localStorage.setItem('ratbod_name', name);
+    localStorage.setItem('ratool_gender', gender);
     localStorage.setItem('ratbod_gender', gender);
+    localStorage.setItem('ratool_birthdate', birthdate);
     localStorage.setItem('ratbod_birthdate', birthdate);
+    localStorage.setItem('ratool_age', age);
     localStorage.setItem('ratbod_age', age);
+    localStorage.setItem('ratool_height', height);
     localStorage.setItem('ratbod_height', height);
+    localStorage.setItem('ratool_activity', activityLevel);
     localStorage.setItem('ratbod_activity', activityLevel);
+    localStorage.setItem('ratool_unit', unit);
     localStorage.setItem('ratbod_unit', unit);
+    localStorage.setItem('ratool_darkmode', darkMode.toString());
     localStorage.setItem('ratbod_darkmode', darkMode.toString());
+    localStorage.setItem('ratool_lang', lang);
     localStorage.setItem('ratbod_lang', lang);
 
     // Toggle dark class on <html> element
@@ -337,8 +474,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         height,
         activityLevel,
         unit,
+        themeMode: getThemeMode(),
         darkMode,
         lang,
+        lastMenuTab: activeTab,
         updatedAt: serverTimestamp()
       }, { merge: true }).catch(e => {
         console.error("Failed to sync profile to Firestore", e);
@@ -476,8 +615,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       bodyFat: computedBodyFat
     };
 
-    const existing = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+    const existing = JSON.parse(localStorage.getItem('ratool_history') || localStorage.getItem('ratbod_history') || '[]');
     const updated = [...existing, newEntry];
+    localStorage.setItem('ratool_history', JSON.stringify(updated));
     localStorage.setItem('ratbod_history', JSON.stringify(updated));
     setHistoryList(updated);
     
@@ -800,6 +940,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const handleHealthMenuClick = async () => {
     setActiveTab('calculator');
     try {
+      localStorage.setItem('ratool_active_tab', 'calculator');
       localStorage.setItem('ratbod_active_tab', 'calculator');
     } catch (e) {}
 
@@ -807,16 +948,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     setHistoryRefreshTrigger(prev => prev + 1);
 
     try {
-      const h = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
-      setHistoryList(h);
-      const g = localStorage.getItem('ratbod_goals');
+      const h = localStorage.getItem('ratool_history') || localStorage.getItem('ratbod_history');
+      setHistoryList(JSON.parse(h || '[]'));
+      const g = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
       setSavedGoal(g ? JSON.parse(g) : null);
 
-      const savedHeight = localStorage.getItem('ratbod_height');
-      const savedAge = localStorage.getItem('ratbod_age');
-      const savedGender = localStorage.getItem('ratbod_gender') as Gender;
-      const savedActivity = localStorage.getItem('ratbod_activity') as ActivityLevel;
-      const savedUnit = localStorage.getItem('ratbod_unit') as 'metric' | 'imperial';
+      const savedHeight = localStorage.getItem('ratool_height') || localStorage.getItem('ratbod_height');
+      const savedAge = localStorage.getItem('ratool_age') || localStorage.getItem('ratbod_age');
+      const savedGender = (localStorage.getItem('ratool_gender') || localStorage.getItem('ratbod_gender')) as Gender;
+      const savedActivity = (localStorage.getItem('ratool_activity') || localStorage.getItem('ratbod_activity')) as ActivityLevel;
+      const savedUnit = (localStorage.getItem('ratool_unit') || localStorage.getItem('ratbod_unit')) as 'metric' | 'imperial';
 
       if (savedHeight !== null) setHeight(savedHeight);
       if (savedAge !== null) setAge(savedAge);
@@ -842,11 +983,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         const histSnap = await getDoc(doc(db, 'users', currentUser.uid, 'appData', 'history'));
         if (histSnap.exists() && Array.isArray(histSnap.data().history)) {
           setHistoryList(histSnap.data().history);
+          localStorage.setItem('ratool_history', JSON.stringify(histSnap.data().history));
           localStorage.setItem('ratbod_history', JSON.stringify(histSnap.data().history));
         }
         const goalSnap = await getDoc(doc(db, 'users', currentUser.uid, 'appData', 'goals'));
         if (goalSnap.exists() && goalSnap.data().goal) {
           setSavedGoal(goalSnap.data().goal);
+          localStorage.setItem('ratool_goals', JSON.stringify(goalSnap.data().goal));
           localStorage.setItem('ratbod_goals', JSON.stringify(goalSnap.data().goal));
         }
       } catch (err) {
@@ -915,16 +1058,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         )}>
           <button 
             type="button"
-            id="ratbod_logo_btn"
+            id="ratool_logo_btn"
             onClick={handleLogoClick} 
             className="flex items-center gap-2 shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer text-left bg-transparent border-0 py-2 px-1 -ml-1 rounded-xl touch-manipulation relative z-10 select-none"
-            title="Reload RatboD"
-            aria-label="Reload RatboD"
+            title="Reload RaTooL"
+            aria-label="Reload RaTooL"
           >
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white shadow-sm shadow-primary/30 shrink-0">
               <Activity size={14} />
             </div>
-            <h1 className="font-sans font-black text-base tracking-tighter select-none">RatboD</h1>
+            <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
           {/* Desktop Navigation Links */}
@@ -990,15 +1133,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           </nav>
           
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className={cn(
-                "p-1.5 rounded-full transition-all cursor-pointer",
-                darkMode ? "bg-white/5 text-primary hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              )}
-            >
-              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
+            <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} lang={lang} align="right" />
 
             <div className={cn(
               "flex p-0.5 rounded-full transition-colors",
@@ -1404,7 +1539,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           {/* Logo - Displayed across all tabs and views */}
           <div className="flex items-center gap-1.5">
             <Activity size={14} className="text-gray-700 dark:text-gray-300" />
-            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATBOD</span>
+            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
           </div>
 
           {/* Unit Toggle, Policies, & Copyright: always shown on desktop, on mobile only in Health tab */}
@@ -1493,6 +1628,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         darkMode={darkMode}
+        setDarkMode={setDarkMode}
         name={name}
         setName={setName}
         gender={gender}

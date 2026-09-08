@@ -25,6 +25,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'motion/react';
 import { getInitialTheme, saveManualTheme, applyThemeToDOM } from '../utils/theme';
+import ThemeToggle from './ThemeToggle';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -68,6 +69,7 @@ export default function LandingPage({
 
   const handleNavigate = (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing') => {
     try {
+      localStorage.setItem('ratool_active_tab', tab);
       localStorage.setItem('ratbod_active_tab', tab);
     } catch (e) {}
     if (onNavigateTab) {
@@ -244,16 +246,16 @@ export default function LandingPage({
           {/* Clickable Logo that reloads */}
           <button 
             type="button"
-            id="landing_ratbod_logo_btn"
+            id="landing_ratool_logo_btn"
             onClick={handleLogoClick} 
             className="flex items-center gap-2 shrink-0 hover:opacity-80 active:scale-95 transition-all cursor-pointer text-left bg-transparent border-0 py-2 px-1 -ml-1 rounded-xl touch-manipulation relative z-10 select-none"
-            title="Reload RatboD"
-            aria-label="Reload RatboD"
+            title="Reload RaTooL"
+            aria-label="Reload RaTooL"
           >
             <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white shadow-sm shadow-primary/30 shrink-0">
               <Activity size={14} />
             </div>
-            <h1 className="font-sans font-black text-base tracking-tighter select-none">RatboD</h1>
+            <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
           {/* Quick Jump Links */}
@@ -290,18 +292,9 @@ export default function LandingPage({
             </a>
           </nav>
           
-          {/* Actions: Theme Toggle, Lang Toggle, Launch App */}
+          {/* Actions: Theme Toggle (Sunset to Sunrise), Lang Toggle, Launch App */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <button 
-              onClick={handleToggleTheme}
-              className={cn(
-                "p-1.5 rounded-full transition-all cursor-pointer",
-                darkMode ? "bg-white/5 text-primary hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              )}
-              title="Toggle Dark Mode"
-            >
-              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
+            <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} lang={lang} align="right" />
 
             <div className={cn(
               "flex p-0.5 rounded-full transition-colors",
@@ -1321,11 +1314,11 @@ export default function LandingPage({
             type="button"
             onClick={handleLogoClick}
             className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all text-left bg-transparent border-0 p-0 select-none"
-            title="Reload RatboD"
-            aria-label="Reload RatboD"
+            title="Reload RaTooL"
+            aria-label="Reload RaTooL"
           >
             <Activity size={14} className="text-gray-700 dark:text-gray-300" />
-            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATBOD</span>
+            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
           </button>
 
           {/* UNIT Switcher Pill matching inner footer */}

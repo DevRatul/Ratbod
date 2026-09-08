@@ -30,6 +30,9 @@ export async function loginWithGoogle(forceRedirect: boolean = false): Promise<U
   // Only use redirect if explicitly requested
   if (forceRedirect) {
     try {
+      localStorage.setItem('ratool_auth_in_progress', 'google_redirect');
+      sessionStorage.setItem('ratool_auth_in_progress', 'google_redirect');
+      localStorage.setItem('ratbod_auth_in_progress', 'google_redirect');
       sessionStorage.setItem('ratbod_auth_in_progress', 'google_redirect');
     } catch {}
     await signInWithRedirect(auth, provider);

@@ -7,7 +7,7 @@ interface SmoothLoaderProps {
   message?: string;
 }
 
-export default function SmoothLoader({ darkMode, message = 'Loading RatboD...' }: SmoothLoaderProps) {
+export default function SmoothLoader({ darkMode, message = 'Loading RaTooL...' }: SmoothLoaderProps) {
   return (
     <div 
       className={`min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-center transition-colors duration-300 ${
@@ -42,7 +42,7 @@ export default function SmoothLoader({ darkMode, message = 'Loading RatboD...' }
         {/* Brand Text & Status */}
         <div className="flex flex-col items-center gap-2">
           <span className="text-sm font-black tracking-widest uppercase">
-            RATBOD
+            RATOOL
           </span>
           <span className={`text-xs font-medium tracking-wide transition-opacity ${
             darkMode ? 'text-gray-400' : 'text-gray-500'

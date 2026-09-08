@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { loginWithGoogle } from '../../utils/auth';
-import { Mail, Lock, User as UserIcon, AlertCircle, ArrowLeft, Smartphone, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Mail, Lock, User as UserIcon, AlertCircle, ArrowLeft, Smartphone, CheckCircle2, KeyRound } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import ThemeToggle from '../ThemeToggle';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -15,31 +18,79 @@ function cn(...inputs: ClassValue[]) {
 
 interface AuthScreenProps {
   darkMode: boolean;
+  setDarkMode?: (val: boolean) => void;
   onBack?: () => void;
 }
 
-export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
+export default function AuthScreen({ darkMode, setDarkMode, onBack }: AuthScreenProps) {
+  const { authError, clearAuthError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showRedirectOption, setShowRedirectOption] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+
+  // Check iOS & PWA standalone status
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const standalone = ('standalone' in window.navigator && Boolean((window.navigator as any).standalone)) || 
+                         window.matchMedia('(display-mode: standalone)').matches;
+      setIsIOS(ios);
+      setIsStandalone(standalone);
+      if (ios) {
+        setShowRedirectOption(true);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    clearAuthError();
+    setSuccessMessage(null);
     setLoading(true);
 
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email.trim(), password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during authentication.');
+      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
+        setError('Incorrect password or account signed up with Google. Use the "Forgot / Set Password" option below to access your account.');
+      } else if (err?.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please sign in or use "Forgot / Set Password".');
+      } else {
+        setError(err.message || 'An error occurred during authentication.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address above to receive a password setup link.');
+      return;
+    }
+    setError(null);
+    clearAuthError();
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetEmailSent(true);
+      setSuccessMessage(`Password setup link sent to ${email.trim()}! Open it on your iPhone to set a password.`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send password reset email.');
     } finally {
       setLoading(false);
     }
@@ -47,17 +98,23 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
 
   const handleGoogleSignIn = async (forceRedirect: boolean = false) => {
     setError(null);
+    clearAuthError();
+    setSuccessMessage(null);
     setGoogleLoading(true);
     try {
       await loginWithGoogle(forceRedirect);
     } catch (err: any) {
       console.error('Google Sign-in error:', err);
       if (err?.code === 'auth/popup-closed-by-user') {
-        // User voluntarily closed the window, no error needed
-        setError(null);
+        if (isIOS || isStandalone) {
+          setShowRedirectOption(true);
+          setError('Google popup was closed or detached by iOS. If you are in the iPhone PWA, use Direct Mobile Sign-In below or sign in with your Email & Password.');
+        } else {
+          setError(null);
+        }
       } else if (err?.code === 'auth/popup-blocked') {
         setShowRedirectOption(true);
-        setError('The Google sign-in pop-up was blocked by your browser. Please allow pop-ups for this site, or try the direct sign-in button below.');
+        setError('The Google sign-in pop-up was blocked by Safari. Please use Direct Mobile Sign-In below or allow pop-ups.');
       } else {
         setError(err.message || 'An error occurred during Google sign in.');
       }
@@ -65,6 +122,8 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
       setGoogleLoading(false);
     }
   };
+
+  const activeError = error || authError;
 
   return (
     <div 
@@ -86,6 +145,11 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           <span className="hidden sm:inline">Back to Home</span>
         </button>
       )}
+
+      {/* Theme Toggle (Sunset to Sunrise) */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} align="right" />
+      </div>
       
       <div className={cn(
         "w-full max-w-md p-6 sm:p-8 rounded-3xl shadow-2xl border relative z-10 my-auto", 
@@ -96,22 +160,38 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           <div className="w-14 h-14 bg-primary/20 text-primary border border-primary/30 rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-lg shadow-primary/20">
             <UserIcon size={28} />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">RatboD</h1>
+          <h1 className="text-2xl font-black tracking-tight">RaTooL</h1>
           <p className={cn("text-xs sm:text-sm mt-1 font-medium", darkMode ? "text-gray-400" : "text-gray-500")}>
-            {isLogin ? 'Sign in to sync your progress across devices' : 'Create an account to save your health metrics'}
+            {isLogin ? 'Sign in to sync your body metrics & logs across devices' : 'Create an account to save your health metrics'}
           </p>
+
+          {isStandalone && (
+            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[11px] font-bold">
+              <Smartphone size={12} />
+              <span>iPhone PWA Installed</span>
+            </div>
+          )}
         </div>
 
-        {error && (
+        {activeError && (
           <div className="mb-5 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-start gap-3">
             <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
             <div className="flex-1 text-xs sm:text-sm text-red-500/95 font-medium leading-relaxed">
-              {error}
+              {activeError}
             </div>
           </div>
         )}
 
-        {/* Primary One-Tap Google Sign In */}
+        {successMessage && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-3">
+            <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs sm:text-sm text-emerald-500 font-medium leading-relaxed">
+              {successMessage}
+            </div>
+          </div>
+        )}
+
+        {/* Primary Google Sign In */}
         <button
           onClick={() => handleGoogleSignIn(false)}
           disabled={googleLoading || loading}
@@ -136,7 +216,7 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           <span>{googleLoading ? 'Connecting with Google...' : 'Continue with Google'}</span>
         </button>
 
-        {/* Dedicated Mobile Direct Redirect Option if popup was blocked or on mobile */}
+        {/* Dedicated Mobile Direct Redirect Option */}
         {showRedirectOption && (
           <button
             onClick={() => handleGoogleSignIn(true)}
@@ -145,7 +225,7 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
             className="mt-2.5 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Smartphone size={15} />
-            <span>Use Direct Mobile Sign-In (Redirect)</span>
+            <span>Direct Mobile Sign-In (Redirect)</span>
           </button>
         )}
 
@@ -155,7 +235,7 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           </div>
           <div className="relative flex justify-center text-sm">
             <span className={cn("px-3 text-[10px] font-bold uppercase tracking-widest", darkMode ? "bg-[#0F0F0F] text-gray-500" : "bg-white text-gray-400")}>
-              Or with email
+              Or sign in with email
             </span>
           </div>
         </div>
@@ -180,7 +260,18 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
           </div>
 
           <div className="space-y-1">
-            <label className={cn("text-[10px] font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Password</label>
+            <div className="flex justify-between items-center">
+              <label className={cn("text-[10px] font-bold uppercase tracking-wider", darkMode ? "text-gray-400" : "text-gray-600")}>Password</label>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
+                >
+                  Forgot / Set Password
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
               <input
@@ -211,7 +302,12 @@ export default function AuthScreen({ darkMode, onBack }: AuthScreenProps) {
             {isLogin ? "Don't have an account? " : "Already have an account? "}
           </span>
           <button
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError(null);
+              clearAuthError();
+              setSuccessMessage(null);
+            }}
             className="font-bold text-primary hover:underline transition-colors cursor-pointer"
           >
             {isLogin ? 'Sign Up' : 'Sign In'}

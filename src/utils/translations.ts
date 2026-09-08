@@ -7,7 +7,7 @@ export type Language = 'en' | 'bn';
 
 export const translations = {
   en: {
-    appName: "RatboD",
+    appName: "RaTooL",
     appSubtitle: "Health Analysis for",
     tagline: "Enter your details for a precise body analysis.",
     measurementsTitle: "Your Measurements",
@@ -141,7 +141,7 @@ export const translations = {
     footerDisclaimer: "Disclaimer: This app is for educational and tracking purposes. It does not replace medical advice.",
   },
   bn: {
-    appName: "র‍্যাটবড (RatboD)",
+    appName: "র‍্যাটুল (RaTooL)",
     appSubtitle: "স্বাস্থ্য বিশ্লেষণ এর জন্য",
     tagline: "আপনার শরীরের নিখুঁত বিশ্লেষণের জন্য বিস্তারিত তথ্য দিন।",
     measurementsTitle: "আপনার পরিমাপ",

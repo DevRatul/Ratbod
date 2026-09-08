@@ -14,8 +14,8 @@ export default defineConfig(({mode}) => {
         registerType: 'prompt',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
-          name: 'RatboD - Body Metrics Tracker',
-          short_name: 'RatboD',
+          name: 'RaTooL - Body Metrics Tracker',
+          short_name: 'RaTooL',
           description: 'Track your body metrics, BMI, BMR, and TDEE with precision.',
           theme_color: '#10b981',
           background_color: '#0a0a0a',

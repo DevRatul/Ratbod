@@ -1,6 +1,6 @@
 {
-  "name": "RatboD - Body Metrics & Fitness Tracker",
-  "short_name": "RatboD",
+  "name": "RaTooL - Body Metrics & Fitness Tracker",
+  "short_name": "RaTooL",
   "description": "Track body metrics, hydration, groceries, and breathing exercises.",
   "start_url": "/",
   "display": "standalone",

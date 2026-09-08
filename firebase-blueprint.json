@@ -16,7 +16,9 @@
         "hip": { "type": "string", "maxLength": 10 },
         "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active", "extra_active"] },
         "unit": { "type": "string", "enum": ["metric", "imperial"] },
+        "themeMode": { "type": "string", "enum": ["auto", "light", "dark"] },
         "darkMode": { "type": "boolean" },
+        "lastMenuTab": { "type": "string", "enum": ["home", "calculator", "results", "groceries", "water", "goals", "breathing"], "maxLength": 30 },
         "lang": { "type": "string", "enum": ["en", "bn"] },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" }
