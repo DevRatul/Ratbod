@@ -24,7 +24,8 @@ export const translations = {
     tabGoals: "Goals",
     tabHistory: "Groceries",
     tabWater: "Water",
-    tabBreathe: "Breathe",
+    tabLogify: "Logify",
+    tabBreathe: "Calm",
 
     // Fields & Labels
     gender: "Gender",
@@ -158,7 +159,8 @@ export const translations = {
     tabGoals: "লক্ষ্য সমূহ",
     tabHistory: "বাজার হিসাব",
     tabWater: "পানি",
-    tabBreathe: "শ্বাস নিন",
+    tabLogify: "লগিফাই",
+    tabBreathe: "শান্ত হোন",
 
     // Fields & Labels
     gender: "লিঙ্গ",

@@ -38,7 +38,8 @@ import {
   ArrowUp,
   ArrowDown,
   Check,
-  SunMedium
+  SunMedium,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -62,9 +63,9 @@ import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/fires
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import GroceryCalculator from './components/GroceryCalculator';
-import WaterTracker from './components/WaterTracker';
 import BreathingTimer from './components/BreathingTimer';
 import Habitor from './components/Habitor';
+import Logify from './components/Logify';
 import Goals from './components/Goals';
 import History from './components/History';
 import QuickSteps from './components/QuickSteps';
@@ -159,7 +160,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       return null;
     }
   });
-  const VALID_TABS = ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'breathing'] as const;
+  const VALID_TABS = ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'breathing', 'logify'] as const;
   type TabType = typeof VALID_TABS[number];
   const isTabSyncingFromRemote = useRef(false);
   const lastSyncedTabRef = useRef<string | null>(null);
@@ -168,6 +169,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('ratool_active_tab') || localStorage.getItem('ratbod_active_tab');
+      if (saved === 'water') return 'logify';
       if (saved && (VALID_TABS as readonly string[]).includes(saved)) {
         return saved as TabType;
       }
@@ -1240,9 +1242,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
-          {/* Desktop Navigation Links */}
+          {/* Desktop Navigation Links: 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
           <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
+            {/* 1. Health */}
             <button
+              id="tab_calculator_desktop"
               onClick={handleHealthMenuClick}
               className={cn(
                 "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer",
@@ -1253,7 +1257,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             >
               {t.tabMeasure}
             </button>
+
+            {/* 2. Habitor */}
             <button
+              id="tab_results_desktop"
               onClick={() => setActiveTab('results')}
               className={cn(
                 "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
@@ -1265,19 +1272,25 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <Flame size={12} className="text-orange-500" />
               {t.tabResults}
             </button>
+
+            {/* 3. Logify (Third) */}
             <button
-              onClick={() => setActiveTab('water')}
+              id="tab_logify_desktop"
+              onClick={() => setActiveTab('logify')}
               className={cn(
                 "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
-                activeTab === 'water'
+                (activeTab === 'logify' || activeTab === 'water')
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
-              <Droplet size={12} className="text-blue-500 fill-blue-400/30" />
-              {t.tabWater}
+              <ClipboardList size={12} className="text-primary" />
+              {t.tabLogify}
             </button>
+
+            {/* 4. Calm (Fourth, renamed from breath/mindfulness) */}
             <button
+              id="tab_breathing_desktop"
               onClick={() => setActiveTab('breathing')}
               className={cn(
                 "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
@@ -1289,15 +1302,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <Wind size={12} className="animate-pulse text-teal-400" />
               {t.tabBreathe}
             </button>
+
+            {/* 5. Groceries (Fifth) */}
             <button
+              id="tab_groceries_desktop"
               onClick={() => setActiveTab('groceries')}
               className={cn(
-                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer",
+                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 activeTab === 'groceries'
                   ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
               )}
             >
+              <ShoppingBag size={12} className="text-orange-500" />
               {t.tabHistory}
             </button>
           </nav>
@@ -1371,6 +1388,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       )}
                     >
                       <button
+                        id="profile_menu_profile"
                         onClick={() => {
                           setShowProfileMenu(false);
                           setIsProfileOpen(true);
@@ -1381,11 +1399,12 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         )}
                       >
                         <UserIcon size={16} />
-                        Profile
+                        <span>Profile</span>
                       </button>
 
                       <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
+                        id="profile_menu_signout"
                         onClick={() => {
                           setShowProfileMenu(false);
                           auth.signOut();
@@ -1396,7 +1415,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         )}
                       >
                         <LogOut size={16} />
-                        Sign out
+                        <span>Sign out</span>
                       </button>
                     </motion.div>
                 )}
@@ -1422,12 +1441,12 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         <GroceryCalculator darkMode={darkMode} lang={lang} />
       </div>
 
-      {/* Water Tab Content */}
+      {/* Logify Tab Content (includes Water section) */}
       <div className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
-        activeTab === 'water' ? "block" : "hidden"
+        (activeTab === 'logify' || activeTab === 'water') ? "block" : "hidden"
       )}>
-        <WaterTracker darkMode={darkMode} lang={lang} />
+        <Logify darkMode={darkMode} lang={lang} unit={unit} isLogifyActive={activeTab === 'logify' || activeTab === 'water'} />
       </div>
 
       {/* Habitor Tab Content */}
@@ -1440,7 +1459,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       <main className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12 space-y-8 overflow-x-hidden",
-        (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water') ? "hidden" : "block"
+        (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water' || activeTab === 'logify') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 !mb-[16px]">
@@ -1813,8 +1832,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         onToggleSunriseSunset={handleToggleSunriseSunset}
       />
     </div>
-      {/* Mobile Sticky Tab Navigation: 1. Groceries, 2. Breathing, 3. Water, 4. Habitor, 5. Health (Home) */}
+      {/* Mobile Sticky Tab Navigation: 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
       <div 
+        id="mobile_bottom_nav"
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode 
@@ -1824,46 +1844,20 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         )}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">
-          {/* 1. Groceries (First left side) */}
+          {/* 1. Health */}
           <button 
-            id="tab_groceries"
-            onClick={() => setActiveTab('groceries')}
+            id="tab_calculator"
+            onClick={handleHealthMenuClick}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              activeTab === 'groceries' ? "text-[#F04A00] scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
+              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            <ShoppingBag size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
+            <Heart size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
           </button>
 
-          {/* 2. Breathing */}
-          <button 
-            id="tab_breathing"
-            onClick={() => setActiveTab('breathing')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              activeTab === 'breathing' ? "text-teal-400 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
-            )}
-          >
-            <Wind size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
-          </button>
-
-          {/* 3. Water */}
-          <button 
-            id="tab_water"
-            onClick={() => setActiveTab('water')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              activeTab === 'water' ? "text-blue-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
-            )}
-          >
-            <Droplet size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabWater}</span>
-          </button>
-
-          {/* 4. Habitor */}
+          {/* 2. Habitor */}
           <button 
             id="tab_results"
             onClick={() => setActiveTab('results')}
@@ -1876,17 +1870,43 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
           </button>
 
-          {/* 5. Health (Right last bottom, Home menu) */}
+          {/* 3. Logify (Third) */}
           <button 
-            id="tab_calculator"
-            onClick={handleHealthMenuClick}
+            id="tab_logify"
+            onClick={() => setActiveTab('logify')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
-              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              (activeTab === 'logify' || activeTab === 'water') ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            <Heart size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
+            <ClipboardList size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabLogify}</span>
+          </button>
+
+          {/* 4. Calm (Fourth, renamed from breath/mindfulness) */}
+          <button 
+            id="tab_breathing"
+            onClick={() => setActiveTab('breathing')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              activeTab === 'breathing' ? "text-teal-400 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <Wind size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
+          </button>
+
+          {/* 5. Groceries (Fifth) */}
+          <button 
+            id="tab_groceries"
+            onClick={() => setActiveTab('groceries')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              activeTab === 'groceries' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <ShoppingBag size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
           </button>
         </div>
       </div>

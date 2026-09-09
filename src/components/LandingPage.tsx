@@ -32,7 +32,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface LandingPageProps {
-  onNavigateTab?: (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing') => void;
+  onNavigateTab?: (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing' | 'logify') => void;
   onLogin?: () => void;
   darkMode?: boolean;
   setDarkMode?: (val: boolean) => void;
@@ -67,13 +67,14 @@ export default function LandingPage({
     }
   };
 
-  const handleNavigate = (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing') => {
+  const handleNavigate = (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing' | 'logify') => {
+    const targetTab = tab === 'water' ? 'logify' : tab;
     try {
-      localStorage.setItem('ratool_active_tab', tab);
-      localStorage.setItem('ratbod_active_tab', tab);
+      localStorage.setItem('ratool_active_tab', targetTab);
+      localStorage.setItem('ratbod_active_tab', targetTab);
     } catch (e) {}
     if (onNavigateTab) {
-      onNavigateTab(tab);
+      onNavigateTab(targetTab);
     } else if (onLogin) {
       onLogin();
     }
