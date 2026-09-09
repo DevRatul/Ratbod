@@ -120,20 +120,21 @@ export default function Logify({ darkMode, lang = 'en', isLogifyActive }: Logify
 
   return (
     <div className="w-full max-w-full overflow-hidden">
-      {/* Desktop Navigation: Positioned at top for md: screens and above, styled identically to top header */}
+      {/* Desktop Navigation: Positioned at top for md: screens and above, styled with capsule border and glass effect */}
       <div className="hidden md:flex justify-center w-full mb-6">
         <nav 
           aria-label="Logify Desktop Navigation"
           className={cn(
-            "flex items-center gap-1 text-[11px] font-bold p-1 rounded-xl border transition-colors",
+            "flex items-center gap-1.5 text-xs font-bold p-1.5 rounded-full border backdrop-blur-xl transition-all shadow-xs",
             darkMode 
-              ? "bg-white/5 border-white/5" 
-              : "bg-gray-100/60 border-black/5"
+              ? "bg-[#141414]/80 border-white/10" 
+              : "bg-white/80 border-black/5"
           )}
         >
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
+            const isWater = tab.id === 'water';
 
             return (
               <button
@@ -142,13 +143,23 @@ export default function Logify({ darkMode, lang = 'en', isLogifyActive }: Logify
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "px-3.5 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 select-none",
+                  "px-4.5 py-2.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 select-none",
                   isSelected
-                    ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
+                    ? (isWater
+                        ? (darkMode ? "bg-blue-500/20 text-blue-400 font-bold shadow-xs" : "bg-blue-50 text-blue-600 shadow-xs font-bold")
+                        : (darkMode ? "bg-white/15 text-white font-bold shadow-xs" : "bg-white text-gray-900 shadow-xs font-bold"))
                     : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
                 )}
               >
-                <Icon size={13} className={cn("shrink-0", isSelected ? (darkMode ? "text-white" : "text-gray-900") : "opacity-75")} />
+                <Icon 
+                  size={15} 
+                  className={cn(
+                    "shrink-0", 
+                    isWater 
+                      ? (darkMode ? "text-blue-400" : "text-blue-500") 
+                      : (isSelected ? (darkMode ? "text-white" : "text-gray-900") : "opacity-75")
+                  )} 
+                />
                 <span>{isBn ? tab.labelBn : tab.labelEn}</span>
               </button>
             );
@@ -156,8 +167,8 @@ export default function Logify({ darkMode, lang = 'en', isLogifyActive }: Logify
         </nav>
       </div>
 
-      {/* Tab Content Area: bottom padding on mobile (pb-28) for smooth scroll clearance */}
-      <div id={`logify_content_${activeTab}`} className="min-h-[200px] w-full pb-28 md:pb-6">
+      {/* Tab Content Area: comfortable bottom padding on mobile (pb-32) */}
+      <div id={`logify_content_${activeTab}`} className="min-h-[200px] w-full pb-32 md:pb-6">
         <div className={activeTab === 'water' ? 'block' : 'hidden'}>
           <WaterTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
         </div>
@@ -179,21 +190,25 @@ export default function Logify({ darkMode, lang = 'en', isLogifyActive }: Logify
         </div>
       </div>
 
-      {/* Mobile 5-Tab Navigation: Floating directly above mobile menu, NO glass effect, tiny space for mobile view only */}
+      {/* Mobile 5-Tab Navigation: Floating capsule docked above mobile bottom bar with increased height and water blue accent */}
       <div 
-        id="logify_mobile_subnav"
-        style={{ bottom: `${mobileNavHeight}px` }}
-        className="fixed left-0 right-0 z-40 md:hidden flex justify-center px-1.5 pb-1 pointer-events-none"
+        id="logify_mobile_subnav_wrapper"
+        style={{ bottom: `${mobileNavHeight + 2}px` }}
+        className="fixed left-0 right-0 z-40 md:hidden flex justify-center px-4 pointer-events-none transition-all duration-300"
       >
-        <div className={cn(
-          "pointer-events-auto w-full max-w-sm grid grid-cols-5 p-0.5 rounded-lg border shadow-md transition-colors gap-0.5 text-[10px] font-bold",
-          darkMode 
-            ? "bg-[#181818] border-white/10 text-white shadow-black/40" 
-            : "bg-[#f4f4f5] border-black/10 text-gray-900 shadow-gray-300/40"
-        )}>
+        <div 
+          id="logify_mobile_subnav"
+          className={cn(
+            "pointer-events-auto w-full max-w-[315px] xs:max-w-[330px] grid grid-cols-5 p-1.5 rounded-full border backdrop-blur-2xl backdrop-saturate-150 transition-all gap-1 shadow-lg",
+            darkMode 
+              ? "bg-[#121212]/85 border-white/15 text-white shadow-black/50" 
+              : "bg-white/85 border-black/10 text-gray-900 shadow-gray-400/25"
+          )}
+        >
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
+            const isWater = tab.id === 'water';
 
             return (
               <button
@@ -202,14 +217,24 @@ export default function Logify({ darkMode, lang = 'en', isLogifyActive }: Logify
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "flex items-center justify-center gap-1 py-1 px-0.5 rounded-md transition-colors cursor-pointer select-none text-center min-w-0 w-full",
+                  "flex items-center justify-center gap-1 py-2.5 px-0.5 rounded-full min-h-[30px] transition-all cursor-pointer select-none text-center min-w-0 w-full",
                   isSelected
-                    ? (darkMode ? "bg-white/15 text-white font-bold" : "bg-white text-gray-900 shadow-xs font-bold")
+                    ? (isWater
+                        ? (darkMode ? "bg-blue-500/25 text-blue-400 font-bold shadow-xs" : "bg-blue-50 text-blue-600 shadow-xs font-bold")
+                        : (darkMode ? "bg-white/20 text-white font-bold shadow-xs" : "bg-white text-gray-900 shadow-xs font-bold"))
                     : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
                 )}
               >
-                <Icon size={11} className={cn("shrink-0", isSelected ? (darkMode ? "text-white" : "text-gray-900") : "opacity-75")} />
-                <span className="truncate tracking-tight leading-none text-[9.5px]">{isBn ? tab.labelBnShort : tab.labelEnShort}</span>
+                <Icon 
+                  size={12} 
+                  className={cn(
+                    "shrink-0", 
+                    isWater 
+                      ? (darkMode ? "text-blue-400" : "text-blue-500") 
+                      : (isSelected ? (darkMode ? "text-white" : "text-gray-900") : "opacity-75")
+                  )} 
+                />
+                <span className="truncate tracking-tight leading-none text-[10px] font-bold">{isBn ? tab.labelBnShort : tab.labelEnShort}</span>
               </button>
             );
           })}

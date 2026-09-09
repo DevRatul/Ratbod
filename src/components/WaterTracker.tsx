@@ -1848,13 +1848,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       </AnimatePresence>
 
 
-      {/* Floating Scroll Toggle Button (Down when at top, Up when scrolled) - Mobile View Only for Water Section */}
+      {/* Floating Scroll Toggle Button (Down when at top, Up when scrolled) - Positioned above sub-navigation on mobile */}
       <button
         type="button"
         id="water_scroll_toggle_btn"
         onClick={handleScrollToggle}
         className={cn(
-          "fixed bottom-20 right-4 z-40 md:hidden w-10 h-10 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-90 flex items-center justify-center cursor-pointer select-none",
+          "fixed bottom-28 right-4 z-40 md:hidden w-10 h-10 rounded-full shadow-xl border backdrop-blur-md transition-all active:scale-90 flex items-center justify-center cursor-pointer select-none",
           darkMode
             ? "bg-[#161616]/90 border-white/20 text-white shadow-black/70 hover:bg-[#222]"
             : "bg-white/95 border-gray-200 text-gray-800 shadow-gray-400/40 hover:bg-gray-50"

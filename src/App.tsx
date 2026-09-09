@@ -1280,11 +1280,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
                 (activeTab === 'logify' || activeTab === 'water')
-                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+                  ? (darkMode ? "bg-white/10 text-blue-400 font-bold" : "bg-white text-blue-600 shadow-sm font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-blue-400" : "text-gray-700 hover:text-blue-600")
               )}
             >
-              <ClipboardList size={12} className="text-primary" />
+              <ClipboardList size={12} className={cn("transition-colors", (activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "text-blue-500")} />
               {t.tabLogify}
             </button>
 
@@ -1875,11 +1875,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_logify"
             onClick={() => setActiveTab('logify')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              (activeTab === 'logify' || activeTab === 'water') ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0 cursor-pointer",
+              (activeTab === 'logify' || activeTab === 'water') 
+                ? (darkMode ? "text-blue-400 scale-105 font-bold" : "text-blue-500 scale-105 font-bold") 
+                : (darkMode ? "text-gray-400 hover:text-blue-400" : "text-gray-600 hover:text-blue-600")
             )}
           >
-            <ClipboardList size={18} />
+            <ClipboardList size={18} className={cn((activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "text-blue-500/80")} />
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabLogify}</span>
           </button>
 
