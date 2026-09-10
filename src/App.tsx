@@ -40,7 +40,8 @@ import {
   Check,
   SunMedium,
   ClipboardList,
-  Globe
+  Globe,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -71,6 +72,7 @@ import Goals from './components/Goals';
 import History from './components/History';
 import QuickSteps from './components/QuickSteps';
 import ProfileModal from './components/ProfileModal';
+import DashboardModal from './components/DashboardModal';
 import LandingPage from './components/LandingPage';
 import ThemeToggle from './components/ThemeToggle';
 import { translations } from './utils/translations';
@@ -195,6 +197,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     }
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -1576,6 +1579,23 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         darkMode ? "bg-[#121212]/95 backdrop-blur-xl border-white/10 shadow-black/80" : "bg-white/95 backdrop-blur-xl border-black/10 shadow-gray-400/50"
                       )}
                     >
+                      {/* Dashboard (On top of profile menu) */}
+                      <button
+                        id="profile_menu_dashboard"
+                        type="button"
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setIsDashboardOpen(true);
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
+                          darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
+                        )}
+                      >
+                        <LayoutDashboard size={14} className="sm:w-4 sm:h-4 text-primary shrink-0" />
+                        <span>{lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}</span>
+                      </button>
+
                       <button
                         id="profile_menu_profile"
                         type="button"
@@ -2067,6 +2087,26 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         unit={unit}
         isSunriseToSunset={isSunriseToSunset}
         onToggleSunriseSunset={handleToggleSunriseSunset}
+      />
+
+      <DashboardModal
+        isOpen={isDashboardOpen}
+        onClose={() => setIsDashboardOpen(false)}
+        darkMode={darkMode}
+        lang={lang}
+        unit={unit}
+        currentWeight={metricData.weight}
+        historyList={historyList}
+        savedGoal={savedGoal}
+        onNavigateTab={(tab, subTab) => {
+          setIsDashboardOpen(false);
+          setActiveTab(tab as TabType);
+          if (subTab) {
+            try {
+              localStorage.setItem('ratool_logify_subtab', subTab);
+            } catch (e) {}
+          }
+        }}
       />
     </div>
       {/* Mobile Sticky Tab Navigation: 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
