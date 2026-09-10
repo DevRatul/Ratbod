@@ -39,7 +39,8 @@ import {
   ArrowDown,
   Check,
   SunMedium,
-  ClipboardList
+  ClipboardList,
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -165,6 +166,21 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const isTabSyncingFromRemote = useRef(false);
   const lastSyncedTabRef = useRef<string | null>(null);
 
+  const VALID_SUB_TABS = ['writing', 'reading', 'water', 'sleep', 'steps'] as const;
+  type SubNavTab = typeof VALID_SUB_TABS[number];
+  const isSubTabSyncingFromRemote = useRef(false);
+  const [activeSubTab, setActiveSubTab] = useState<SubNavTab>(() => {
+    try {
+      const saved = localStorage.getItem('ratool_logify_subtab');
+      if (saved && (VALID_SUB_TABS as readonly string[]).includes(saved)) {
+        return saved as SubNavTab;
+      }
+      return 'writing';
+    } catch (e) {
+      return 'writing';
+    }
+  });
+
   const [authUser, setAuthUser] = useState(auth.currentUser);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
@@ -180,6 +196,27 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Minimize profile drop down menu when outside anywhere is clicked or touched
+  useEffect(() => {
+    if (!showProfileMenu) return;
+
+    const handleOutsideClickOrTouch = (e: MouseEvent | TouchEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClickOrTouch);
+    document.addEventListener('touchstart', handleOutsideClickOrTouch, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClickOrTouch);
+      document.removeEventListener('touchstart', handleOutsideClickOrTouch);
+    };
+  }, [showProfileMenu]);
+
   const [isSunriseToSunset, setIsSunriseToSunset] = useState<boolean>(() => isSunriseToSunsetEnabled());
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -348,6 +385,20 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             return currentTab;
           });
         }
+
+        // Real-time synchronization of active sub nav tab across devices
+        if (data.lastSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(data.lastSubNavTab)) {
+          setActiveSubTab((currentSubTab) => {
+            if (currentSubTab !== data.lastSubNavTab) {
+              isSubTabSyncingFromRemote.current = true;
+              try {
+                localStorage.setItem('ratool_logify_subtab', data.lastSubNavTab);
+              } catch (e) {}
+              return data.lastSubNavTab;
+            }
+            return currentSubTab;
+          });
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}`);
@@ -414,6 +465,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   return data.lastMenuTab;
                 }
                 return currentTab;
+              });
+            }
+
+            if (data.lastSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(data.lastSubNavTab)) {
+              setActiveSubTab((currentSubTab) => {
+                if (currentSubTab !== data.lastSubNavTab) {
+                  isSubTabSyncingFromRemote.current = true;
+                  try {
+                    localStorage.setItem('ratool_logify_subtab', data.lastSubNavTab);
+                  } catch (e) {}
+                  return data.lastSubNavTab;
+                }
+                return currentSubTab;
               });
             }
           }
@@ -504,6 +568,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               try {
                 localStorage.setItem('ratool_active_tab', data.lastMenuTab);
                 localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+              } catch (e) {}
+            }
+
+            // Restore last visited sub nav tab across all devices of the same user
+            if (data.lastSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(data.lastSubNavTab)) {
+              isSubTabSyncingFromRemote.current = true;
+              setActiveSubTab(data.lastSubNavTab);
+              try {
+                localStorage.setItem('ratool_logify_subtab', data.lastSubNavTab);
               } catch (e) {}
             }
 
@@ -650,12 +723,54 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         isSunriseToSunset: Boolean(isSunriseToSunset),
         lang,
         lastMenuTab: activeTab,
+        lastSubNavTab: activeSubTab,
         updatedAt: serverTimestamp()
       }, { merge: true }).catch(e => {
         console.error("Failed to sync profile to Firestore", e);
       });
     }
-  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, isSunriseToSunset, lang, isLoaded]);
+  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, isSunriseToSunset, lang, activeTab, activeSubTab, isLoaded]);
+
+  // Real-time synchronization of activeTab to Firestore across devices
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem('ratool_active_tab', activeTab);
+      localStorage.setItem('ratbod_active_tab', activeTab);
+    } catch (e) {}
+
+    const user = authUser || auth.currentUser;
+    if (user && !isTabSyncingFromRemote.current) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        lastMenuTab: activeTab,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+    }
+    if (isTabSyncingFromRemote.current) {
+      isTabSyncingFromRemote.current = false;
+    }
+  }, [activeTab, authUser, isLoaded]);
+
+  // Real-time synchronization of activeSubTab to Firestore across devices
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem('ratool_logify_subtab', activeSubTab);
+    } catch (e) {}
+
+    const user = authUser || auth.currentUser;
+    if (user && !isSubTabSyncingFromRemote.current) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        lastSubNavTab: activeSubTab,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+    }
+    if (isSubTabSyncingFromRemote.current) {
+      isSubTabSyncingFromRemote.current = false;
+    }
+  }, [activeSubTab, authUser, isLoaded]);
 
   useEffect(() => {
     // Set browser tab theme-color and iOS status bar style
@@ -1223,7 +1338,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       {/* Header */}
       <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300">
         <div className={cn(
-          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+          "relative max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode 
             ? "bg-[#0F0F0F]/45 border-white/10 shadow-2xl shadow-black/40" 
             : "bg-white/45 border-black/5 shadow-xl shadow-gray-300/40"
@@ -1242,124 +1357,197 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
-          {/* Desktop Navigation Links: 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
-          <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
+          {/* Desktop Navigation Links (Centered in header / full webpage width): 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
+          <nav 
+            aria-label="Main Navigation"
+            className={cn(
+              "hidden md:flex items-center gap-1 text-[11px] font-bold p-1 rounded-xl border backdrop-blur-md transition-all absolute left-1/2 -translate-x-1/2 z-10",
+              darkMode 
+                ? "bg-white/5 border-white/5" 
+                : "bg-gray-100/70 border-black/5"
+            )}
+          >
             {/* 1. Health */}
             <button
               id="tab_calculator_desktop"
+              type="button"
               onClick={handleHealthMenuClick}
               className={cn(
-                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer",
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'calculator'
-                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              {t.tabMeasure}
+              {activeTab === 'calculator' && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <Heart size={13} className="relative z-10 text-primary shrink-0" />
+              <span className="relative z-10">{t.tabMeasure}</span>
             </button>
 
             {/* 2. Habitor */}
             <button
               id="tab_results_desktop"
+              type="button"
               onClick={() => setActiveTab('results')}
               className={cn(
-                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'results'
-                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              <Flame size={12} className="text-orange-500" />
-              {t.tabResults}
+              {activeTab === 'results' && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <Flame size={13} className="relative z-10 text-orange-500 shrink-0" />
+              <span className="relative z-10">{t.tabResults}</span>
             </button>
 
             {/* 3. Logify (Third) */}
             <button
               id="tab_logify_desktop"
+              type="button"
               onClick={() => setActiveTab('logify')}
               className={cn(
-                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 (activeTab === 'logify' || activeTab === 'water')
-                  ? (darkMode ? "bg-white/10 text-blue-400 font-bold" : "bg-white text-blue-600 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-blue-400" : "text-gray-700 hover:text-blue-600")
+                  ? (darkMode ? "text-blue-400 font-bold" : "text-blue-600 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              <ClipboardList size={12} className={cn("transition-colors", (activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "text-blue-500")} />
-              {t.tabLogify}
+              {(activeTab === 'logify' || activeTab === 'water') && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <ClipboardList size={13} className={cn("relative z-10 shrink-0 transition-colors", (activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "opacity-75")} />
+              <span className="relative z-10">{t.tabLogify}</span>
             </button>
 
             {/* 4. Calm (Fourth, renamed from breath/mindfulness) */}
             <button
               id="tab_breathing_desktop"
+              type="button"
               onClick={() => setActiveTab('breathing')}
               className={cn(
-                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'breathing'
-                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              <Wind size={12} className="animate-pulse text-teal-400" />
-              {t.tabBreathe}
+              {activeTab === 'breathing' && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <Wind size={13} className="relative z-10 animate-pulse text-teal-400 shrink-0" />
+              <span className="relative z-10">{t.tabBreathe}</span>
             </button>
 
             {/* 5. Groceries (Fifth) */}
             <button
               id="tab_groceries_desktop"
+              type="button"
               onClick={() => setActiveTab('groceries')}
               className={cn(
-                "px-3 pt-[10px] pb-[8px] rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'groceries'
-                  ? (darkMode ? "bg-white/10 text-white font-bold" : "bg-white text-gray-900 shadow-sm font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-gray-900")
+                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              <ShoppingBag size={12} className="text-orange-500" />
-              {t.tabHistory}
+              {activeTab === 'groceries' && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <ShoppingBag size={13} className="relative z-10 text-orange-500 shrink-0" />
+              <span className="relative z-10">{t.tabHistory}</span>
             </button>
           </nav>
           
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 relative z-10">
             <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} lang={lang} align="right" />
 
-            <div className={cn(
-              "flex p-0.5 rounded-full transition-colors",
-              darkMode ? "bg-white/5" : "bg-gray-100"
-            )}>
-              <button 
-                onClick={() => setLang('en')}
-                className={cn(
-                  "px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all cursor-pointer",
-                  lang === 'en' 
-                    ? (darkMode ? "bg-white/15 text-white" : "bg-white shadow-sm text-gray-900") 
-                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
-                )}
-                title="English"
-              >
-                EN
-              </button>
-              <button 
-                onClick={() => setLang('bn')}
-                className={cn(
-                  "px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all cursor-pointer",
-                  lang === 'bn' 
-                    ? (darkMode ? "bg-white/15 text-white" : "bg-white shadow-sm text-gray-900") 
-                    : (darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-600 hover:text-gray-800")
-                )}
-                title="বাংলা"
-              >
-                বাং
-              </button>
-            </div>
-
-            <div className="relative">
+            {/* Profile Dropdown Container */}
+            <div className="relative" ref={profileMenuRef}>
               <button
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                id="profile_menu_toggle_btn"
+                type="button"
+                onClick={() => setShowProfileMenu(prev => !prev)}
                 className={cn(
-                  "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all cursor-pointer overflow-hidden",
+                  "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all cursor-pointer overflow-hidden select-none",
                   darkMode ? "border-white/10 hover:border-white/30 bg-white/5" : "border-black/5 hover:border-black/20 bg-black/5"
                 )}
                 title="Profile"
+                aria-label="Profile"
               >
                 {auth.currentUser?.photoURL ? (
                   <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -1372,49 +1560,91 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 <div 
                   className="fixed inset-0 z-40" 
                   onClick={() => setShowProfileMenu(false)}
+                  onTouchStart={() => setShowProfileMenu(false)}
                 />
               )}
               <AnimatePresence>
                 {showProfileMenu && (
                     <motion.div
                       key="profile-menu"
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      initial={{ opacity: 0, y: 6, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       className={cn(
-                        "absolute right-0 top-12 w-56 rounded-2xl shadow-xl border overflow-hidden z-50",
-                        darkMode ? "bg-[#111111] border-white/10" : "bg-white border-black/5"
+                        "absolute right-0 top-10 sm:top-12 w-44 sm:w-56 rounded-xl sm:rounded-2xl shadow-2xl border overflow-hidden z-50 py-1",
+                        darkMode ? "bg-[#121212]/95 backdrop-blur-xl border-white/10 shadow-black/80" : "bg-white/95 backdrop-blur-xl border-black/10 shadow-gray-400/50"
                       )}
                     >
                       <button
                         id="profile_menu_profile"
+                        type="button"
                         onClick={() => {
                           setShowProfileMenu(false);
                           setIsProfileOpen(true);
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors cursor-pointer",
+                          "w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
                         )}
                       >
-                        <UserIcon size={16} />
+                        <UserIcon size={14} className="sm:w-4 sm:h-4 shrink-0" />
                         <span>Profile</span>
                       </button>
 
-                      <div className={cn("h-px w-full", darkMode ? "bg-white/10" : "bg-black/5")} />
+                      {/* Compact Language Selection Row (English / Bangla toggle) */}
+                      <div className="px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between">
+                        <span className={cn("text-[11px] sm:text-xs font-bold flex items-center gap-1.5 sm:gap-2", darkMode ? "text-gray-300" : "text-gray-700")}>
+                          <Globe size={13} className="sm:w-3.5 sm:h-3.5 text-primary shrink-0" />
+                          <span>{lang === 'bn' ? 'ভাষা' : 'Language'}</span>
+                        </span>
+                        <div className={cn(
+                          "flex p-0.5 rounded-full transition-colors",
+                          darkMode ? "bg-white/10" : "bg-gray-100"
+                        )}>
+                          <button 
+                            type="button"
+                            onClick={() => setLang('en')}
+                            className={cn(
+                              "px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black transition-all cursor-pointer",
+                              lang === 'en' 
+                                ? (darkMode ? "bg-white/20 text-white shadow-xs" : "bg-white shadow-sm text-gray-900") 
+                                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                            )}
+                            title="English"
+                          >
+                            EN
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setLang('bn')}
+                            className={cn(
+                              "px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black transition-all cursor-pointer",
+                              lang === 'bn' 
+                                ? (darkMode ? "bg-white/20 text-white shadow-xs" : "bg-white shadow-sm text-gray-900") 
+                                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                            )}
+                            title="বাংলা"
+                          >
+                            বাং
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className={cn("h-px w-full my-0.5", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         id="profile_menu_signout"
+                        type="button"
                         onClick={() => {
                           setShowProfileMenu(false);
                           auth.signOut();
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-3 transition-colors cursor-pointer",
+                          "w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-red-500/10 text-red-400" : "hover:bg-red-50 text-red-600"
                         )}
                       >
-                        <LogOut size={16} />
+                        <LogOut size={14} className="sm:w-4 sm:h-4 shrink-0" />
                         <span>Sign out</span>
                       </button>
                     </motion.div>
@@ -1443,10 +1673,17 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Logify Tab Content (includes Water section) */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
         (activeTab === 'logify' || activeTab === 'water') ? "block" : "hidden"
       )}>
-        <Logify darkMode={darkMode} lang={lang} unit={unit} isLogifyActive={activeTab === 'logify' || activeTab === 'water'} />
+        <Logify 
+          darkMode={darkMode} 
+          lang={lang} 
+          unit={unit} 
+          isLogifyActive={activeTab === 'logify' || activeTab === 'water'} 
+          activeTab={activeSubTab}
+          onTabChange={setActiveSubTab}
+        />
       </div>
 
       {/* Habitor Tab Content */}
@@ -1844,48 +2081,20 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         )}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">
-          {/* 1. Health */}
+          {/* 1. Groceries (Leftmost, so Right-to-Left is: Health, Habitor, Logify, Calm, Groceries) */}
           <button 
-            id="tab_calculator"
-            onClick={handleHealthMenuClick}
+            id="tab_groceries"
+            onClick={() => setActiveTab('groceries')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
-              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              activeTab === 'groceries' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            <Heart size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
+            <ShoppingBag size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
           </button>
 
-          {/* 2. Habitor */}
-          <button 
-            id="tab_results"
-            onClick={() => setActiveTab('results')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
-              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
-            )}
-          >
-            <Flame size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
-          </button>
-
-          {/* 3. Logify (Third) */}
-          <button 
-            id="tab_logify"
-            onClick={() => setActiveTab('logify')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0 cursor-pointer",
-              (activeTab === 'logify' || activeTab === 'water') 
-                ? (darkMode ? "text-blue-400 scale-105 font-bold" : "text-blue-500 scale-105 font-bold") 
-                : (darkMode ? "text-gray-400 hover:text-blue-400" : "text-gray-600 hover:text-blue-600")
-            )}
-          >
-            <ClipboardList size={18} className={cn((activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "text-blue-500/80")} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabLogify}</span>
-          </button>
-
-          {/* 4. Calm (Fourth, renamed from breath/mindfulness) */}
+          {/* 2. Calm */}
           <button 
             id="tab_breathing"
             onClick={() => setActiveTab('breathing')}
@@ -1898,17 +2107,45 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
           </button>
 
-          {/* 5. Groceries (Fifth) */}
+          {/* 3. Logify (Center) */}
           <button 
-            id="tab_groceries"
-            onClick={() => setActiveTab('groceries')}
+            id="tab_logify"
+            onClick={() => setActiveTab('logify')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
-              activeTab === 'groceries' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0 cursor-pointer",
+              (activeTab === 'logify' || activeTab === 'water') 
+                ? (darkMode ? "text-blue-400 scale-105 font-bold" : "text-blue-500 scale-105 font-bold") 
+                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            <ShoppingBag size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
+            <ClipboardList size={18} className={cn((activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "opacity-80")} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabLogify}</span>
+          </button>
+
+          {/* 4. Habitor */}
+          <button 
+            id="tab_results"
+            onClick={() => setActiveTab('results')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
+              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <Flame size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
+          </button>
+
+          {/* 5. Health (Rightmost) */}
+          <button 
+            id="tab_calculator"
+            onClick={handleHealthMenuClick}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
+              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+            )}
+          >
+            <Heart size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
           </button>
         </div>
       </div>

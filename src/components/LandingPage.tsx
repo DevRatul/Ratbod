@@ -239,7 +239,7 @@ export default function LandingPage({
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300">
         <div className={cn(
-          "max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+          "relative max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode 
             ? "bg-[#0F0F0F]/45 border-white/10 shadow-2xl shadow-black/40" 
             : "bg-white/45 border-black/5 shadow-xl shadow-gray-300/40"
@@ -259,8 +259,8 @@ export default function LandingPage({
             <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
-          {/* Quick Jump Links */}
-          <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
+          {/* Quick Jump Links (Centered in header / full webpage width) */}
+          <nav className="hidden md:flex items-center gap-1 text-[11px] font-bold bg-gray-100/60 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5 absolute left-1/2 -translate-x-1/2 z-10">
             <a 
               href="#health-calculator-section" 
               className={cn(
@@ -294,7 +294,7 @@ export default function LandingPage({
           </nav>
           
           {/* Actions: Theme Toggle (Sunset to Sunrise), Lang Toggle, Launch App */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 relative z-10">
             <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} lang={lang} align="right" />
 
             <div className={cn(
