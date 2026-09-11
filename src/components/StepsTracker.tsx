@@ -196,7 +196,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
   };
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto w-full pb-6">
+    <div className="space-y-4 max-w-4xl mx-auto w-full pb-0">
       {/* Main Steps Dashboard Card */}
       <div className={cn(
         "p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all shadow-xs",

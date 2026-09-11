@@ -186,13 +186,21 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     return `${formatNum(kg * 2.20462)} ${lang === 'bn' ? 'পাউন্ড' : 'lb'}`;
   };
 
-  const formatDate = (dateString: string) => {
-    const raw = new Date(dateString).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, {
-      year: 'numeric',
+  const formatDateWithDay = (dateString: string) => {
+    const d = new Date(dateString);
+    const dayName = d.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long' });
+    const monthDay = d.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, {
       month: 'short',
       day: 'numeric'
     });
-    return formatNum(raw);
+    return `${dayName}, ${formatNum(monthDay)}`;
+  };
+
+  const formatTimeWithYear = (dateString: string) => {
+    const d = new Date(dateString);
+    const timeStr = formatNum(d.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' }));
+    const yearStr = formatNum(d.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { year: 'numeric' }));
+    return `${timeStr}, ${yearStr}`;
   };
 
   if (isLoading) {
@@ -269,10 +277,10 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                   </div>
                   <div>
                     <div className={cn("font-bold text-xs", darkMode ? "text-white" : "text-gray-900")}>
-                      {formatDate(entry.date)}
+                      {formatDateWithDay(entry.date)}
                     </div>
-                    <div className="text-[9px] text-gray-500 font-bold">
-                      {formatNum(new Date(entry.date).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' }))}
+                    <div className="text-[10px] text-gray-500 font-bold">
+                      {formatTimeWithYear(entry.date)}
                     </div>
                   </div>
                 </div>

@@ -5,20 +5,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Droplet, Moon, Footprints, BookOpen, PenLine } from 'lucide-react';
+import { Droplet, Moon, Footprints, BookOpen, Compass } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import WaterTracker from './WaterTracker';
 import SleepTracker from './SleepTracker';
 import StepsTracker from './StepsTracker';
 import ReadingTracker from './ReadingTracker';
-import WritingTracker from './WritingTracker';
+import SalahTracker from './SalahTracker';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export type LogifyTab = 'writing' | 'reading' | 'water' | 'sleep' | 'steps';
+export type LogifyTab = 'steps' | 'reading' | 'water' | 'salah' | 'sleep';
 
 interface LogifyProps {
   darkMode: boolean;
@@ -40,12 +40,12 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   {
-    id: 'writing',
-    labelEn: 'Writing',
-    labelEnShort: 'Write',
-    labelBn: 'লেখা',
-    labelBnShort: 'লেখা',
-    icon: PenLine
+    id: 'steps',
+    labelEn: 'Steps',
+    labelEnShort: 'Steps',
+    labelBn: 'পদক্ষেপ',
+    labelBnShort: 'কদম',
+    icon: Footprints
   },
   {
     id: 'reading',
@@ -64,20 +64,20 @@ const TABS: TabConfig[] = [
     icon: Droplet
   },
   {
+    id: 'salah',
+    labelEn: 'Salah',
+    labelEnShort: 'Salah',
+    labelBn: 'সালাত',
+    labelBnShort: 'নামাজ',
+    icon: Compass
+  },
+  {
     id: 'sleep',
     labelEn: 'Sleep',
     labelEnShort: 'Sleep',
     labelBn: 'ঘুম',
     labelBnShort: 'ঘুম',
     icon: Moon
-  },
-  {
-    id: 'steps',
-    labelEn: 'Steps',
-    labelEnShort: 'Steps',
-    labelBn: 'পদক্ষেপ',
-    labelBnShort: 'কদম',
-    icon: Footprints
   }
 ];
 
@@ -90,11 +90,12 @@ export default function Logify({
   const [internalActiveTab, setInternalActiveTab] = useState<LogifyTab>(() => {
     try {
       const saved = localStorage.getItem('ratool_logify_subtab') as LogifyTab;
-      if (saved && ['writing', 'reading', 'water', 'sleep', 'steps'].includes(saved)) {
+      if (saved === ('writing' as any)) return 'salah';
+      if (saved && ['steps', 'reading', 'water', 'salah', 'sleep'].includes(saved)) {
         return saved;
       }
     } catch (e) {}
-    return 'writing';
+    return 'steps';
   });
 
   const activeTab = propActiveTab || internalActiveTab;
@@ -121,6 +122,13 @@ export default function Logify({
     };
   }, []);
 
+  // Whenever Logify subnav changes, ensure page is shown from top
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeTab]);
+
   const handleTabChange = (tab: LogifyTab) => {
     if (onTabChange) {
       onTabChange(tab);
@@ -130,6 +138,9 @@ export default function Logify({
     try {
       localStorage.setItem('ratool_logify_subtab', tab);
     } catch (e) {}
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   const isBn = lang === 'bn';
@@ -137,26 +148,26 @@ export default function Logify({
   return (
     <div className="w-full max-w-full">
       <div className="flex flex-col md:flex-row items-start gap-3 md:gap-3.5 lg:gap-4 w-full">
-        {/* Tab Content Area: comfortable bottom padding on mobile (pb-36) and right padding on desktop so fixed nav never overlaps */}
-        <div id={`logify_content_${activeTab}`} className="flex-1 min-w-0 w-full pb-36 md:pb-6 md:pr-32 xl:pr-0">
-          <div className={activeTab === 'water' ? 'block' : 'hidden'}>
-            <WaterTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
-          </div>
-
-          <div className={activeTab === 'sleep' ? 'block' : 'hidden'}>
-            <SleepTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
-          </div>
-
-          <div className={activeTab === 'steps' ? 'block' : 'hidden'}>
+        {/* Tab Content Area: five sub nav menu pages bottom padding will be 20 pixel only */}
+        <div id={`logify_content_${activeTab}`} className="flex-1 min-w-0 w-full pb-0 md:pr-32 xl:pr-0">
+          <div className={activeTab === 'steps' ? 'block pb-[20px]' : 'hidden'}>
             <StepsTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'reading' ? 'block' : 'hidden'}>
+          <div className={activeTab === 'reading' ? 'block pb-[20px]' : 'hidden'}>
             <ReadingTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'writing' ? 'block' : 'hidden'}>
-            <WritingTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
+          <div className={activeTab === 'water' ? 'block pb-[20px]' : 'hidden'}>
+            <WaterTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
+          </div>
+
+          <div className={activeTab === 'salah' ? 'block pb-[20px]' : 'hidden'}>
+            <SalahTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
+          </div>
+
+          <div className={activeTab === 'sleep' ? 'block pb-[20px]' : 'hidden'}>
+            <SleepTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
         </div>
 

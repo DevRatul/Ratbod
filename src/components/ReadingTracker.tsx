@@ -354,7 +354,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const percentGoal = Math.min(100, Math.round((todayPages / (pageGoal || 1)) * 100));
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto w-full pb-6">
+    <div className="space-y-4 max-w-4xl mx-auto w-full pb-0">
       {/* ========================================================================= */}
       {/* 1. BOOK ENTRY MENU SECTION / LIBRARY */}
       {/* ========================================================================= */}

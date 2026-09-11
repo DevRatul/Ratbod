@@ -949,7 +949,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto pb-0 sm:pb-6 w-full overflow-x-hidden">
+    <div className="space-y-3 sm:space-y-4 max-w-4xl mx-auto pb-0 w-full overflow-x-hidden">
 
       {/* Compact Single-Row Set Goal Section (Positioned Directly Above 'Consume Today') */}
       <div className={cn(

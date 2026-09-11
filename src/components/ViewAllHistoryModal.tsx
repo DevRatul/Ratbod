@@ -179,8 +179,11 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                     weightHistory.map((entry) => {
                       const displayWeight = unit === 'metric' ? entry.weight : entry.weight * 2.20462;
                       const dateObj = new Date(entry.date);
-                      const formattedDate = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric' });
+                      const dayName = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long' });
+                      const monthDay = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric' });
+                      const formattedDate = `${dayName}, ${formatNum(monthDay)}`;
                       const formattedTime = dateObj.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' });
+                      const yearStr = formatNum(dateObj.getFullYear().toString());
 
                       return (
                         <div 
@@ -209,9 +212,9 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                                 )}
                               </div>
                               <div className="text-[8px] sm:text-[10px] text-gray-500 font-semibold flex items-center gap-1 mt-0.5 truncate">
-                                <span>{formatNum(formattedDate)}</span>
+                                <span>{formattedDate}</span>
                                 <span>•</span>
-                                <span>{formatNum(formattedTime)}</span>
+                                <span>{formatNum(formattedTime)}, {yearStr}</span>
                               </div>
                             </div>
                           </div>
@@ -258,7 +261,11 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                   ) : (
                     stepsHistory.map((entry) => {
                       const dateObj = new Date(entry.date);
-                      const formattedDate = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric' });
+                      const dayName = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long' });
+                      const monthDay = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric' });
+                      const formattedDate = `${dayName}, ${formatNum(monthDay)}`;
+                      const formattedTime = dateObj.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' });
+                      const yearStr = formatNum(dateObj.getFullYear().toString());
 
                       return (
                         <div 
@@ -281,8 +288,10 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                                   {lang === 'bn' ? 'ধাপ' : 'steps'}
                                 </span>
                               </div>
-                              <div className="text-[8px] sm:text-[10px] text-gray-500 font-semibold mt-0.5 truncate">
-                                {formatNum(formattedDate)}
+                              <div className="text-[8px] sm:text-[10px] text-gray-500 font-semibold flex items-center gap-1 mt-0.5 truncate">
+                                <span>{formattedDate}</span>
+                                <span>•</span>
+                                <span>{formatNum(formattedTime)}, {yearStr}</span>
                               </div>
                             </div>
                           </div>

@@ -11,6 +11,38 @@
     <script>
       (function() {
         try {
+          // Shim Vite HMR WebSocket in container sandbox to eliminate failed socket retries and net::ERR_CONNECTION_REFUSED errors
+          var OrigWS = window.WebSocket;
+          if (OrigWS) {
+            window.WebSocket = function(url, protocols) {
+              if (protocols === 'vite-hmr' || (typeof url === 'string' && (url.indexOf('24678') !== -1 || url.indexOf('token=') !== -1))) {
+                var fakeWs = new EventTarget();
+                fakeWs.readyState = 1;
+                fakeWs.send = function() {};
+                fakeWs.close = function() {};
+                setTimeout(function() {
+                  if (typeof fakeWs.onopen === 'function') fakeWs.onopen(new Event('open'));
+                  fakeWs.dispatchEvent(new Event('open'));
+                }, 0);
+                return fakeWs;
+              }
+              return new OrigWS(url, protocols);
+            };
+            window.WebSocket.prototype = OrigWS.prototype;
+            window.WebSocket.CONNECTING = OrigWS.CONNECTING;
+            window.WebSocket.OPEN = OrigWS.OPEN;
+            window.WebSocket.CLOSING = OrigWS.CLOSING;
+            window.WebSocket.CLOSED = OrigWS.CLOSED;
+          }
+
+          var _origErr = console.error;
+          console.error = function() {
+            if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].indexOf('[vite]') !== -1 && (arguments[0].indexOf('websocket') !== -1 || arguments[0].indexOf('failed to connect') !== -1)) {
+              if (console.debug) console.debug.apply(console, arguments);
+              return;
+            }
+            _origErr.apply(console, arguments);
+          };
           var mode = localStorage.getItem('ratool_theme_mode') || localStorage.getItem('ratbod_theme_mode');
           var isDark = false;
           if (mode === 'dark') {

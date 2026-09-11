@@ -168,18 +168,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const isTabSyncingFromRemote = useRef(false);
   const lastSyncedTabRef = useRef<string | null>(null);
 
-  const VALID_SUB_TABS = ['writing', 'reading', 'water', 'sleep', 'steps'] as const;
+  const VALID_SUB_TABS = ['steps', 'reading', 'water', 'salah', 'sleep'] as const;
   type SubNavTab = typeof VALID_SUB_TABS[number];
   const isSubTabSyncingFromRemote = useRef(false);
   const [activeSubTab, setActiveSubTab] = useState<SubNavTab>(() => {
     try {
       const saved = localStorage.getItem('ratool_logify_subtab');
+      if (saved === 'writing') return 'salah';
       if (saved && (VALID_SUB_TABS as readonly string[]).includes(saved)) {
         return saved as SubNavTab;
       }
-      return 'writing';
+      return 'steps';
     } catch (e) {
-      return 'writing';
+      return 'steps';
     }
   });
 
@@ -1287,9 +1288,34 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       }
     }
 
-    // Scroll smoothly to top for instant view of refreshed data
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll to top for instant view of refreshed data
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
+
+  // Whenever any menu or subnav menu is clicked, the selected page will be shown from top, not from the bottom
+  const handleMenuClick = (tab: TabType) => {
+    if (tab === 'calculator') {
+      handleHealthMenuClick();
+    } else {
+      setActiveTab(tab);
+      try {
+        localStorage.setItem('ratool_active_tab', tab);
+        localStorage.setItem('ratbod_active_tab', tab);
+      } catch (e) {}
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
+  // Ensure every page is shown from the top whenever activeTab or activeSubTab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeTab, activeSubTab]);
 
   const handleLogoClick = (e?: React.MouseEvent | React.TouchEvent) => {
     if (e) {
@@ -1303,8 +1329,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     return (
       <LandingPage
         onNavigateTab={(tab) => {
-          setActiveTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          handleMenuClick(tab);
         }}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
@@ -1374,7 +1399,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <button
               id="tab_calculator_desktop"
               type="button"
-              onClick={handleHealthMenuClick}
+              onClick={() => handleMenuClick('calculator')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'calculator'
@@ -1407,7 +1432,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <button
               id="tab_results_desktop"
               type="button"
-              onClick={() => setActiveTab('results')}
+              onClick={() => handleMenuClick('results')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'results'
@@ -1440,7 +1465,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <button
               id="tab_logify_desktop"
               type="button"
-              onClick={() => setActiveTab('logify')}
+              onClick={() => handleMenuClick('logify')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 (activeTab === 'logify' || activeTab === 'water')
@@ -1473,7 +1498,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <button
               id="tab_breathing_desktop"
               type="button"
-              onClick={() => setActiveTab('breathing')}
+              onClick={() => handleMenuClick('breathing')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'breathing'
@@ -1506,7 +1531,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <button
               id="tab_groceries_desktop"
               type="button"
-              onClick={() => setActiveTab('groceries')}
+              onClick={() => handleMenuClick('groceries')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
                 activeTab === 'groceries'
@@ -1977,75 +2002,77 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         
       </main>
 
-      {/* Footer */}
-      <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-[10px] sm:py-6 border-t transition-colors",
-        darkMode ? "border-white/5" : "border-black/5"
-      )}>
-        <div className="flex flex-col items-center justify-center gap-3 text-center">
-          {/* Logo - Displayed across all tabs and views */}
-          <div className="flex items-center gap-1.5">
-            <Activity size={14} className="text-gray-700 dark:text-gray-300" />
-            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
-          </div>
-
-          {/* Unit Toggle, Policies, & Copyright: always shown on desktop, on mobile only in Health tab */}
-          <div className={cn(
-            "flex flex-col items-center justify-center gap-3 text-center w-full",
-            activeTab !== 'calculator' ? "hidden md:flex" : "flex"
-          )}>
-            {/* UNIT Switcher Pill (Only in Health / Calculator view) */}
-            {activeTab === 'calculator' && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
-                <div className={cn(
-                  "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
-                )}>
-                  <button 
-                    onClick={() => setUnit('metric')}
-                    className={cn(
-                      "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                      unit === 'metric' 
-                        ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                        : "text-gray-400 hover:text-gray-200"
-                    )}
-                    title="Metric System"
-                  >
-                    M
-                  </button>
-                  <button 
-                    onClick={() => setUnit('imperial')}
-                    className={cn(
-                      "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                      unit === 'imperial' 
-                        ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                        : "text-gray-400 hover:text-gray-200"
-                    )}
-                    title="Imperial System"
-                  >
-                    I
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Policy Links */}
-            <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
+      {/* Footer - Omitted in Liquify's 5-nav sub-nav page */}
+      {activeTab !== 'logify' && activeTab !== 'water' && (
+        <footer className={cn(
+          "max-w-5xl mx-auto px-6 py-[10px] sm:py-6 border-t transition-colors",
+          darkMode ? "border-white/5" : "border-black/5"
+        )}>
+          <div className="flex flex-col items-center justify-center gap-3 text-center">
+            {/* Logo - Displayed across all tabs and views */}
+            <div className="flex items-center gap-1.5">
+              <Activity size={14} className="text-gray-700 dark:text-gray-300" />
+              <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
             </div>
 
-            {/* Copyright */}
-            <p className={cn(
-              "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
-              darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
+            {/* Unit Toggle, Policies, & Copyright: always shown on desktop, on mobile only in Health tab */}
+            <div className={cn(
+              "flex flex-col items-center justify-center gap-3 text-center w-full",
+              activeTab !== 'calculator' ? "hidden md:flex" : "flex"
             )}>
-              © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
-            </p>
+              {/* UNIT Switcher Pill (Only in Health / Calculator view) */}
+              {activeTab === 'calculator' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
+                  <div className={cn(
+                    "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
+                  )}>
+                    <button 
+                      onClick={() => setUnit('metric')}
+                      className={cn(
+                        "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                        unit === 'metric' 
+                          ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                          : "text-gray-400 hover:text-gray-200"
+                      )}
+                      title="Metric System"
+                    >
+                      M
+                    </button>
+                    <button 
+                      onClick={() => setUnit('imperial')}
+                      className={cn(
+                        "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                        unit === 'imperial' 
+                          ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                          : "text-gray-400 hover:text-gray-200"
+                      )}
+                      title="Imperial System"
+                    >
+                      I
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Policy Links */}
+              <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
+                <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
+                <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
+              </div>
+
+              {/* Copyright */}
+              <p className={cn(
+                "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
+                darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
+              )}>
+                © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
+              </p>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       {/* Floating Scroll Toggle Button (Down when at top, Up when scrolled) - Mobile View Only for Health (Home) Section */}
       {activeTab === 'calculator' && (
@@ -2100,7 +2127,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         savedGoal={savedGoal}
         onNavigateTab={(tab, subTab) => {
           setIsDashboardOpen(false);
-          setActiveTab(tab as TabType);
+          handleMenuClick(tab as TabType);
           if (subTab) {
             try {
               localStorage.setItem('ratool_logify_subtab', subTab);
@@ -2124,7 +2151,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           {/* 1. Groceries (Leftmost, so Right-to-Left is: Health, Habitor, Logify, Calm, Groceries) */}
           <button 
             id="tab_groceries"
-            onClick={() => setActiveTab('groceries')}
+            onClick={() => handleMenuClick('groceries')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
               activeTab === 'groceries' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
@@ -2137,7 +2164,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           {/* 2. Calm */}
           <button 
             id="tab_breathing"
-            onClick={() => setActiveTab('breathing')}
+            onClick={() => handleMenuClick('breathing')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
               activeTab === 'breathing' ? "text-teal-400 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
@@ -2150,7 +2177,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           {/* 3. Logify (Center) */}
           <button 
             id="tab_logify"
-            onClick={() => setActiveTab('logify')}
+            onClick={() => handleMenuClick('logify')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0 cursor-pointer",
               (activeTab === 'logify' || activeTab === 'water') 
@@ -2165,7 +2192,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           {/* 4. Habitor */}
           <button 
             id="tab_results"
-            onClick={() => setActiveTab('results')}
+            onClick={() => handleMenuClick('results')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
               activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
@@ -2178,7 +2205,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           {/* 5. Health (Rightmost) */}
           <button 
             id="tab_calculator"
-            onClick={handleHealthMenuClick}
+            onClick={() => handleMenuClick('calculator')}
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
               activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")

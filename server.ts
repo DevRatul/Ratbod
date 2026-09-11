@@ -2,6 +2,11 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 
+// In AI Studio sandbox, HMR is disabled to avoid intermediate state flickering and websocket connection warnings
+if (!process.env.DISABLE_HMR) {
+  process.env.DISABLE_HMR = "true";
+}
+
 console.log("Server starting up...");
 
 const app = express();
@@ -108,7 +113,11 @@ async function setupMiddlewares() {
     console.log("Starting in development mode with Vite...");
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: false,
+        ws: false
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
