@@ -171,9 +171,12 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error("Fatal error during server startup:", err);
-  process.exit(1);
-});
+// Only launch standalone HTTP server if not running inside a serverless platform (e.g. Vercel)
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error("Fatal error during server startup:", err);
+    process.exit(1);
+  });
+}
 
 export default app;
