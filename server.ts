@@ -18,11 +18,9 @@ const isProduction =
   process.env.npm_lifecycle_event === "start" ||
   Boolean(process.argv[1] && process.argv[1].includes("server.cjs"));
 
-// In AI Studio development sandbox, nginx reverse proxy routes external traffic to port 3000.
-// In Cloud Run production deployment, Cloud Run injects process.env.PORT (typically 8080) and expects the container to listen on it.
-const PORT = isProduction
-  ? (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080)
-  : 3000;
+// In AI Studio development sandbox and Cloud Run container, port 3000 is the standard port.
+// Only override if process.env.PORT is explicitly provided by the container orchestrator.
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
 
@@ -31,16 +29,16 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok", port: PORT, mode: isProduction ? "production" : "development" });
 });
 
-// Explicit Service Worker and PWA routes to ensure /sw.js never 404s
+// Explicit Service Worker and PWA routes to ensure /sw.js never 404s and serves freshest worker
 app.get("/sw.js", (req, res) => {
   res.setHeader("Content-Type", "application/javascript");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  const distSw = path.join(process.cwd(), "dist", "sw.js");
   const publicSw = path.join(process.cwd(), "public", "sw.js");
-  if (fs.existsSync(distSw)) {
-    return res.sendFile(distSw);
-  } else if (fs.existsSync(publicSw)) {
+  const distSw = path.join(process.cwd(), "dist", "sw.js");
+  if (fs.existsSync(publicSw)) {
     return res.sendFile(publicSw);
+  } else if (fs.existsSync(distSw)) {
+    return res.sendFile(distSw);
   } else {
     return res.send(`
       self.addEventListener('install', (e) => self.skipWaiting());
@@ -124,15 +122,32 @@ async function setupMiddlewares() {
   } else {
     console.log("Starting in production mode, serving static files from", distPath);
     app.use(express.static(distPath));
+    const publicPath = path.join(process.cwd(), "public");
+    if (fs.existsSync(publicPath)) {
+      app.use(express.static(publicPath));
+    }
     app.get("*", (req, res) => {
       const indexPath = path.join(distPath, "index.html");
+      const fallbackPublicIndex = path.join(process.cwd(), "public", "index.html");
       if (fs.existsSync(indexPath)) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.sendFile(indexPath);
+      } else if (fs.existsSync(fallbackPublicIndex)) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.sendFile(fallbackPublicIndex);
       } else {
         res.status(404).send("Not Found - Build missing");
       }
     });
   }
+
+  // Global error handler to prevent unhandled express crashes or hung requests
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Unhandled server error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error occurred", message: err?.message || String(err) });
+    }
+  });
 }
 
 async function startServer() {

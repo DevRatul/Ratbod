@@ -125,6 +125,30 @@
     <meta name="twitter:title" content="RaTooL - Body Metrics & Health Tracker" />
     <meta name="twitter:description" content="Comprehensive body metrics tracker (BMI, BMR, TDEE, Body Fat %), hydration water log, grocery unit price calculator, and 4-7-8 breathing coach." />
     <meta name="twitter:image" content="/og-image.png?v=9" />
+
+    <script>
+      // Automatically refresh if dynamic Vite chunk fetch fails due to an updated release
+      window.addEventListener('vite:preloadError', function(event) {
+        console.warn('New app version detected (Vite preload error). Refreshing application...');
+        window.location.reload();
+      });
+
+      // PWA Service Worker Registration with update checking
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function(reg) {
+              // Periodically check for updates every 30 minutes if tab remains open
+              setInterval(function() {
+                reg.update().catch(function() {});
+              }, 1800000);
+            })
+            .catch(function(err) {
+              console.warn('PWA service worker registration skipped/failed:', err);
+            });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

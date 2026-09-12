@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Moon, 
   Clock, 
@@ -16,7 +16,9 @@ import {
   ArrowLeft, 
   Info,
   TrendingUp,
-  Award
+  Award,
+  Bed,
+  AlarmClock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -24,6 +26,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import CircularSleepDial from './CircularSleepDial';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -214,6 +217,73 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
     };
   };
 
+  const get12HourParts = (timeStr: string) => {
+    if (!timeStr) return { time: '--:--', ampm: 'AM' };
+    const [hStr, mStr] = timeStr.split(':');
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10);
+    if (isNaN(h) || isNaN(m)) return { time: timeStr, ampm: 'AM' };
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    const padM = String(m).padStart(2, '0');
+    const timeFormatted = isBn ? `${formatNum(h)}:${formatNum(padM)}` : `${h}:${padM}`;
+    return { time: timeFormatted, ampm };
+  };
+
+  const handleToggleBedAmPm = () => {
+    const [h, m] = sleepBedTime.split(':').map(Number);
+    const newH = ((h || 0) + 12) % 24;
+    const updated = `${String(newH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+    setSleepBedTime(updated);
+    persistSleepData(updated, sleepWakeTime, sleepRecords);
+  };
+
+  const handleToggleWakeAmPm = () => {
+    const [h, m] = sleepWakeTime.split(':').map(Number);
+    const newH = ((h || 0) + 12) % 24;
+    const updated = `${String(newH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+    setSleepWakeTime(updated);
+    persistSleepData(sleepBedTime, updated, sleepRecords);
+  };
+
+  const formatSleepDurationText = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (isBn) {
+      if (m === 0) return `${formatNum(h)} ঘণ্টা`;
+      return `${formatNum(h)} ঘণ্টা ${formatNum(m)} মি`;
+    }
+    if (m === 0) return `${h} hr`;
+    return `${h} hr ${m} min`;
+  };
+
+  const adjustMinutes = (timeStr: string, deltaMin: number): string => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const total = ((h * 60 + m + deltaMin) % 1440 + 1440) % 1440;
+    const newH = Math.floor(total / 60);
+    const newM = total % 60;
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+  };
+
+  const handleAdjustBed = (deltaMin: number) => {
+    const updated = adjustMinutes(sleepBedTime, deltaMin);
+    setSleepBedTime(updated);
+    persistSleepData(updated, sleepWakeTime, sleepRecords);
+  };
+
+  const handleAdjustWake = (deltaMin: number) => {
+    const updated = adjustMinutes(sleepWakeTime, deltaMin);
+    setSleepWakeTime(updated);
+    persistSleepData(sleepBedTime, updated, sleepRecords);
+  };
+
+  const handleDialChange = (newBed: string, newWake: string) => {
+    setSleepBedTime(newBed);
+    setSleepWakeTime(newWake);
+    persistSleepData(newBed, newWake, sleepRecords);
+  };
+
   const sleepDuration = calculateSleepDuration(sleepBedTime, sleepWakeTime);
 
   const handleLogSleepRecord = () => {
@@ -244,6 +314,14 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
     persistSleepData(sleepBedTime, sleepWakeTime, updated);
   };
 
+  // Check if selected date already has a log
+  const existingRecordForSelectedDate = sleepRecords.find(r => r.date === selectedSleepDate);
+
+  const todayStr = getLocalDateString(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterdayDate);
+
   // Metrics for analytics
   const totalLogs = sleepRecords.length;
   const avgMinutes = totalLogs > 0 
@@ -261,177 +339,337 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   }).length;
 
   return (
-    <div className="space-y-3 sm:space-y-4 max-w-4xl mx-auto w-full pb-0">
-      {/* Top Banner Card */}
+    <div className="space-y-3.5 sm:space-y-4 max-w-4xl mx-auto w-full pb-0">
+      {/* Outer Section Header matching Apple Bedtime style */}
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-sm sm:text-base font-bold text-gray-700 dark:text-gray-300">
+          {isBn ? 'ঘুমানো ও ওঠার সময় (Bedtime & Wake Up)' : 'Bedtime and Wake Up'}
+        </h2>
+        {/* Quick History Modal Trigger */}
+        <button
+          type="button"
+          onClick={() => setShowSleepHistoryModal(true)}
+          className={cn(
+            "px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-2xs active:scale-95",
+            darkMode 
+              ? "bg-[#181a20] text-indigo-300 border-indigo-500/30 hover:bg-[#20232c]" 
+              : "bg-white text-indigo-700 border-gray-200 hover:bg-gray-50"
+          )}
+        >
+          <HistoryIcon size={13} />
+          <span>{isBn ? 'ইতিহাস' : 'Logs'} ({formatNum(totalLogs)})</span>
+        </button>
+      </div>
+
+      {/* Main Apple Clock Bedtime & Wake Up Card */}
       <div className={cn(
-        "p-3 sm:p-5 rounded-xl sm:rounded-3xl border transition-all shadow-xs",
-        darkMode 
-          ? "bg-[#0f1422] border-indigo-500/25 shadow-indigo-950/20 text-white" 
-          : "bg-white border-indigo-100 shadow-indigo-500/5 text-gray-900"
+        "rounded-3xl p-4 sm:p-6 border transition-colors duration-200 relative overflow-hidden",
+        darkMode
+          ? "bg-[#1c1c1e] text-white border-white/10 shadow-xl"
+          : "bg-white text-gray-900 border-gray-200/80 shadow-lg shadow-gray-200/60"
       )}>
-        <div className="flex items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-indigo-500/15">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/25">
-              <Moon size={17} className="sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h2 className="text-sm sm:text-lg font-black tracking-tight truncate">
-                  {isBn ? 'স্লিপ অ্যানালিটিক্স' : 'Sleep Analytics'}
-                </h2>
-                <span className={cn(
-                  "text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border flex items-center gap-1 shrink-0",
-                  sleepDuration.hours >= 7 && sleepDuration.hours <= 9
-                    ? (darkMode ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200")
-                    : (darkMode ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border-indigo-200")
+        {/* Top Header Row: Bedtime (Left) and Wake Up (Right) */}
+        {(() => {
+          const bedParts = get12HourParts(sleepBedTime);
+          const wakeParts = get12HourParts(sleepWakeTime);
+          return (
+            <div className="flex items-start justify-between gap-2 pb-2">
+              {/* Bedtime Readout */}
+              <div className="flex flex-col items-start min-w-0">
+                <div className={cn(
+                  "flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider",
+                  darkMode ? "text-gray-400" : "text-gray-500"
                 )}>
-                  <Sparkles size={10} />
-                  {sleepDuration.hours >= 7 && sleepDuration.hours <= 9
-                    ? (isBn ? 'উপযুক্ত ঘুম' : 'Optimal 7-9h')
-                    : (sleepDuration.hours < 7 ? (isBn ? 'স্বল্প ঘুম' : 'Short (<7h)') : (isBn ? 'দীর্ঘ ঘুম' : 'Long (>9h)'))}
-                </span>
+                  <Bed size={13.5} className={darkMode ? "text-sky-400 shrink-0" : "text-sky-600 shrink-0"} strokeWidth={2.4} />
+                  <span className="truncate">{isBn ? 'ঘুমানোর সময়' : 'BEDTIME'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={cn(
+                    "text-xl sm:text-2xl font-extrabold tracking-tight font-mono",
+                    darkMode ? "text-white" : "text-gray-900"
+                  )}>
+                    {bedParts.time}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggleBedAmPm}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9.5px] sm:text-[10px] font-black border transition-all cursor-pointer active:scale-95 select-none",
+                      darkMode
+                        ? "bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 border-sky-500/40"
+                        : "bg-sky-50 text-sky-700 hover:bg-sky-100 border-sky-200 shadow-2xs"
+                    )}
+                    title={isBn ? "AM/PM পরিবর্তন করুন" : "Toggle AM / PM"}
+                  >
+                    {bedParts.ampm}
+                  </button>
+                </div>
+                {/* Quick Micro-step buttons */}
+                <div className="flex items-center gap-1 mt-1 text-[9px] font-mono">
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustBed(-15)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded active:scale-95 transition-all cursor-pointer",
+                      darkMode
+                        ? "bg-white/10 hover:bg-white/20 text-gray-300"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200/80"
+                    )}
+                    title="-15m"
+                  >
+                    -15m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustBed(15)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded active:scale-95 transition-all cursor-pointer",
+                      darkMode
+                        ? "bg-white/10 hover:bg-white/20 text-gray-300"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200/80"
+                    )}
+                    title="+15m"
+                  >
+                    +15m
+                  </button>
+                </div>
               </div>
-              <p className="hidden sm:block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {isBn ? 'দৈনিক ঘুমের সময়সূচি ও বিজ্ঞানসম্মত বিশ্রাম বিশ্লেষণ' : 'Daily sleep schedule and scientific rest tracking'}
-              </p>
+
+              {/* Wake Up Readout */}
+              <div className="flex flex-col items-end min-w-0 text-right">
+                <div className={cn(
+                  "flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider",
+                  darkMode ? "text-gray-400" : "text-gray-500"
+                )}>
+                  <AlarmClock size={13.5} className={darkMode ? "text-amber-400 shrink-0" : "text-amber-600 shrink-0"} strokeWidth={2.4} />
+                  <span className="truncate">{isBn ? 'ওঠার সময়' : 'WAKE UP'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5 justify-end">
+                  <button
+                    type="button"
+                    onClick={handleToggleWakeAmPm}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9.5px] sm:text-[10px] font-black border transition-all cursor-pointer active:scale-95 select-none",
+                      darkMode
+                        ? "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-amber-500/40"
+                        : "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200 shadow-2xs"
+                    )}
+                    title={isBn ? "AM/PM পরিবর্তন করুন" : "Toggle AM / PM"}
+                  >
+                    {wakeParts.ampm}
+                  </button>
+                  <span className={cn(
+                    "text-xl sm:text-2xl font-extrabold tracking-tight font-mono",
+                    darkMode ? "text-white" : "text-gray-900"
+                  )}>
+                    {wakeParts.time}
+                  </span>
+                </div>
+                {/* Quick Micro-step buttons */}
+                <div className="flex items-center gap-1 mt-1 text-[9px] font-mono">
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustWake(-15)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded active:scale-95 transition-all cursor-pointer",
+                      darkMode
+                        ? "bg-white/10 hover:bg-white/20 text-gray-300"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200/80"
+                    )}
+                    title="-15m"
+                  >
+                    -15m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustWake(15)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded active:scale-95 transition-all cursor-pointer",
+                      darkMode
+                        ? "bg-white/10 hover:bg-white/20 text-gray-300"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200/80"
+                    )}
+                    title="+15m"
+                  >
+                    +15m
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Circular Adjustable Dial in the Center */}
+        <div className="my-2 flex flex-col items-center justify-center">
+          <CircularSleepDial
+            bedTime={sleepBedTime}
+            wakeTime={sleepWakeTime}
+            onChange={handleDialChange}
+            darkMode={darkMode}
+            lang={lang}
+            formatNum={formatNum}
+          />
+
+          {/* Duration Display Under Dial */}
+          <div className="mt-2 text-center flex flex-col items-center">
+            <div className={cn(
+              "text-2xl sm:text-3xl font-extrabold tracking-tight font-mono",
+              darkMode ? "text-white" : "text-gray-900"
+            )}>
+              {formatSleepDurationText(sleepDuration.totalMinutes)}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={cn(
+                "text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full border flex items-center gap-1",
+                sleepDuration.hours >= 7 && sleepDuration.hours <= 9
+                  ? (darkMode
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                      : "bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs")
+                  : (sleepDuration.hours < 7
+                      ? (darkMode
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-amber-50 text-amber-800 border-amber-200 shadow-2xs")
+                      : (darkMode
+                          ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                          : "bg-purple-50 text-purple-800 border-purple-200 shadow-2xs"))
+              )}>
+                <Sparkles size={11} />
+                {sleepDuration.hours >= 7 && sleepDuration.hours <= 9
+                  ? (isBn ? 'উপযুক্ত ঘুম (Optimal 7–9h)' : 'Optimal (7–9 hrs)')
+                  : (sleepDuration.hours < 7 ? (isBn ? 'স্বল্প ঘুম (<৭ ঘণ্টা)' : 'Short Sleep (<7 hrs)') : (isBn ? 'দীর্ঘ ঘুম (>৯ ঘণ্টা)' : 'Long Sleep (>9 hrs)'))}
+              </span>
             </div>
           </div>
-
-          {/* Quick History Button */}
-          <button
-            type="button"
-            onClick={() => setShowSleepHistoryModal(true)}
-            className={cn(
-              "px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 border shadow-2xs active:scale-95",
-              darkMode 
-                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30" 
-                : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
-            )}
-          >
-            <HistoryIcon size={13} />
-            <span>{isBn ? 'ইতিহাস' : 'Logs'} ({formatNum(totalLogs)})</span>
-          </button>
         </div>
 
-        {/* Input Controls Grid: Compact 3-Column on Mobile & Desktop */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-3 pt-2.5 sm:pt-4">
-          {/* Bed Time */}
-          <div className={cn(
-            "p-1.5 sm:p-3 rounded-lg sm:rounded-xl border flex flex-col justify-between gap-1",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1 truncate">
-                <Moon size={11} className="text-indigo-400 shrink-0" />
-                <span className="truncate">{isBn ? 'ঘুমানো' : 'Bed Time'}</span>
-              </span>
-            </div>
-            <input
-              type="time"
-              value={sleepBedTime}
-              onChange={(e) => {
-                setSleepBedTime(e.target.value);
-                persistSleepData(e.target.value, sleepWakeTime, sleepRecords);
-              }}
-              className={cn(
-                "w-full px-1 py-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg text-xs sm:text-sm font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer text-center font-mono",
-                darkMode
-                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
-                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
-              )}
-            />
-          </div>
-
-          {/* Wake Up Time */}
-          <div className={cn(
-            "p-1.5 sm:p-3 rounded-lg sm:rounded-xl border flex flex-col justify-between gap-1",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1 truncate">
-                <Clock size={11} className="text-amber-400 shrink-0" />
-                <span className="truncate">{isBn ? 'ওঠার সময়' : 'Wake Up'}</span>
-              </span>
-            </div>
-            <input
-              type="time"
-              value={sleepWakeTime}
-              onChange={(e) => {
-                setSleepWakeTime(e.target.value);
-                persistSleepData(sleepBedTime, e.target.value, sleepRecords);
-              }}
-              className={cn(
-                "w-full px-1 py-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg text-xs sm:text-sm font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer text-center font-mono",
-                darkMode
-                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
-                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
-              )}
-            />
-          </div>
-
-          {/* Record Date */}
-          <div className={cn(
-            "p-1.5 sm:p-3 rounded-lg sm:rounded-xl border flex flex-col justify-between gap-1",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1 truncate">
-                <Calendar size={11} className="text-indigo-400 shrink-0" />
-                <span className="truncate">{isBn ? 'তারিখ' : 'Date'}</span>
-              </span>
-            </div>
-            <input
-              type="date"
-              value={selectedSleepDate}
-              onChange={(e) => setSelectedSleepDate(e.target.value)}
-              className={cn(
-                "w-full px-1 py-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg text-xs sm:text-sm font-bold border transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer text-center font-mono",
-                darkMode
-                  ? "bg-[#181a20] text-white border-gray-700/80 [color-scheme:dark]"
-                  : "bg-white text-gray-900 border-gray-300 [color-scheme:light]"
-              )}
-            />
-          </div>
-        </div>
-
-        {/* Compact Calculation & Save Bar */}
+        {/* Daily Sleeping Timer Logging Section */}
         <div className={cn(
-          "mt-2.5 sm:mt-3.5 p-2 sm:p-3 rounded-lg sm:rounded-xl border flex items-center justify-between gap-2",
-          darkMode ? "bg-indigo-950/40 border-indigo-500/30" : "bg-indigo-50/80 border-indigo-200"
+          "mt-4 pt-3.5 border-t flex flex-col items-center gap-2.5",
+          darkMode ? "border-white/10" : "border-gray-200/70"
         )}>
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <span className="text-[11px] sm:text-xs font-bold text-gray-700 dark:text-gray-300 truncate">
-              {isBn ? 'বিশ্রাম:' : 'Duration:'}
-            </span>
-            <span className="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400 font-mono">
-              {isBn ? sleepDuration.displayBn : sleepDuration.display}
-            </span>
+          {/* Compact 1-Line Date Row on Mobile and Desktop */}
+          <div className="flex items-center justify-between gap-1.5 w-full">
+            {/* Left: Quick Date Segments (Today & Yesterday) */}
+            <div className="flex items-center gap-1 min-w-0">
+              <span className={cn(
+                "text-[11px] font-bold flex items-center gap-1 shrink-0",
+                darkMode ? "text-gray-400" : "text-gray-500"
+              )}>
+                <Calendar size={12} className="text-indigo-500 shrink-0" />
+                <span className="hidden xs:inline">{isBn ? 'তারিখ:' : 'Date:'}</span>
+              </span>
+
+              <div className={cn(
+                "inline-flex items-center p-0.5 rounded-lg border text-[11px] font-bold shrink-0",
+                darkMode ? "bg-white/5 border-white/10" : "bg-gray-100 border-gray-200/80"
+              )}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSleepDate(todayStr)}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md transition-all cursor-pointer whitespace-nowrap text-[10.5px] sm:text-xs font-semibold",
+                    selectedSleepDate === todayStr 
+                      ? (darkMode
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-white text-indigo-700 shadow-xs border border-gray-200/50") 
+                      : (darkMode
+                          ? "text-gray-400 hover:text-gray-200"
+                          : "text-gray-600 hover:text-gray-900")
+                  )}
+                >
+                  {isBn ? 'আজ' : 'Today'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSleepDate(yesterdayStr)}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md transition-all cursor-pointer whitespace-nowrap text-[10.5px] sm:text-xs font-semibold",
+                    selectedSleepDate === yesterdayStr 
+                      ? (darkMode
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-white text-indigo-700 shadow-xs border border-gray-200/50") 
+                      : (darkMode
+                          ? "text-gray-400 hover:text-gray-200"
+                          : "text-gray-600 hover:text-gray-900")
+                  )}
+                >
+                  {isBn ? 'গতকাল' : 'Yesterday'}
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Compact Date Input fitting smoothly in one line */}
+            <div className="relative flex items-center shrink-0">
+              <input
+                type="date"
+                value={selectedSleepDate}
+                onChange={(e) => setSelectedSleepDate(e.target.value)}
+                className={cn(
+                  "px-2 py-0.5 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer w-[118px] sm:w-[130px] text-center",
+                  darkMode
+                    ? "bg-white/10 text-white border-white/10 hover:border-white/20 [color-scheme:dark]"
+                    : "bg-gray-50 text-gray-800 border-gray-200 hover:border-gray-300 [color-scheme:light]"
+                )}
+              />
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleLogSleepRecord}
-            className={cn(
-              "px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95 shrink-0",
-              sleepSavedToast
-                ? "bg-emerald-600 text-white shadow-emerald-600/30"
-                : (darkMode 
-                    ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30" 
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20")
-            )}
-          >
-            {sleepSavedToast ? (
-              <>
-                <Check size={13} strokeWidth={3} />
-                <span>{isBn ? 'সংরক্ষিত!' : 'Saved!'}</span>
-              </>
-            ) : (
-              <>
-                <Plus size={13} />
-                <span>{isBn ? 'লগ সংরক্ষণ' : 'Log Sleep'}</span>
-              </>
-            )}
-          </button>
+          {/* Tiny Little Centrally Button: "Save Sleep" */}
+          <div className="flex justify-center w-full pt-0.5">
+            <button
+              type="button"
+              onClick={handleLogSleepRecord}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95",
+                sleepSavedToast
+                  ? "bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400"
+                  : (darkMode
+                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20")
+              )}
+            >
+              {sleepSavedToast ? (
+                <>
+                  <Check size={13} strokeWidth={2.8} />
+                  <span>{isBn ? 'যোগ হয়েছে!' : 'Added!'}</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={13} strokeWidth={2.4} />
+                  <span>{isBn ? 'ঘুম যোগ করুন' : 'Add Sleep'}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Status note about the selected date if already logged */}
+          {existingRecordForSelectedDate && (
+            <div className={cn(
+              "w-full text-[10px] sm:text-[11px] flex items-center justify-between px-2.5 py-1 rounded-lg border",
+              darkMode
+                ? "bg-white/5 border-white/5 text-gray-300"
+                : "bg-indigo-50/70 border-indigo-100 text-indigo-950"
+            )}>
+              <span className="truncate">
+                {isBn 
+                  ? `ইতোমধ্যে লগ আছে: ${existingRecordForSelectedDate.durationDisplay} (${existingRecordForSelectedDate.bedTime} → ${existingRecordForSelectedDate.wakeTime})` 
+                  : `Already logged: ${existingRecordForSelectedDate.durationDisplay} (${existingRecordForSelectedDate.bedTime} → ${existingRecordForSelectedDate.wakeTime})`}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSleepBedTime(existingRecordForSelectedDate.bedTime);
+                  setSleepWakeTime(existingRecordForSelectedDate.wakeTime);
+                }}
+                className={cn(
+                  "font-bold ml-2 underline cursor-pointer shrink-0",
+                  darkMode ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-800"
+                )}
+              >
+                {isBn ? 'ডায়ালে লোড' : 'Load'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -489,92 +727,6 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
         </div>
       </div>
 
-      {/* Recent Sleep Logs List */}
-      <div className={cn(
-        "p-3 sm:p-4 rounded-xl sm:rounded-2xl border space-y-2.5 sm:space-y-3",
-        darkMode ? "bg-[#0f1422] border-white/5" : "bg-white border-gray-200"
-      )}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2">
-            <Calendar size={13} className="text-indigo-500" />
-            <span>{isBn ? 'সাম্প্রতিক ঘুমের রেকর্ড' : 'Recent Sleep Logs'}</span>
-          </h3>
-          {sleepRecords.length > 0 && (
-            <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium">
-              {isBn ? `মোট ${formatNum(sleepRecords.length)}টি` : `${sleepRecords.length} records`}
-            </span>
-          )}
-        </div>
-
-        {sleepRecords.length === 0 ? (
-          <div className={cn(
-            "p-4 sm:p-6 rounded-lg sm:rounded-xl border text-center space-y-1",
-            darkMode ? "bg-white/5 border-white/5 text-gray-400" : "bg-gray-50 border-gray-100 text-gray-500"
-          )}>
-            <p className="text-xs font-medium">
-              {isBn ? 'এখনো কোনো ঘুমের রেকর্ড সংরক্ষণ করা হয়নি।' : 'No sleep records saved yet.'}
-            </p>
-            <p className="text-[11px] opacity-75">
-              {isBn ? 'উপরে সময় নির্ধারণ করে "লগ সংরক্ষণ" চাপুন।' : 'Set your sleep schedule above and tap "Log Sleep".'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-1.5 sm:space-y-2">
-            {sleepRecords.slice(0, 5).map((record) => {
-              const recHours = Math.floor(record.totalMinutes / 60);
-              const isOptimal = recHours >= 7 && recHours <= 9;
-              return (
-                <div 
-                  key={record.id}
-                  className={cn(
-                    "p-2 sm:p-3 rounded-lg sm:rounded-xl border flex items-center justify-between gap-1.5 sm:gap-2 transition-all shadow-2xs",
-                    darkMode 
-                      ? (isOptimal ? "bg-indigo-950/20 border-indigo-500/25" : "bg-white/5 border-white/10") 
-                      : (isOptimal ? "bg-indigo-50/70 border-indigo-200" : "bg-gray-50 border-gray-200")
-                  )}
-                >
-                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                    <div className={cn(
-                      "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 text-xs",
-                      isOptimal ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300"
-                    )}>
-                      <Moon size={13} />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="font-bold text-xs text-gray-900 dark:text-white block truncate">
-                        {formatHistoryDate(record.date)}
-                      </span>
-                      <span className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-mono">
-                        {record.bedTime} → {record.wakeTime}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <span className={cn(
-                      "font-black text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg border font-mono",
-                      isOptimal 
-                        ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30" 
-                        : "bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-400/30"
-                    )}>
-                      {record.durationDisplay}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteSleepRecord(record.id)}
-                      className="p-1 sm:p-1.5 rounded-md sm:rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title={isBn ? 'মুছে ফেলুন' : 'Delete'}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Daily Sleep History Modal with Top Corner Back Button */}
       <AnimatePresence>
         {showSleepHistoryModal && (
@@ -597,10 +749,10 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
                   </div>
                   <div>
                     <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-tight">
-                      {isBn ? 'দৈনিক ঘুমের ইতিহাস' : 'Daily Sleep History'}
+                      {isBn ? 'ঘুমের ইতিহাস' : 'Sleep History'}
                     </h3>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                      {isBn ? 'দৈনিক ঘুমের সময় ও রেকর্ডের বিবরণ' : 'Daily sleep schedule and duration logs'}
+                      {isBn ? 'সংরক্ষিত সকল দৈনিক ঘুমের রেকর্ড' : 'All saved daily sleep records'}
                     </p>
                   </div>
                 </div>
@@ -620,142 +772,76 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
                 </button>
               </div>
 
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1">
-                {/* Active Sleep Schedule Summary Card */}
-                <div className={cn(
-                  "p-3.5 rounded-2xl border space-y-2.5",
-                  darkMode ? "bg-indigo-950/20 border-indigo-500/30" : "bg-indigo-50/70 border-indigo-200"
-                )}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-indigo-500" />
-                      <span className="text-xs font-black uppercase tracking-wider text-indigo-900 dark:text-indigo-200">
-                        {isBn ? 'বর্তমান ঘুমের লক্ষ্য' : "Current Sleep Target"}
-                      </span>
-                    </div>
-                    <span className={cn(
-                      "text-[10px] font-extrabold px-2 py-0.5 rounded-full border",
-                      sleepDuration.hours >= 7 && sleepDuration.hours <= 9
-                        ? (darkMode ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200")
-                        : (darkMode ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border-indigo-200")
-                    )}>
-                      {sleepDuration.hours >= 7 && sleepDuration.hours <= 9
-                        ? (isBn ? 'উপযুক্ত ঘুম (Optimal)' : 'Optimal 7-9h')
-                        : (sleepDuration.hours < 7 ? (isBn ? 'স্বল্প ঘুম (Short)' : 'Short Sleep (<7h)') : (isBn ? 'দীর্ঘ ঘুম (Long)' : 'Long Sleep (>9h)'))}
-                    </span>
+              {/* Scrollable Content - Saved Daily Sleep Records */}
+              <div className="flex-1 overflow-y-auto py-3 space-y-3 pr-1">
+                {sleepRecords.length === 0 ? (
+                  <div className={cn(
+                    "p-6 rounded-2xl border text-center space-y-1.5 my-4",
+                    darkMode ? "bg-white/5 border-white/5 text-gray-400" : "bg-gray-50 border-gray-100 text-gray-500"
+                  )}>
+                    <Moon size={24} className="mx-auto text-indigo-400 mb-1 opacity-80" />
+                    <p className="text-xs font-semibold">
+                      {isBn ? 'এখনো কোনো রেকর্ড সংরক্ষণ করা হয়নি।' : 'No sleep records saved yet.'}
+                    </p>
+                    <p className="text-[11px] opacity-75">
+                      {isBn ? 'উপরে সময় নির্ধারণ করে "ঘুম যোগ করুন" চাপলে আপনার রেকর্ড এখানে যুক্ত হবে।' : 'Set your sleep schedule above and tap "Add Sleep" to log records here.'}
+                    </p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className={cn(
-                      "p-2 rounded-xl border flex flex-col gap-0.5",
-                      darkMode ? "bg-white/5 border-white/5" : "bg-white border-gray-200"
-                    )}>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
-                        {isBn ? 'ঘুমাতে যাওয়ার সময়' : 'Bed Time'}
-                      </span>
-                      <span className="font-extrabold text-xs text-gray-900 dark:text-white font-mono">
-                        {sleepBedTime}
-                      </span>
-                    </div>
-                    <div className={cn(
-                      "p-2 rounded-xl border flex flex-col gap-0.5",
-                      darkMode ? "bg-white/5 border-white/5" : "bg-white border-gray-200"
-                    )}>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
-                        {isBn ? 'ঘুম থেকে ওঠার সময়' : 'Wake Up Time'}
-                      </span>
-                      <span className="font-extrabold text-xs text-gray-900 dark:text-white font-mono">
-                        {sleepWakeTime}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 text-xs">
-                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                      {isBn ? 'মোট বিশ্রামের সময়:' : 'Total Duration:'}
-                    </span>
-                    <span className="font-black text-sm text-indigo-600 dark:text-indigo-400">
-                      {isBn ? sleepDuration.displayBn : sleepDuration.display}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Past Daily Sleep History Records */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar size={13} className="text-indigo-500" />
-                    {isBn ? 'সংরক্ষিত দৈনিক রেকর্ডসমূহ' : 'Saved Sleep History Logs'}
-                  </h4>
-
-                  {sleepRecords.length === 0 ? (
-                    <div className={cn(
-                      "p-4 rounded-xl border text-center space-y-1",
-                      darkMode ? "bg-white/5 border-white/5 text-gray-400" : "bg-gray-50 border-gray-100 text-gray-500"
-                    )}>
-                      <p className="text-xs font-medium">
-                        {isBn ? 'এখনো কোনো রেকর্ড সংরক্ষণ করা হয়নি।' : 'No sleep records saved yet.'}
-                      </p>
-                      <p className="text-[10.5px] opacity-75">
-                        {isBn ? 'স্লিপ অ্যানালিটিক্সে "লগ সংরক্ষণ করুন" চাপলে আপনার রেকর্ড এখানে যুক্ত হবে।' : 'Save your sleep schedule to log your daily records here.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {sleepRecords.map((record) => {
-                        const recHours = Math.floor(record.totalMinutes / 60);
-                        const isOptimal = recHours >= 7 && recHours <= 9;
-                        return (
-                          <div 
-                            key={record.id}
-                            className={cn(
-                              "p-3 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-2xs",
-                              darkMode 
-                                ? (isOptimal ? "bg-indigo-950/20 border-indigo-500/25" : "bg-white/5 border-white/10") 
-                                : (isOptimal ? "bg-indigo-50/70 border-indigo-200" : "bg-gray-50 border-gray-200")
-                            )}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={cn(
-                                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs",
-                                isOptimal ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300"
-                              )}>
-                                <Moon size={13} />
-                              </div>
-                              <div className="min-w-0">
-                                <span className="font-bold text-xs text-gray-900 dark:text-white block truncate">
-                                  {formatHistoryDate(record.date)}
-                                </span>
-                                <span className="text-[10.5px] text-gray-500 dark:text-gray-400 font-mono">
-                                  {record.bedTime} → {record.wakeTime}
-                                </span>
-                              </div>
+                ) : (
+                  <div className="space-y-2">
+                    {sleepRecords.map((record) => {
+                      const recHours = Math.floor(record.totalMinutes / 60);
+                      const isOptimal = recHours >= 7 && recHours <= 9;
+                      return (
+                        <div 
+                          key={record.id}
+                          className={cn(
+                            "p-3 rounded-xl border flex items-center justify-between gap-2 transition-all shadow-2xs",
+                            darkMode 
+                              ? (isOptimal ? "bg-indigo-950/20 border-indigo-500/25" : "bg-white/5 border-white/10") 
+                              : (isOptimal ? "bg-indigo-50/70 border-indigo-200" : "bg-gray-50 border-gray-200")
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={cn(
+                              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs",
+                              isOptimal ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300"
+                            )}>
+                              <Moon size={13} />
                             </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={cn(
-                                "font-extrabold text-xs px-2 py-0.5 rounded-md border",
-                                isOptimal 
-                                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30" 
-                                  : "bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-400/30"
-                              )}>
-                                {record.durationDisplay}
+                            <div className="min-w-0">
+                              <span className="font-bold text-xs text-gray-900 dark:text-white block truncate">
+                                {formatHistoryDate(record.date)}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSleepRecord(record.id)}
-                                className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                                title={isBn ? 'মুছে ফেলুন' : 'Delete'}
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              <span className="text-[10.5px] text-gray-500 dark:text-gray-400 font-mono">
+                                {record.bedTime} → {record.wakeTime}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={cn(
+                              "font-extrabold text-xs px-2 py-0.5 rounded-md border",
+                              isOptimal 
+                                ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30" 
+                                : "bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-400/30"
+                            )}>
+                              {record.durationDisplay}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSleepRecord(record.id)}
+                              className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                              title={isBn ? 'মুছে ফেলুন' : 'Delete'}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Footer */}

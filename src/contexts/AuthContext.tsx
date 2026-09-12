@@ -100,8 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    // Safety timer to prevent infinite loading screen in PWA or offline cold start
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 3500);
+
     return () => {
       isMounted = false;
+      clearTimeout(safetyTimer);
       unsubscribe();
     };
   }, []);

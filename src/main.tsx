@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import AuthScreen from "./components/Auth/AuthScreen";
 import LandingPage from "./components/LandingPage";
 import SmoothLoader from "./components/SmoothLoader";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { db } from "./lib/firebase";
 import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { 
@@ -169,8 +170,10 @@ function AppRoot() {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <AppRoot />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoot />
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
