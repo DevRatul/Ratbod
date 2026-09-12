@@ -209,7 +209,7 @@ function getSaturdayWeekNumber(d: Date): number {
 /**
  * Builds Saturday-to-Friday week array around the current logical date
  */
-function getSaturdayToFridayWeek(logicalDateStr: string) {
+function getSaturdayToFridayWeek(logicalDateStr: string, todayDateKey?: string) {
   const [y, m, d] = logicalDateStr.split('-').map(Number);
   const refDate = new Date(y, m - 1, d);
   
@@ -223,6 +223,11 @@ function getSaturdayToFridayWeek(logicalDateStr: string) {
   satDate.setDate(refDate.getDate() + diffToSat);
   
   const dayNames = ['SAT', 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI'];
+  const dayNamesBn = ['শনি', 'রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র'];
+  const dayLettersEn = ['S', 'S', 'M', 'T', 'W', 'T', 'F'];
+  const dayLettersBn = ['শ', 'র', 'সো', 'ম', 'বু', 'বৃ', 'শু'];
+  const dayFullNamesEn = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const dayFullNamesBn = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
   const weekDays = [];
   
   for (let i = 0; i < 7; i++) {
@@ -236,15 +241,31 @@ function getSaturdayToFridayWeek(logicalDateStr: string) {
     
     weekDays.push({
       dayName: dayNames[i],
+      dayNameBn: dayNamesBn[i],
+      letter: dayLettersEn[i],
+      letterBn: dayLettersBn[i],
+      fullName: dayFullNamesEn[i],
+      fullNameBn: dayFullNamesBn[i],
       dateNum: day.getDate(),
       dateKey: key,
-      isToday: key === logicalDateStr,
+      isToday: key === (todayDateKey || logicalDateStr),
       fullDate: day
     });
   }
   
   const weekNum = getSaturdayWeekNumber(refDate);
-  return { weekDays, weekNum, year: refDate.getFullYear() };
+  const monthNamesEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthNamesBn = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+  const monthNameEn = monthNamesEn[refDate.getMonth()];
+  const monthNameBn = monthNamesBn[refDate.getMonth()];
+
+  return { 
+    weekDays, 
+    weekNum, 
+    year: refDate.getFullYear(),
+    monthNameEn,
+    monthNameBn
+  };
 }
 
 interface HabitRowItemProps {
@@ -541,7 +562,10 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
   }, []);
 
   // Week Days Saturday to Friday
-  const { weekDays, weekNum, year } = useMemo(() => getSaturdayToFridayWeek(selectedDateKey), [selectedDateKey]);
+  const { weekDays, weekNum } = useMemo(
+    () => getSaturdayToFridayWeek(selectedDateKey, dhakaInfo.dateKey), 
+    [selectedDateKey, dhakaInfo.dateKey]
+  );
 
   // Modal for adding habit
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -823,14 +847,15 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
   return (
     <div className="space-y-2.5 max-w-2xl mx-auto pb-0 sm:pb-10">
-      {/* Horizontal Saturday to Friday Week Bar */}
+      {/* Top Current Week View & Sunset Card */}
       <div className={cn(
         "p-2 sm:p-2.5 rounded-2xl border transition-all",
         darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
       )}>
+        {/* Header: Week number on left, Sunset info on right (no September 2026) */}
         <div className="flex items-center justify-between mb-1.5 px-1">
           <span className="text-xs font-black uppercase tracking-wider text-rose-500 dark:text-rose-400 flex items-center gap-1.5">
-            <Calendar size={14} className="text-rose-500" />
+            <Calendar size={14} className="text-rose-500 shrink-0" />
             {lang === 'bn' ? `সপ্তাহ ${weekNum}` : `Week ${weekNum}`}
           </span>
           <span className="text-[11px] font-bold text-amber-500 dark:text-amber-400 flex items-center gap-1.5">
@@ -840,41 +865,52 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
         </div>
 
         {/* 7 Days Grid: Saturday -> Sunday -> Monday -> Tuesday -> Wednesday -> Thursday -> Friday */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center">
           {weekDays.map((d) => {
             const isSelected = d.dateKey === selectedDateKey;
             const isToday = d.isToday;
+            const dayLabel = lang === 'bn' ? (d.dayNameBn || d.dayName) : d.dayName;
+
+            if (isSelected) {
+              return (
+                <button
+                  key={d.dateKey}
+                  type="button"
+                  onClick={() => setSelectedDateKey(d.dateKey)}
+                  title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
+                  className="flex flex-col items-center justify-between w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl bg-[#2563EB] text-white shadow-md shadow-blue-500/25 cursor-pointer select-none transition-all"
+                >
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
+                    {dayLabel}
+                  </span>
+                  <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs">
+                    <span className="text-xs sm:text-sm font-black text-gray-900 leading-none">
+                      {d.dateNum}
+                    </span>
+                  </div>
+                </button>
+              );
+            }
 
             return (
               <button
                 key={d.dateKey}
+                type="button"
                 onClick={() => setSelectedDateKey(d.dateKey)}
+                title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
                 className={cn(
-                  "flex flex-col items-center justify-center py-1.5 px-1 sm:py-2 rounded-xl transition-all cursor-pointer relative select-none",
-                  isSelected
-                    ? "bg-[#FF5A5A] text-white shadow-md shadow-rose-500/30 scale-105 font-black z-10"
-                    : isToday
+                  "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl transition-all cursor-pointer select-none",
+                  isToday
                     ? (darkMode ? "bg-white/10 text-white border border-rose-500/40" : "bg-rose-50 text-rose-900 border border-rose-200")
                     : (darkMode ? "bg-white/5 text-gray-400 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200")
                 )}
               >
-                <span className={cn(
-                  "text-[10px] sm:text-[11px] font-bold tracking-tight uppercase",
-                  isSelected ? "text-white opacity-90" : "opacity-70"
-                )}>
-                  {d.dayName}
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none">
+                  {dayLabel}
                 </span>
-                <span className={cn(
-                  "text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none",
-                  isSelected ? "text-white" : ""
-                )}>
+                <span className="text-base sm:text-lg font-black tracking-tighter mt-1 leading-none">
                   {d.dateNum}
                 </span>
-
-                {/* Dot indicator underneath active selected date */}
-                {isSelected && (
-                  <span className="w-1.5 h-1.5 bg-white rounded-full mt-1 animate-pulse" />
-                )}
               </button>
             );
           })}
