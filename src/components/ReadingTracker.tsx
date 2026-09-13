@@ -39,6 +39,7 @@ export interface BookItem {
   title: string;
   totalPages: number;
   currentPage: number;
+  initialPages?: number;
   author?: string;
   createdAt: number;
   status?: 'reading' | 'completed';
@@ -55,6 +56,91 @@ export interface ReadingRecord {
   minutes: number;
   note?: string;
   createdAt: number;
+}
+
+export interface BookStats {
+  totalRead: number;
+  percent: number;
+  intervals: Array<[number, number]>;
+  isCompleted: boolean;
+  recordsCount: number;
+}
+
+/**
+ * Accurately calculates the pages read and progress percentage of a book.
+ * Handles reading from anywhere: start, middle, or ending sections.
+ * Automatically aggregates unique covered pages across all reading records,
+ * and seamlessly recalculates whenever sessions are added or deleted.
+ */
+export function getBookStats(book: BookItem, allRecords: ReadingRecord[]): BookStats {
+  if (!book || !book.totalPages || book.totalPages <= 0) {
+    return { totalRead: 0, percent: 0, intervals: [], isCompleted: false, recordsCount: 0 };
+  }
+
+  const bookRecords = allRecords.filter(r => 
+    (r.bookId && r.bookId === book.id) || 
+    (!r.bookId && r.bookTitle && r.bookTitle.trim().toLowerCase() === book.title.trim().toLowerCase())
+  );
+
+  const coveredPages = new Set<number>();
+  let directPagesWithoutRange = 0;
+
+  // 1. Initial pages if configured at book creation (pages 1 to initialPages)
+  const initial = book.initialPages || 0;
+  for (let p = 1; p <= Math.min(book.totalPages, initial); p++) {
+    coveredPages.add(p);
+  }
+
+  // 2. Add page numbers from all sessions
+  for (const rec of bookRecords) {
+    if (rec.fromPage !== undefined && rec.toPage !== undefined && rec.toPage >= rec.fromPage) {
+      const start = Math.max(1, Math.min(book.totalPages, rec.fromPage));
+      const end = Math.max(1, Math.min(book.totalPages, rec.toPage));
+      for (let p = start; p <= end; p++) {
+        coveredPages.add(p);
+      }
+    } else if (rec.pages && rec.pages > 0) {
+      directPagesWithoutRange += rec.pages;
+    }
+  }
+
+  // 3. Fallback for existing legacy books with no records and no initialPages
+  if (bookRecords.length === 0 && coveredPages.size === 0 && (book.currentPage || 0) > 0) {
+    for (let p = 1; p <= Math.min(book.totalPages, book.currentPage); p++) {
+      coveredPages.add(p);
+    }
+  }
+
+  // 4. Merge continuous ranges into intervals for clean display (e.g. 1-20, 20-40 -> 1-40; 91-100)
+  const sorted = Array.from(coveredPages).sort((a, b) => a - b);
+  const intervals: Array<[number, number]> = [];
+  if (sorted.length > 0) {
+    let start = sorted[0];
+    let prev = sorted[0];
+    for (let i = 1; i < sorted.length; i++) {
+      const curr = sorted[i];
+      if (curr === prev + 1) {
+        prev = curr;
+      } else {
+        intervals.push([start, prev]);
+        start = curr;
+        prev = curr;
+      }
+    }
+    intervals.push([start, prev]);
+  }
+
+  const totalRead = Math.min(book.totalPages, coveredPages.size + directPagesWithoutRange);
+  const percent = Math.min(100, Math.round((totalRead / book.totalPages) * 100));
+  const isCompleted = totalRead >= book.totalPages && book.totalPages > 0;
+
+  return {
+    totalRead,
+    percent,
+    intervals,
+    isCompleted,
+    recordsCount: bookRecords.length
+  };
 }
 
 interface ReadingTrackerProps {
@@ -113,7 +199,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         title: 'Atomic Habits',
         author: 'James Clear',
         totalPages: 320,
-        currentPage: 45,
+        currentPage: 0,
+        initialPages: 0,
         status: 'reading',
         createdAt: Date.now() - 86400000 * 7
       }
@@ -139,10 +226,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const [selectedBookId, setSelectedBookId] = useState<string>('book_sample_1');
   const [customBookTitle, setCustomBookTitle] = useState<string>('');
 
-  // State: Logging form
+  // State: Logging form - users can enter any range: start, middle, or ending part
   const [usePageRange, setUsePageRange] = useState<boolean>(true);
-  const [fromPageInput, setFromPageInput] = useState<string>('46');
-  const [toPageInput, setToPageInput] = useState<string>('65');
+  const [fromPageInput, setFromPageInput] = useState<string>('1');
+  const [toPageInput, setToPageInput] = useState<string>('20');
   const [directPagesInput, setDirectPagesInput] = useState<string>('20');
   const [minutesInput, setMinutesInput] = useState<string>('25');
   const [showNoteField, setShowNoteField] = useState<boolean>(false);
@@ -208,16 +295,24 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     } catch (e) {}
   };
 
-  // Switch active book and update starting page
+  // Switch active book and suggest intelligent starting page based on existing read history
   const handleSelectBook = (bookId: string) => {
     setSelectedBookId(bookId);
     if (bookId === 'custom') return;
     const found = books.find(b => b.id === bookId);
     if (found) {
-      const nextStart = (found.currentPage || 0) + 1;
-      setFromPageInput(String(nextStart));
-      const suggestedEnd = Math.min(found.totalPages, nextStart + 19);
-      setToPageInput(String(suggestedEnd));
+      const stats = getBookStats(found, records);
+      // Find the most recent record for this book if available
+      const bookRecs = records.filter(r => r.bookId === bookId || r.bookTitle === found.title);
+      if (bookRecs.length > 0 && bookRecs[0].toPage && bookRecs[0].toPage < found.totalPages) {
+        const nextStart = bookRecs[0].toPage + 1;
+        setFromPageInput(String(nextStart));
+        setToPageInput(String(Math.min(found.totalPages, nextStart + 19)));
+      } else {
+        const nextStart = stats.totalRead < found.totalPages ? (stats.totalRead + 1) : 1;
+        setFromPageInput(String(nextStart));
+        setToPageInput(String(Math.min(found.totalPages, nextStart + 19)));
+      }
     }
   };
 
@@ -234,6 +329,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       title,
       totalPages: totalP,
       currentPage: startP,
+      initialPages: startP,
       author: newBookAuthor.trim() || undefined,
       status: startP >= totalP ? 'completed' : 'reading',
       createdAt: Date.now()
@@ -244,7 +340,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     persistData(pageGoal, records, updatedBooks);
 
     setSelectedBookId(newBook.id);
-    const nextStart = startP > 0 ? startP + 1 : 1;
+    const nextStart = startP > 0 && startP < totalP ? startP + 1 : 1;
     setFromPageInput(String(nextStart));
     setToPageInput(String(Math.min(totalP, nextStart + 19)));
 
@@ -278,7 +374,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   // Quick preset chips (+5, +10, +15, +20 pages)
   const applyQuickPages = (delta: number) => {
     if (usePageRange) {
-      const baseFrom = fromP > 0 ? fromP : (activeBook?.currentPage ? activeBook.currentPage + 1 : 1);
+      const baseFrom = fromP > 0 ? fromP : 1;
       const maxP = activeBook ? activeBook.totalPages : 9999;
       const targetTo = Math.min(maxP, baseFrom + delta - 1);
       setFromPageInput(String(baseFrom));
@@ -289,7 +385,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     }
   };
 
-  // Session logger submit
+  // Session logger submit: handles reading anywhere in the book (start, middle, or ending part)
   const handleLogSession = () => {
     const m = parseInt(minutesInput, 10) || 0;
     let p = 0;
@@ -297,10 +393,21 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     let toNum: number | undefined = undefined;
 
     if (usePageRange) {
-      if (fromP <= 0 || toP < fromP) return;
-      p = toP - fromP + 1;
-      fromNum = fromP;
-      toNum = toP;
+      let start = fromP;
+      let end = toP;
+      if (start <= 0 || end <= 0) return;
+      // Auto-swap if start > end by accident
+      if (start > end) {
+        const temp = start;
+        start = end;
+        end = temp;
+      }
+      if (activeBook && activeBook.totalPages > 0) {
+        end = Math.min(activeBook.totalPages, end);
+      }
+      p = end - start + 1;
+      fromNum = start;
+      toNum = end;
     } else {
       p = parseInt(directPagesInput, 10) || 0;
       if (p <= 0 && m <= 0) return;
@@ -328,24 +435,20 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       createdAt: Date.now()
     };
 
-    let updatedBooks = [...books];
-    if (activeBook && selectedBookId !== 'custom') {
-      updatedBooks = books.map(b => {
-        if (b.id === activeBook.id) {
-          const newCurrent = toNum ? Math.max(b.currentPage, toNum) : Math.min(b.totalPages, b.currentPage + p);
-          return {
-            ...b,
-            currentPage: newCurrent,
-            status: newCurrent >= b.totalPages ? 'completed' : 'reading'
-          };
-        }
-        return b;
-      });
-      setBooks(updatedBooks);
-    }
+    const updatedRecords = [newRec, ...records].slice(0, 100);
 
-    const updatedRecords = [newRec, ...records].slice(0, 50);
+    // Accurately recalculate all books based on the updated reading records
+    const updatedBooks = books.map(b => {
+      const stats = getBookStats(b, updatedRecords);
+      return {
+        ...b,
+        currentPage: stats.totalRead,
+        status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
+      };
+    });
+
     setRecords(updatedRecords);
+    setBooks(updatedBooks);
     persistData(pageGoal, updatedRecords, updatedBooks);
 
     setSavedToast(true);
@@ -356,19 +459,38 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     // Auto-advance starting page for the next session
     if (usePageRange && toNum && activeBook) {
       const nextFrom = toNum + 1;
-      setFromPageInput(String(nextFrom));
-      setToPageInput(String(Math.min(activeBook.totalPages, nextFrom + 19)));
+      if (nextFrom <= activeBook.totalPages) {
+        setFromPageInput(String(nextFrom));
+        setToPageInput(String(Math.min(activeBook.totalPages, nextFrom + 19)));
+      } else {
+        setFromPageInput('1');
+        setToPageInput(String(Math.min(activeBook.totalPages, 20)));
+      }
     }
   };
 
+  // Delete record: automatically recalculates the specific book's read pages and percentage
   const handleDeleteRecord = (id: string) => {
-    const updated = records.filter(r => r.id !== id);
-    setRecords(updated);
-    persistData(pageGoal, updated, books);
+    const updatedRecords = records.filter(r => r.id !== id);
+
+    // Recalculate all books without the deleted record
+    const updatedBooks = books.map(b => {
+      const stats = getBookStats(b, updatedRecords);
+      return {
+        ...b,
+        currentPage: stats.totalRead,
+        status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
+      };
+    });
+
+    setRecords(updatedRecords);
+    setBooks(updatedBooks);
+    persistData(pageGoal, updatedRecords, updatedBooks);
   };
 
   const percentGoal = Math.min(100, Math.round((todayPages / (pageGoal || 1)) * 100));
-  const activeBookPercent = activeBook ? Math.min(100, Math.round((activeBook.currentPage / (activeBook.totalPages || 1)) * 100)) : 0;
+  const activeBookStats = activeBook ? getBookStats(activeBook, records) : null;
+  const activeBookPercent = activeBookStats ? activeBookStats.percent : 0;
 
   return (
     <div className="max-w-xl mx-auto w-full space-y-3 pb-4">
@@ -508,18 +630,38 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         </div>
 
         {/* Current Book Progress */}
-        {activeBook && selectedBookId !== 'custom' && (
+        {activeBook && selectedBookId !== 'custom' && activeBookStats && (
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-[11px] font-mono font-medium text-gray-500 dark:text-gray-400">
-              <span>{formatNum(activeBook.currentPage)} / {formatNum(activeBook.totalPages)} {isBn ? 'পৃষ্ঠা' : 'pages'}</span>
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatNum(activeBookPercent)}%</span>
+              <span>{formatNum(activeBookStats.totalRead)} / {formatNum(activeBook.totalPages)} {isBn ? 'পৃষ্ঠা পড়া হয়েছে' : 'pages read'}</span>
+              <span className={cn(
+                "font-bold",
+                activeBookStats.isCompleted ? "text-emerald-500 font-black" : "text-indigo-600 dark:text-indigo-400"
+              )}>
+                {activeBookStats.isCompleted ? (isBn ? '✓ সম্পন্ন (১০০%)' : '✓ Completed (100%)') : `${formatNum(activeBookStats.percent)}%`}
+              </span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
               <div 
-                className="h-full rounded-full bg-indigo-500 transition-all duration-300"
-                style={{ width: `${activeBookPercent}%` }}
+                className={cn(
+                  "h-full rounded-full transition-all duration-300",
+                  activeBookStats.isCompleted ? "bg-emerald-500" : "bg-indigo-500"
+                )}
+                style={{ width: `${activeBookStats.percent}%` }}
               />
             </div>
+
+            {/* Sections read chips/summary */}
+            {activeBookStats.intervals.length > 0 && (
+              <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                <span className="font-semibold text-gray-400 dark:text-gray-500 shrink-0">
+                  {isBn ? 'পড়া অংশ:' : 'Sections:'}
+                </span>
+                <span className="font-mono text-indigo-600 dark:text-indigo-300 font-medium truncate">
+                  {activeBookStats.intervals.map(([s, e]) => s === e ? `p.${formatNum(s)}` : `p.${formatNum(s)}–${formatNum(e)}`).join(', ')}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1003,7 +1145,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
                     {books.map((b) => {
                       const isSelected = selectedBookId === b.id;
-                      const pct = Math.min(100, Math.round(((b.currentPage || 0) / (b.totalPages || 1)) * 100));
+                      const bStats = getBookStats(b, records);
 
                       return (
                         <div
@@ -1023,12 +1165,24 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                                   {isBn ? 'সক্রিয়' : 'Active'}
                                 </span>
                               )}
+                              {bStats.isCompleted && (
+                                <span className="text-[9.5px] px-1.5 py-0.2 rounded-md bg-emerald-600 text-white font-bold">
+                                  {isBn ? 'সম্পন্ন' : 'Completed'}
+                                </span>
+                              )}
                             </div>
                             {b.author && <p className="text-[10px] text-gray-400 truncate">{b.author}</p>}
                             <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-gray-500">
-                              <span>p. {formatNum(b.currentPage)}/{formatNum(b.totalPages)}</span>
+                              <span>p. {formatNum(bStats.totalRead)}/{formatNum(b.totalPages)}</span>
                               <span>•</span>
-                              <span>{formatNum(pct)}%</span>
+                              <span className={cn(bStats.isCompleted ? "font-bold text-emerald-500" : "")}>
+                                {formatNum(bStats.percent)}%
+                              </span>
+                              {bStats.intervals.length > 1 && (
+                                <span className="opacity-75">
+                                  ({formatNum(bStats.intervals.length)} {isBn ? 'অংশ' : 'sections'})
+                                </span>
+                              )}
                             </div>
                           </div>
 
