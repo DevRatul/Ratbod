@@ -13,8 +13,10 @@ import {
   Trash2, 
   RotateCcw,
   Sparkles,
-  AlignLeft
+  AlignLeft,
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
@@ -88,6 +90,15 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
 
   const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
   const [savedToast, setSavedToast] = useState<boolean>(false);
+
+  // Deletion confirmation state
+  interface DeleteTarget {
+    id: string;
+    title: string;
+    subtitle: string;
+  }
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
   const [records, setRecords] = useState<WritingRecord[]>(() => {
     try {
       const saved = localStorage.getItem('ratbod_writing_records');
@@ -164,10 +175,21 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
     setManualWords('');
   };
 
-  const handleDeleteRecord = (id: string) => {
-    const updated = records.filter(r => r.id !== id);
+  const requestDeleteRecord = (rec: WritingRecord) => {
+    setDeleteTarget({
+      id: rec.id,
+      title: rec.title,
+      subtitle: `${formatNum(rec.words)} ${isBn ? 'শব্দ' : 'words'}`
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    const targetId = deleteTarget.id;
+    const updated = records.filter(r => r.id !== targetId);
     setRecords(updated);
     persistData(wordGoal, updated);
+    setDeleteTarget(null);
   };
 
   const percentGoal = Math.min(100, Math.round((todayTotalWords / (wordGoal || 1)) * 100));
@@ -407,7 +429,7 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleDeleteRecord(rec.id)}
+                    onClick={() => requestDeleteRecord(rec)}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                     title={isBn ? 'মুছে ফেলুন' : 'Delete'}
                   >
@@ -419,6 +441,82 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className={cn(
+                "w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4",
+                darkMode ? "bg-[#141824] border-white/10 text-white" : "bg-white border-slate-200 text-gray-900"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
+                  <Trash2 size={18} strokeWidth={2.2} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                    {isBn ? 'লেখার এন্ট্রি মুছে ফেলতে চান?' : 'Delete Writing Entry?'}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {isBn 
+                      ? 'এই এন্ট্রিটি মুছে ফেললে আজকের মোট শব্দের হিসাব স্বয়ংক্রিয়ভাবে পুনর্গণনা করা হবে।' 
+                      : 'This entry will be permanently removed and your daily word count will update.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Target Preview Box */}
+              <div className={cn(
+                "p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2",
+                darkMode ? "bg-white/[0.03] border-white/5" : "bg-slate-50 border-slate-200/70"
+              )}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText size={13} className="text-blue-500 shrink-0" />
+                  <span className="font-bold truncate text-gray-800 dark:text-gray-200">
+                    {deleteTarget.title}
+                  </span>
+                </div>
+                {deleteTarget.subtitle && (
+                  <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400 font-semibold shrink-0">
+                    {deleteTarget.subtitle}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer",
+                    darkMode 
+                      ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" 
+                      : "bg-slate-100 border-slate-200 text-gray-700 hover:bg-slate-200"
+                  )}
+                >
+                  {isBn ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-600/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                >
+                  <Trash2 size={13} />
+                  <span>{isBn ? 'হ্যাঁ, মুছুন' : 'Yes, Delete'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -237,6 +237,15 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
   const [savedToast, setSavedToast] = useState<boolean>(false);
 
+  // Deletion confirmation state
+  interface DeleteTarget {
+    type: 'record' | 'book';
+    id: string;
+    title: string;
+    subtitle?: string;
+  }
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
   // State: Records
   const [records, setRecords] = useState<ReadingRecord[]>(() => {
     try {
@@ -469,23 +478,66 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     }
   };
 
-  // Delete record: automatically recalculates the specific book's read pages and percentage
-  const handleDeleteRecord = (id: string) => {
-    const updatedRecords = records.filter(r => r.id !== id);
-
-    // Recalculate all books without the deleted record
-    const updatedBooks = books.map(b => {
-      const stats = getBookStats(b, updatedRecords);
-      return {
-        ...b,
-        currentPage: stats.totalRead,
-        status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
-      };
+  // Prompt confirmation for deleting a book
+  const requestDeleteBook = (book: BookItem) => {
+    setDeleteTarget({
+      type: 'book',
+      id: book.id,
+      title: book.title,
+      subtitle: `${formatNum(book.totalPages)} ${isBn ? 'পৃষ্ঠা' : 'pages'}`
     });
+  };
 
-    setRecords(updatedRecords);
-    setBooks(updatedBooks);
-    persistData(pageGoal, updatedRecords, updatedBooks);
+  // Prompt confirmation for deleting a reading session record
+  const requestDeleteRecord = (rec: ReadingRecord) => {
+    const rangeText = rec.fromPage !== undefined && rec.toPage !== undefined 
+      ? `p. ${formatNum(rec.fromPage)}–${formatNum(rec.toPage)}`
+      : `${formatNum(rec.pages)} ${isBn ? 'পৃষ্ঠা' : 'pages'}`;
+    setDeleteTarget({
+      type: 'record',
+      id: rec.id,
+      title: rec.bookTitle,
+      subtitle: rangeText
+    });
+  };
+
+  // Confirm and execute the deletion, then show deleted success status (like saving)
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === 'record') {
+      const targetId = deleteTarget.id;
+      const updatedRecords = records.filter(r => r.id !== targetId);
+
+      // Recalculate all books without the deleted record
+      const updatedBooks = books.map(b => {
+        const stats = getBookStats(b, updatedRecords);
+        return {
+          ...b,
+          currentPage: stats.totalRead,
+          status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
+        };
+      });
+
+      setRecords(updatedRecords);
+      setBooks(updatedBooks);
+      persistData(pageGoal, updatedRecords, updatedBooks);
+    } else if (deleteTarget.type === 'book') {
+      const targetId = deleteTarget.id;
+      const updatedBooks = books.filter(b => b.id !== targetId);
+      setBooks(updatedBooks);
+      persistData(pageGoal, records, updatedBooks);
+
+      if (selectedBookId === targetId) {
+        if (updatedBooks.length > 0) {
+          handleSelectBook(updatedBooks[0].id);
+        } else {
+          setSelectedBookId('custom');
+        }
+      }
+    }
+
+    setDeleteTarget(null);
   };
 
   const percentGoal = Math.min(100, Math.round((todayPages / (pageGoal || 1)) * 100));
@@ -984,8 +1036,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleDeleteRecord(rec.id)}
-                    className="p-1 rounded-md text-gray-400 hover:text-red-500 opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={() => requestDeleteRecord(rec)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 opacity-70 hover:opacity-100 transition-all cursor-pointer"
                     title={isBn ? 'মুছুন' : 'Delete'}
                   >
                     <Trash2 size={13} />
@@ -1201,8 +1253,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                             )}
                             <button
                               type="button"
-                              onClick={() => handleDeleteBook(b.id)}
-                              className="p-1 rounded-md text-gray-400 hover:text-red-500 cursor-pointer"
+                              onClick={() => requestDeleteBook(b)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                               title={isBn ? 'মুছুন' : 'Delete'}
                             >
                               <Trash2 size={13} />
@@ -1230,6 +1282,90 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                     </div>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================================= */}
+      {/* 6. DELETION CONFIRMATION DIALOG                                           */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className={cn(
+                "w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4",
+                darkMode ? "bg-[#181822] border-white/10 text-white" : "bg-white border-slate-200 text-gray-900"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
+                  <Trash2 size={18} strokeWidth={2.2} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                    {deleteTarget.type === 'record'
+                      ? (isBn ? 'পড়ার সেশনটি মুছে ফেলতে চান?' : 'Delete Reading Session?')
+                      : (isBn ? 'বইটি লাইব্রেরি থেকে মুছবেন?' : 'Delete Book from Library?')}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {deleteTarget.type === 'record'
+                      ? (isBn 
+                          ? 'এই সেশনটি মুছে ফেললে বইটির পড়ার পৃষ্ঠা এবং অগ্রগতির শতাংশ স্বয়ংক্রিয়ভাবে পুনর্গণনা করা হবে।' 
+                          : 'This session will be removed and your book\'s reading progress will automatically be recalculated.')
+                      : (isBn
+                          ? 'বইটি আপনার লাইব্রেরি থেকে মুছে ফেলা হবে। আপনি কি নিশ্চিত?'
+                          : 'This book will be removed from your library. Are you sure you want to proceed?')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Target Preview Box */}
+              <div className={cn(
+                "p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2",
+                darkMode ? "bg-white/[0.03] border-white/5" : "bg-slate-50 border-slate-200/70"
+              )}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <BookOpen size={13} className="text-indigo-500 shrink-0" />
+                  <span className="font-bold truncate text-gray-800 dark:text-gray-200">
+                    {deleteTarget.title}
+                  </span>
+                </div>
+                {deleteTarget.subtitle && (
+                  <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400 font-semibold shrink-0">
+                    {deleteTarget.subtitle}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer",
+                    darkMode 
+                      ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" 
+                      : "bg-slate-100 border-slate-200 text-gray-700 hover:bg-slate-200"
+                  )}
+                >
+                  {isBn ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-600/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                >
+                  <Trash2 size={13} />
+                  <span>{isBn ? 'হ্যাঁ, মুছুন' : 'Yes, Delete'}</span>
+                </button>
               </div>
             </motion.div>
           </div>
