@@ -43,6 +43,7 @@ export interface BookItem {
   author?: string;
   createdAt: number;
   status?: 'reading' | 'completed';
+  coverColor?: string;
 }
 
 export interface ReadingRecord {
@@ -187,24 +188,27 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     }
   };
 
+  const DEFAULT_BOOK: BookItem = {
+    id: 'book_sample_1',
+    title: 'Atomic Habits',
+    author: 'James Clear',
+    totalPages: 320,
+    currentPage: 0,
+    initialPages: 0,
+    status: 'reading',
+    createdAt: 1704067200000
+  };
+
   // State: Saved Books Library
   const [books, setBooks] = useState<BookItem[]>(() => {
     try {
-      const saved = localStorage.getItem('ratbod_user_books');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [
-      {
-        id: 'book_sample_1',
-        title: 'Atomic Habits',
-        author: 'James Clear',
-        totalPages: 320,
-        currentPage: 0,
-        initialPages: 0,
-        status: 'reading',
-        createdAt: Date.now() - 86400000 * 7
+      const saved = localStorage.getItem('ratbod_user_books') || localStorage.getItem('ratool_user_books');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    ];
+    } catch (e) {}
+    return [DEFAULT_BOOK];
   });
 
   // State: Library modal/drawer
@@ -218,12 +222,22 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   // State: Goal popover / inline edit
   const [isEditingGoal, setIsEditingGoal] = useState<boolean>(false);
   const [pageGoal, setPageGoal] = useState<number>(() => {
-    const saved = localStorage.getItem('ratbod_reading_goal');
-    return saved ? parseInt(saved, 10) || 20 : 20;
+    try {
+      const saved = localStorage.getItem('ratbod_reading_goal') || localStorage.getItem('ratool_reading_goal');
+      return saved ? parseInt(saved, 10) || 20 : 20;
+    } catch (e) {
+      return 20;
+    }
   });
 
   // State: Active Book selection
-  const [selectedBookId, setSelectedBookId] = useState<string>('book_sample_1');
+  const [selectedBookId, setSelectedBookId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_reading_selected_book') || localStorage.getItem('ratool_reading_selected_book');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'book_sample_1';
+  });
   const [customBookTitle, setCustomBookTitle] = useState<string>('');
 
   // State: Logging form - users can enter any range: start, middle, or ending part
@@ -249,8 +263,11 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   // State: Records
   const [records, setRecords] = useState<ReadingRecord[]>(() => {
     try {
-      const saved = localStorage.getItem('ratbod_reading_records');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('ratbod_reading_records') || localStorage.getItem('ratool_reading_records');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {}
     return [];
   });
@@ -267,42 +284,168 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   // Active Book object
   const activeBook = books.find(b => b.id === selectedBookId) || (books.length > 0 ? books[0] : null);
 
-  // Load from Firestore
+  // Robust persistence helper: sanitizes all records to remove undefined properties (which crash Firestore setDoc)
+  const persistData = (goal: number, updatedRecords: ReadingRecord[], updatedBooks: BookItem[], bookIdToSave?: string) => {
+    try {
+      // 1. Sanitize to guarantee NO undefined properties are ever sent to Firestore or stored
+      const cleanRecords = updatedRecords.map(r => {
+        const item: any = {
+          id: String(r.id),
+          date: String(r.date),
+          bookTitle: String(r.bookTitle || ''),
+          pages: Number(r.pages) || 0,
+          minutes: Number(r.minutes) || 0,
+          createdAt: Number(r.createdAt) || Date.now()
+        };
+        if (r.bookId) item.bookId = String(r.bookId);
+        if (r.fromPage !== undefined && r.fromPage !== null) item.fromPage = Number(r.fromPage);
+        if (r.toPage !== undefined && r.toPage !== null) item.toPage = Number(r.toPage);
+        if (r.note && typeof r.note === 'string' && r.note.trim()) item.note = r.note.trim();
+        return item as ReadingRecord;
+      });
+
+      const cleanBooks = updatedBooks.map(b => {
+        const item: any = {
+          id: String(b.id),
+          title: String(b.title || ''),
+          totalPages: Number(b.totalPages) || 0,
+          currentPage: Number(b.currentPage) || 0,
+          status: b.status || 'reading',
+          createdAt: Number(b.createdAt) || Date.now()
+        };
+        if (b.author && b.author.trim()) item.author = b.author.trim();
+        if (b.initialPages !== undefined && b.initialPages !== null) item.initialPages = Number(b.initialPages);
+        if (b.coverColor) item.coverColor = String(b.coverColor);
+        return item as BookItem;
+      });
+
+      const activeId = bookIdToSave || selectedBookId;
+
+      // 2. Cache locally to both standard keys
+      const recJson = JSON.stringify(cleanRecords);
+      const bookJson = JSON.stringify(cleanBooks);
+      localStorage.setItem('ratbod_reading_records', recJson);
+      localStorage.setItem('ratool_reading_records', recJson);
+      localStorage.setItem('ratbod_user_books', bookJson);
+      localStorage.setItem('ratool_user_books', bookJson);
+      localStorage.setItem('ratbod_reading_goal', String(goal));
+      localStorage.setItem('ratool_reading_goal', String(goal));
+      if (activeId) {
+        localStorage.setItem('ratbod_reading_selected_book', activeId);
+        localStorage.setItem('ratool_reading_selected_book', activeId);
+      }
+
+      // 3. Persist to Firestore appData/readingTracker
+      const user = auth.currentUser;
+      if (user) {
+        const payload = JSON.parse(JSON.stringify({
+          pageGoal: Number(goal) || 20,
+          records: cleanRecords,
+          books: cleanBooks,
+          selectedBookId: activeId || null,
+          updatedAt: Date.now()
+        }));
+
+        setDoc(doc(db, 'users', user.uid, 'appData', 'readingTracker'), payload, { merge: true })
+          .then(() => {
+            console.log('[ReadingTracker] Saved to Firestore successfully! Records count:', cleanRecords.length);
+          })
+          .catch(err => {
+            console.error('[ReadingTracker] Firestore save failed:', err);
+          });
+      }
+    } catch (e) {
+      console.error('[ReadingTracker] Error persisting data:', e);
+    }
+  };
+
+  // Load from Firestore with smart merging and offline preservation
   useEffect(() => {
     const load = async (user = auth.currentUser) => {
       if (!user) return;
       try {
         const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'readingTracker'));
+
+        // Retrieve local cache
+        let localRecs: ReadingRecord[] = [];
+        try {
+          const raw = localStorage.getItem('ratbod_reading_records') || localStorage.getItem('ratool_reading_records');
+          if (raw) localRecs = JSON.parse(raw);
+        } catch (e) {}
+
+        let localBooks: BookItem[] = [];
+        try {
+          const raw = localStorage.getItem('ratbod_user_books') || localStorage.getItem('ratool_user_books');
+          if (raw) localBooks = JSON.parse(raw);
+        } catch (e) {}
+
         if (snap.exists()) {
           const data = snap.data();
-          if (data.pageGoal) setPageGoal(data.pageGoal);
-          if (Array.isArray(data.records)) setRecords(data.records);
-          if (Array.isArray(data.books)) setBooks(data.books);
+          const remoteRecs: ReadingRecord[] = Array.isArray(data.records) ? data.records : [];
+          const remoteBooks: BookItem[] = Array.isArray(data.books) ? data.books : [];
+
+          // Merge records by id (preserves locally saved records if remote had not received them yet)
+          const recordMap = new Map<string, ReadingRecord>();
+          localRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
+          remoteRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
+          const mergedRecs = Array.from(recordMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+          // Merge books by id
+          const bookMap = new Map<string, BookItem>();
+          localBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
+          remoteBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
+          let mergedBooks = Array.from(bookMap.values());
+          if (mergedBooks.length === 0) {
+            mergedBooks = [DEFAULT_BOOK];
+          }
+
+          // Recalculate book reading stats against merged records
+          const syncedBooks = mergedBooks.map(b => {
+            const stats = getBookStats(b, mergedRecs);
+            return {
+              ...b,
+              currentPage: stats.totalRead,
+              status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
+            };
+          });
+
+          const chosenGoal = data.pageGoal ? Number(data.pageGoal) : (pageGoal || 20);
+          const chosenBookId = data.selectedBookId || (syncedBooks.length > 0 ? syncedBooks[0].id : 'book_sample_1');
+
+          setRecords(mergedRecs);
+          setBooks(syncedBooks);
+          setPageGoal(chosenGoal);
+          setSelectedBookId(chosenBookId);
+
+          // Update local cache
+          try {
+            localStorage.setItem('ratbod_reading_records', JSON.stringify(mergedRecs));
+            localStorage.setItem('ratool_reading_records', JSON.stringify(mergedRecs));
+            localStorage.setItem('ratbod_user_books', JSON.stringify(syncedBooks));
+            localStorage.setItem('ratool_user_books', JSON.stringify(syncedBooks));
+            localStorage.setItem('ratbod_reading_goal', String(chosenGoal));
+            localStorage.setItem('ratool_reading_goal', String(chosenGoal));
+            localStorage.setItem('ratbod_reading_selected_book', chosenBookId);
+            localStorage.setItem('ratool_reading_selected_book', chosenBookId);
+          } catch (e) {}
+
+          // If local had unsynced records/books that remote missed, sync back to Firestore immediately
+          if (localRecs.length > remoteRecs.length || localBooks.length > remoteBooks.length) {
+            persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId);
+          }
+        } else {
+          // Document does not exist yet on Firestore: seed it from local data so it's safely stored
+          const booksToSave = localBooks.length > 0 ? localBooks : [DEFAULT_BOOK];
+          persistData(pageGoal, localRecs, booksToSave, selectedBookId);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('[ReadingTracker] Error loading from Firestore:', e);
+      }
     };
     load();
     const unsub = onAuthStateChanged(auth, (u) => { if (u) load(u); });
     return () => unsub();
   }, []);
-
-  const persistData = (goal: number, updatedRecords: ReadingRecord[], updatedBooks: BookItem[]) => {
-    try {
-      localStorage.setItem('ratbod_reading_goal', String(goal));
-      localStorage.setItem('ratbod_reading_records', JSON.stringify(updatedRecords));
-      localStorage.setItem('ratbod_user_books', JSON.stringify(updatedBooks));
-
-      const user = auth.currentUser;
-      if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'readingTracker'), {
-          pageGoal: goal,
-          records: updatedRecords,
-          books: updatedBooks,
-          updatedAt: Date.now()
-        }, { merge: true }).catch(() => {});
-      }
-    } catch (e) {}
-  };
 
   // Switch active book and suggest intelligent starting page based on existing read history
   const handleSelectBook = (bookId: string) => {
@@ -323,6 +466,11 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         setToPageInput(String(Math.min(found.totalPages, nextStart + 19)));
       }
     }
+    try {
+      localStorage.setItem('ratbod_reading_selected_book', bookId);
+      localStorage.setItem('ratool_reading_selected_book', bookId);
+    } catch (e) {}
+    persistData(pageGoal, records, books, bookId);
   };
 
   // Add new book
@@ -339,16 +487,18 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       totalPages: totalP,
       currentPage: startP,
       initialPages: startP,
-      author: newBookAuthor.trim() || undefined,
       status: startP >= totalP ? 'completed' : 'reading',
       createdAt: Date.now()
     };
+    if (newBookAuthor.trim()) {
+      newBook.author = newBookAuthor.trim();
+    }
 
     const updatedBooks = [newBook, ...books];
     setBooks(updatedBooks);
-    persistData(pageGoal, records, updatedBooks);
-
     setSelectedBookId(newBook.id);
+    persistData(pageGoal, records, updatedBooks, newBook.id);
+
     const nextStart = startP > 0 && startP < totalP ? startP + 1 : 1;
     setFromPageInput(String(nextStart));
     setToPageInput(String(Math.min(totalP, nextStart + 19)));
@@ -435,14 +585,22 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       id: String(Date.now()),
       date: selectedDate || getLocalDateString(),
       bookTitle: title,
-      bookId: selectedBookId !== 'custom' ? selectedBookId : undefined,
-      fromPage: fromNum,
-      toPage: toNum,
       pages: p,
       minutes: m,
-      note: noteInput.trim() || undefined,
       createdAt: Date.now()
     };
+    if (selectedBookId !== 'custom') {
+      newRec.bookId = selectedBookId;
+    }
+    if (fromNum !== undefined) {
+      newRec.fromPage = fromNum;
+    }
+    if (toNum !== undefined) {
+      newRec.toPage = toNum;
+    }
+    if (noteInput.trim()) {
+      newRec.note = noteInput.trim();
+    }
 
     const updatedRecords = [newRec, ...records].slice(0, 100);
 
@@ -458,7 +616,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
     setRecords(updatedRecords);
     setBooks(updatedBooks);
-    persistData(pageGoal, updatedRecords, updatedBooks);
+    persistData(pageGoal, updatedRecords, updatedBooks, selectedBookId);
 
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);
@@ -521,7 +679,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
       setRecords(updatedRecords);
       setBooks(updatedBooks);
-      persistData(pageGoal, updatedRecords, updatedBooks);
+      persistData(pageGoal, updatedRecords, updatedBooks, selectedBookId);
     } else if (deleteTarget.type === 'book') {
       const targetId = deleteTarget.id;
       const updatedBooks = books.filter(b => b.id !== targetId);

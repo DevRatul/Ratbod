@@ -27,6 +27,7 @@ import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import CircularSleepDial from './CircularSleepDial';
+import { triggerHaptic } from '../utils/haptics';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -232,6 +233,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleToggleBedAmPm = () => {
+    triggerHaptic('medium', true);
     const [h, m] = sleepBedTime.split(':').map(Number);
     const newH = ((h || 0) + 12) % 24;
     const updated = `${String(newH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
@@ -240,6 +242,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleToggleWakeAmPm = () => {
+    triggerHaptic('medium', true);
     const [h, m] = sleepWakeTime.split(':').map(Number);
     const newH = ((h || 0) + 12) % 24;
     const updated = `${String(newH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
@@ -267,12 +270,14 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleAdjustBed = (deltaMin: number) => {
+    triggerHaptic(Math.abs(deltaMin) >= 60 ? 'medium' : 'light', true);
     const updated = adjustMinutes(sleepBedTime, deltaMin);
     setSleepBedTime(updated);
     persistSleepData(updated, sleepWakeTime, sleepRecords);
   };
 
   const handleAdjustWake = (deltaMin: number) => {
+    triggerHaptic(Math.abs(deltaMin) >= 60 ? 'medium' : 'light', true);
     const updated = adjustMinutes(sleepWakeTime, deltaMin);
     setSleepWakeTime(updated);
     persistSleepData(sleepBedTime, updated, sleepRecords);

@@ -117,18 +117,47 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
     .filter(r => r.date === todayStr)
     .reduce((acc, r) => acc + (r.words || 0), 0);
 
-  // Load from Firestore
+  // Load from Firestore with smart merging
   useEffect(() => {
     const load = async (user = auth.currentUser) => {
       if (!user) return;
       try {
         const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'writingTracker'));
+        let localRecs: WritingRecord[] = [];
+        try {
+          const raw = localStorage.getItem('ratbod_writing_records') || localStorage.getItem('ratool_writing_records');
+          if (raw) localRecs = JSON.parse(raw);
+        } catch (e) {}
+
         if (snap.exists()) {
           const data = snap.data();
-          if (data.wordGoal) setWordGoal(data.wordGoal);
-          if (Array.isArray(data.records)) setRecords(data.records);
+          const remoteRecs: WritingRecord[] = Array.isArray(data.records) ? data.records : [];
+          
+          const recordMap = new Map<string, WritingRecord>();
+          localRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
+          remoteRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
+          const mergedRecs = Array.from(recordMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+          const chosenGoal = data.wordGoal ? Number(data.wordGoal) : (wordGoal || 500);
+          setWordGoal(chosenGoal);
+          setRecords(mergedRecs);
+
+          try {
+            localStorage.setItem('ratbod_writing_records', JSON.stringify(mergedRecs));
+            localStorage.setItem('ratool_writing_records', JSON.stringify(mergedRecs));
+            localStorage.setItem('ratbod_writing_goal', String(chosenGoal));
+            localStorage.setItem('ratool_writing_goal', String(chosenGoal));
+          } catch (e) {}
+
+          if (localRecs.length > remoteRecs.length) {
+            persistData(chosenGoal, mergedRecs);
+          }
+        } else if (localRecs.length > 0) {
+          persistData(wordGoal, localRecs);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('[WritingTracker] Error loading from Firestore:', e);
+      }
     };
     load();
     const unsub = onAuthStateChanged(auth, (u) => { if (u) load(u); });
@@ -137,18 +166,43 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
 
   const persistData = (goal: number, updatedRecords: WritingRecord[]) => {
     try {
+      const cleanRecords = updatedRecords.map(r => {
+        const item: any = {
+          id: String(r.id),
+          date: String(r.date),
+          title: String(r.title || ''),
+          words: Number(r.words) || 0,
+          createdAt: Number(r.createdAt) || Date.now()
+        };
+        if (r.content && typeof r.content === 'string' && r.content.trim()) item.content = r.content.trim();
+        return item as WritingRecord;
+      });
+
+      const recJson = JSON.stringify(cleanRecords);
       localStorage.setItem('ratbod_writing_goal', String(goal));
-      localStorage.setItem('ratbod_writing_records', JSON.stringify(updatedRecords));
+      localStorage.setItem('ratool_writing_goal', String(goal));
+      localStorage.setItem('ratbod_writing_records', recJson);
+      localStorage.setItem('ratool_writing_records', recJson);
 
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'writingTracker'), {
-          wordGoal: goal,
-          records: updatedRecords,
+        const payload = JSON.parse(JSON.stringify({
+          wordGoal: Number(goal) || 500,
+          records: cleanRecords,
           updatedAt: Date.now()
-        }, { merge: true }).catch(() => {});
+        }));
+
+        setDoc(doc(db, 'users', user.uid, 'appData', 'writingTracker'), payload, { merge: true })
+          .then(() => {
+            console.log('[WritingTracker] Saved to Firestore. Records:', cleanRecords.length);
+          })
+          .catch(err => {
+            console.error('[WritingTracker] Firestore save error:', err);
+          });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[WritingTracker] Error in persistData:', e);
+    }
   };
 
   const handleSaveEntry = () => {
@@ -160,9 +214,11 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
       date: selectedDate || getLocalDateString(),
       title: entryTitle,
       words: currentCount || 1,
-      content: content.trim() || undefined,
       createdAt: Date.now()
     };
+    if (content.trim()) {
+      newRec.content = content.trim();
+    }
 
     const updated = [newRec, ...records].slice(0, 40);
     setRecords(updated);

@@ -5,6 +5,7 @@
 
 import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { Bed, AlarmClock, Moon, Sparkles } from 'lucide-react';
+import { triggerHaptic } from '../utils/haptics';
 
 interface CircularSleepDialProps {
   bedTime: string; // "HH:MM" (24h storage format)
@@ -186,6 +187,9 @@ export default function CircularSleepDial({
       resolvedTarget = target;
     }
 
+    // Initial grab haptic
+    triggerHaptic('selection', true);
+
     setDragTarget(resolvedTarget);
     dragStateRef.current = {
       lastAngle: currentAngle,
@@ -224,25 +228,35 @@ export default function CircularSleepDial({
     if (step !== 0) {
       dragStateRef.current.minuteAccumulator -= step;
 
+      let isHourMark = false;
       if (dragTarget === 'bed') {
         const nextBed = ((dragStateRef.current.currentBedMinutes + step) % 1440 + 1440) % 1440;
         dragStateRef.current.currentBedMinutes = nextBed;
+        isHourMark = nextBed % 60 === 0;
         onChange(minutesToTime(nextBed), minutesToTime(dragStateRef.current.currentWakeMinutes));
       } else if (dragTarget === 'wake') {
         const nextWake = ((dragStateRef.current.currentWakeMinutes + step) % 1440 + 1440) % 1440;
         dragStateRef.current.currentWakeMinutes = nextWake;
+        isHourMark = nextWake % 60 === 0;
         onChange(minutesToTime(dragStateRef.current.currentBedMinutes), minutesToTime(nextWake));
       } else if (dragTarget === 'arc') {
         const nextBed = ((dragStateRef.current.currentBedMinutes + step) % 1440 + 1440) % 1440;
         const nextWake = ((nextBed + dragStateRef.current.durationMinutes) % 1440 + 1440) % 1440;
         dragStateRef.current.currentBedMinutes = nextBed;
         dragStateRef.current.currentWakeMinutes = nextWake;
+        isHourMark = nextBed % 60 === 0 || nextWake % 60 === 0;
         onChange(minutesToTime(nextBed), minutesToTime(nextWake));
       }
+
+      // Authentic gear notch haptic feedback on every 5-min step, with medium pulse on hour mark
+      triggerHaptic(isHourMark ? 'medium' : 'notch');
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragTarget) {
+      triggerHaptic('light');
+    }
     if (dragTarget && svgRef.current) {
       try {
         svgRef.current.releasePointerCapture(e.pointerId);
