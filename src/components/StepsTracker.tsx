@@ -256,7 +256,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full max-w-md mt-3 space-y-1">
+          <div className="w-full max-w-xl sm:max-w-2xl mt-3 space-y-1">
             <div className="w-full h-2.5 rounded-full bg-gray-200/70 dark:bg-white/10 overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full transition-all duration-300"
@@ -270,7 +270,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
           </div>
 
           {/* Metric Stats Pill: Distance & Calories */}
-          <div className="grid grid-cols-2 gap-3 w-full max-w-md mt-4">
+          <div className="grid grid-cols-2 gap-3 w-full max-w-xl sm:max-w-2xl mt-4">
             <div className={cn(
               "p-2.5 rounded-xl border flex items-center justify-center gap-2",
               darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200"

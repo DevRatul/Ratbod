@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { syncHabitsWithTrackers } from '../utils/habitSync';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -560,6 +561,34 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
     return () => unsubscribe();
   }, []);
+
+  // Real-time listener for tracker auto-sync events (Water & Reading goals)
+  useEffect(() => {
+    const handleAutoSync = (e: any) => {
+      if (e?.detail?.completedLogs) {
+        setCompletedLogs(e.detail.completedLogs);
+      } else {
+        const { updatedLogs, changed } = syncHabitsWithTrackers();
+        if (changed) setCompletedLogs(updatedLogs);
+      }
+    };
+    window.addEventListener('ratbod_habit_logs_updated', handleAutoSync);
+    window.addEventListener('storage', handleAutoSync);
+    return () => {
+      window.removeEventListener('ratbod_habit_logs_updated', handleAutoSync);
+      window.removeEventListener('storage', handleAutoSync);
+    };
+  }, []);
+
+  // Check and auto-tick habits if water goal or reading sessions were logged
+  useEffect(() => {
+    if (isLoaded) {
+      const { updatedLogs, changed } = syncHabitsWithTrackers(completedLogs);
+      if (changed) {
+        setCompletedLogs(updatedLogs);
+      }
+    }
+  }, [isLoaded, selectedDateKey]);
 
   // Week Days Saturday to Friday
   const { weekDays, weekNum } = useMemo(

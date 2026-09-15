@@ -573,17 +573,17 @@ const DEFAULT_RECORD = (dateStr: string): DailySalahRecord => ({
 // Web Audio API Sound Synthesizer for Tasbeeh & Adhkar
 let salahAudioCtx: AudioContext | null = null;
 
-function getSalahAudioContext(): AudioContext | null {
+async function getSalahAudioContext(): Promise<AudioContext | null> {
   try {
     if (typeof window === 'undefined') return null;
+    const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtxClass) return null;
+
     if (!salahAudioCtx) {
-      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtxClass) {
-        salahAudioCtx = new AudioCtxClass();
-      }
+      salahAudioCtx = new AudioCtxClass();
     }
-    if (salahAudioCtx && salahAudioCtx.state === 'suspended') {
-      salahAudioCtx.resume().catch(() => {});
+    if (salahAudioCtx.state !== 'running') {
+      await salahAudioCtx.resume();
     }
     return salahAudioCtx;
   } catch (e) {
@@ -591,60 +591,85 @@ function getSalahAudioContext(): AudioContext | null {
   }
 }
 
+// Global user gesture unlock for Web Audio
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      if (!salahAudioCtx) {
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtxClass) salahAudioCtx = new AudioCtxClass();
+      }
+      if (salahAudioCtx && salahAudioCtx.state !== 'running') {
+        salahAudioCtx.resume().catch(() => {});
+      }
+    } catch (e) {}
+  };
+  window.addEventListener('click', unlockAudio, { once: false, passive: true });
+  window.addEventListener('touchstart', unlockAudio, { once: false, passive: true });
+}
+
 /**
  * Tactile wooden bead clack sound on each tasbeeh bead tap
  */
-function playTasbeehClick() {
+async function playTasbeehClick() {
   try {
-    const ctx = getSalahAudioContext();
+    const ctx = await getSalahAudioContext();
     if (!ctx) return;
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + 0.005;
 
     const osc = ctx.createOscillator();
+    const oscClick = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(820, now);
-    osc.frequency.exponentialRampToValueAtTime(300, now + 0.035);
+    osc.frequency.setValueAtTime(680, now);
+    osc.frequency.exponentialRampToValueAtTime(190, now + 0.06);
 
-    gain.gain.setValueAtTime(0.35, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+    oscClick.type = 'sine';
+    oscClick.frequency.setValueAtTime(1450, now);
+    oscClick.frequency.exponentialRampToValueAtTime(420, now + 0.03);
+
+    gain.gain.setValueAtTime(0.4, now);
+    gain.gain.linearRampToValueAtTime(0.001, now + 0.07);
 
     osc.connect(gain);
+    oscClick.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.04);
+    oscClick.start(now);
+    osc.stop(now + 0.08);
+    oscClick.stop(now + 0.08);
   } catch (e) {}
 }
 
 /**
  * Harmonic bell chime when reaching target (33, 100, etc.)
  */
-function playTargetReachedSound() {
+async function playTargetReachedSound() {
   try {
-    const ctx = getSalahAudioContext();
+    const ctx = await getSalahAudioContext();
     if (!ctx) return;
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + 0.005;
 
-    // Harmonic bell notes: E5, A5, C#6
-    const freqs = [659.25, 880, 1108.73];
+    // Harmonic chord: C5, E5, G5, C6 (523Hz, 659Hz, 784Hz, 1046Hz)
+    const freqs = [523.25, 659.25, 783.99, 1046.50];
     freqs.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      const startTime = now + idx * 0.05;
+      const startTime = now + idx * 0.06;
       osc.frequency.setValueAtTime(freq, startTime);
 
-      gain.gain.setValueAtTime(0.22, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.6);
+      gain.gain.setValueAtTime(0.3, startTime);
+      gain.gain.linearRampToValueAtTime(0.0001, startTime + 0.55);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(startTime);
-      osc.stop(startTime + 0.65);
+      osc.stop(startTime + 0.6);
     });
   } catch (e) {}
 }
@@ -652,54 +677,57 @@ function playTargetReachedSound() {
 /**
  * Sweet confirmation chime for Daily Adhkar Checklist
  */
-function playAzkarCheckSound() {
+async function playAzkarCheckSound() {
   try {
-    const ctx = getSalahAudioContext();
+    const ctx = await getSalahAudioContext();
     if (!ctx) return;
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + 0.005;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const notes = [659.25, 987.77, 1318.51];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, now); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // A5
+      osc.type = 'sine';
+      const startTime = now + idx * 0.05;
+      osc.frequency.setValueAtTime(freq, startTime);
 
-    gain.gain.setValueAtTime(0.24, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      gain.gain.setValueAtTime(0.28, startTime);
+      gain.gain.linearRampToValueAtTime(0.0001, startTime + 0.35);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc.start(now);
-    osc.stop(now + 0.16);
+      osc.start(startTime);
+      osc.stop(startTime + 0.4);
+    });
   } catch (e) {}
 }
 
 /**
  * Subtle reset sound
  */
-function playResetSound() {
+async function playResetSound() {
   try {
-    const ctx = getSalahAudioContext();
+    const ctx = await getSalahAudioContext();
     if (!ctx) return;
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + 0.005;
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(440, now);
-    osc.frequency.exponentialRampToValueAtTime(220, now + 0.07);
+    osc.frequency.setValueAtTime(480, now);
+    osc.frequency.linearRampToValueAtTime(240, now + 0.12);
 
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    gain.gain.setValueAtTime(0.22, now);
+    gain.gain.linearRampToValueAtTime(0.001, now + 0.13);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.09);
+    osc.stop(now + 0.14);
   } catch (e) {}
 }
 

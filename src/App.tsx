@@ -41,7 +41,8 @@ import {
   SunMedium,
   ClipboardList,
   Globe,
-  LayoutDashboard
+  LayoutDashboard,
+  ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -1347,6 +1348,100 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     handleHealthMenuClick();
   };
 
+  // Mobile Liquid Drag & Swapping Navigation (iOS 27 Fluid Gestures)
+  const MOBILE_TABS_CONFIG = useMemo(() => [
+    { id: 'groceries' as TabType, nameEn: 'Groceries', nameBn: 'বাজার' },
+    { id: 'breathing' as TabType, nameEn: 'Calm', nameBn: 'শ্বাস' },
+    { id: 'logify' as TabType, nameEn: 'Logify', nameBn: 'লগ' },
+    { id: 'results' as TabType, nameEn: 'Habitor', nameBn: 'অভ্যাস' },
+    { id: 'calculator' as TabType, nameEn: 'Health', nameBn: 'স্বাস্থ্য' },
+  ], []);
+
+  const [mobileDragOffset, setMobileDragOffset] = useState<number>(0);
+  const touchStartXRef = useRef<number>(0);
+  const touchStartYRef = useRef<number>(0);
+  const touchStartTimeRef = useRef<number>(0);
+  const isHorizontalSwipeRef = useRef<boolean>(false);
+
+  const currentMobileTab = (activeTab === 'water' ? 'logify' : activeTab) as TabType;
+  const currentMobileIndex = MOBILE_TABS_CONFIG.findIndex(t => t.id === currentMobileTab);
+
+  const navigateMobileTab = (direction: 1 | -1) => {
+    if (currentMobileIndex === -1) return;
+    const nextIndex = currentMobileIndex + direction;
+    if (nextIndex >= 0 && nextIndex < MOBILE_TABS_CONFIG.length) {
+      handleMenuClick(MOBILE_TABS_CONFIG[nextIndex].id);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(15);
+      }
+    }
+  };
+
+  const handleMobileTouchStart = (e: React.TouchEvent) => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+    const touch = e.touches[0];
+    const target = e.target as HTMLElement;
+    // Don't intercept user inputs, buttons, sliders, or elements marked with data-no-swipe
+    if (target.closest('input, textarea, select, button, [data-no-swipe], [role="slider"], .reorder-item, audio, video')) {
+      isHorizontalSwipeRef.current = false;
+      return;
+    }
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    touchStartTimeRef.current = Date.now();
+    isHorizontalSwipeRef.current = false;
+  };
+
+  const handleMobileTouchMove = (e: React.TouchEvent) => {
+    if ((typeof window !== 'undefined' && window.innerWidth >= 768) || touchStartXRef.current === 0) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartXRef.current;
+    const dy = touch.clientY - touchStartYRef.current;
+
+    if (!isHorizontalSwipeRef.current) {
+      // If predominantly vertical scroll, let normal page scrolling proceed
+      if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) {
+        touchStartXRef.current = 0;
+        return;
+      }
+      // If horizontal intent detected
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        isHorizontalSwipeRef.current = true;
+      }
+    }
+
+    if (isHorizontalSwipeRef.current) {
+      // Elastic rubber-band resistance
+      const isAtLeftBoundary = currentMobileIndex === 0 && dx > 0;
+      const isAtRightBoundary = currentMobileIndex === MOBILE_TABS_CONFIG.length - 1 && dx < 0;
+      const resistance = (isAtLeftBoundary || isAtRightBoundary) ? 0.16 : 0.42;
+      setMobileDragOffset(dx * resistance);
+    }
+  };
+
+  const handleMobileTouchEnd = () => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+    if (isHorizontalSwipeRef.current) {
+      const dt = Date.now() - touchStartTimeRef.current;
+      const velocity = Math.abs(mobileDragOffset) / Math.max(dt, 1);
+      const shouldNavigate = Math.abs(mobileDragOffset) > 42 || (Math.abs(mobileDragOffset) > 22 && velocity > 0.35);
+
+      if (shouldNavigate) {
+        if (mobileDragOffset < 0) {
+          // Dragged left -> switch to next tab on the right
+          navigateMobileTab(1);
+        } else if (mobileDragOffset > 0) {
+          // Dragged right -> switch to previous tab on the left
+          navigateMobileTab(-1);
+        }
+      }
+    }
+    touchStartXRef.current = 0;
+    touchStartYRef.current = 0;
+    isHorizontalSwipeRef.current = false;
+    setMobileDragOffset(0);
+  };
+
   if (activeTab === 'home') {
     return (
       <LandingPage
@@ -1381,6 +1476,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
     <div 
       style={{ colorScheme: darkMode ? 'dark' : 'light' }}
+      onTouchStart={handleMobileTouchStart}
+      onTouchMove={handleMobileTouchMove}
+      onTouchEnd={handleMobileTouchEnd}
+      onTouchCancel={handleMobileTouchEnd}
       className={cn(
       "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-clip pb-24 md:pb-0",
       darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
@@ -1662,46 +1761,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         <span>{lang === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
                       </button>
 
-                      {/* Language item in menu */}
-                      <div className={cn(
-                        "px-3.5 sm:px-4 py-2 flex items-center justify-between gap-2 text-xs sm:text-sm font-bold",
-                        darkMode ? "text-gray-300" : "text-gray-700"
-                      )}>
-                        <div className="flex items-center gap-2.5 sm:gap-3">
-                          <Globe size={14} className="sm:w-4 sm:h-4 text-sky-500 shrink-0" />
-                          <span>{lang === 'bn' ? 'ভাষা' : 'Language'}</span>
-                        </div>
-                        <div className={cn(
-                          "flex items-center p-0.5 rounded-lg border text-[11px] font-black",
-                          darkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
-                        )}>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLang('en')}
-                            className={cn(
-                              "px-2 py-0.5 rounded-md transition-all cursor-pointer",
-                              lang === 'en' 
-                                ? (darkMode ? "bg-white text-black font-black shadow-xs" : "bg-white text-gray-950 font-black shadow-xs")
-                                : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-950")
-                            )}
-                          >
-                            EN
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLang('bn')}
-                            className={cn(
-                              "px-2 py-0.5 rounded-md transition-all cursor-pointer",
-                              lang === 'bn' 
-                                ? (darkMode ? "bg-white text-black font-black shadow-xs" : "bg-white text-gray-950 font-black shadow-xs")
-                                : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-950")
-                            )}
-                          >
-                            বাং
-                          </button>
-                        </div>
-                      </div>
-
                       <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         id="profile_menu_signout"
@@ -1725,6 +1784,36 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           </div>
         </div>
       </header>
+
+      {/* Next Liquid Edge Indicator (iOS 27 Dynamic Island style pill) */}
+      {mobileDragOffset < -20 && currentMobileIndex < MOBILE_TABS_CONFIG.length - 1 && (
+        <div className="fixed right-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none md:hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className={cn(
+            "px-3 py-1.5 rounded-full border backdrop-blur-2xl shadow-xl flex items-center gap-1.5 text-xs font-black transition-all",
+            darkMode 
+              ? "bg-[#0F0F0F]/85 border-white/20 text-white shadow-black/80" 
+              : "bg-white/85 border-black/10 text-gray-900 shadow-gray-400/50"
+          )}>
+            <span>{lang === 'bn' ? MOBILE_TABS_CONFIG[currentMobileIndex + 1].nameBn : MOBILE_TABS_CONFIG[currentMobileIndex + 1].nameEn}</span>
+            <ChevronRight size={14} className="text-primary animate-pulse" />
+          </div>
+        </div>
+      )}
+
+      {/* Previous Liquid Edge Indicator (iOS 27 Dynamic Island style pill) */}
+      {mobileDragOffset > 20 && currentMobileIndex > 0 && (
+        <div className="fixed left-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none md:hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className={cn(
+            "px-3 py-1.5 rounded-full border backdrop-blur-2xl shadow-xl flex items-center gap-1.5 text-xs font-black transition-all",
+            darkMode 
+              ? "bg-[#0F0F0F]/85 border-white/20 text-white shadow-black/80" 
+              : "bg-white/85 border-black/10 text-gray-900 shadow-gray-400/50"
+          )}>
+            <ChevronLeft size={14} className="text-primary animate-pulse" />
+            <span>{lang === 'bn' ? MOBILE_TABS_CONFIG[currentMobileIndex - 1].nameBn : MOBILE_TABS_CONFIG[currentMobileIndex - 1].nameEn}</span>
+          </div>
+        </div>
+      )}
 
       {/* Breathing Tab Content */}
       <div className={cn(
@@ -2174,15 +2263,32 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         )}
       >
         <div className="flex items-center justify-around w-full max-w-lg mx-auto">
-          {/* 1. Groceries (Leftmost, so Right-to-Left is: Health, Habitor, Logify, Calm, Groceries) */}
+          {/* 1. Groceries (Leftmost) */}
           <button 
             id="tab_groceries"
             onClick={() => handleMenuClick('groceries')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
               activeTab === 'groceries' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
+            {activeTab === 'groceries' && (
+              <motion.div
+                layoutId="mobile_liquid_tab_active_pill"
+                className={cn(
+                  "absolute inset-0 rounded-xl -z-10",
+                  darkMode 
+                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
+                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 30,
+                  mass: 0.6
+                }}
+              />
+            )}
             <ShoppingBag size={18} />
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
           </button>
@@ -2192,10 +2298,27 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_breathing"
             onClick={() => handleMenuClick('breathing')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0",
+              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
               activeTab === 'breathing' ? "text-teal-400 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
+            {activeTab === 'breathing' && (
+              <motion.div
+                layoutId="mobile_liquid_tab_active_pill"
+                className={cn(
+                  "absolute inset-0 rounded-xl -z-10",
+                  darkMode 
+                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
+                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 30,
+                  mass: 0.6
+                }}
+              />
+            )}
             <Wind size={18} />
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
           </button>
@@ -2205,12 +2328,29 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_logify"
             onClick={() => handleMenuClick('logify')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all select-none min-w-0 cursor-pointer",
+              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
               (activeTab === 'logify' || activeTab === 'water') 
                 ? (darkMode ? "text-blue-400 scale-105 font-bold" : "text-blue-500 scale-105 font-bold") 
                 : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
+            {(activeTab === 'logify' || activeTab === 'water') && (
+              <motion.div
+                layoutId="mobile_liquid_tab_active_pill"
+                className={cn(
+                  "absolute inset-0 rounded-xl -z-10",
+                  darkMode 
+                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
+                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 30,
+                  mass: 0.6
+                }}
+              />
+            )}
             <ClipboardList size={18} className={cn((activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "opacity-80")} />
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabLogify}</span>
           </button>
@@ -2220,10 +2360,27 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_results"
             onClick={() => handleMenuClick('results')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all relative select-none min-w-0",
+              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all relative select-none min-w-0 cursor-pointer rounded-xl",
               activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
+            {activeTab === 'results' && (
+              <motion.div
+                layoutId="mobile_liquid_tab_active_pill"
+                className={cn(
+                  "absolute inset-0 rounded-xl -z-10",
+                  darkMode 
+                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
+                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 30,
+                  mass: 0.6
+                }}
+              />
+            )}
             <Flame size={18} />
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
           </button>
@@ -2233,10 +2390,27 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_calculator"
             onClick={() => handleMenuClick('calculator')}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-0.5 transition-all cursor-pointer select-none min-w-0",
+              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all cursor-pointer select-none min-w-0 rounded-xl",
               activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
+            {activeTab === 'calculator' && (
+              <motion.div
+                layoutId="mobile_liquid_tab_active_pill"
+                className={cn(
+                  "absolute inset-0 rounded-xl -z-10",
+                  darkMode 
+                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
+                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 30,
+                  mass: 0.6
+                }}
+              />
+            )}
             <Heart size={18} />
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
           </button>

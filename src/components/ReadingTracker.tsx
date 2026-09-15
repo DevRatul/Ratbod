@@ -29,6 +29,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { syncHabitsWithTrackers, markReadingHabitCompleted } from '../utils/habitSync';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -389,6 +390,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           readingUpdatedAt: Date.now()
         }, { merge: true }).catch(() => {});
       }
+
+      // Auto-sync Habitor: if a user logged that day reading session, inhabitant section read a book will be ticked
+      syncHabitsWithTrackers();
     } catch (e) {
       console.error('[ReadingTracker] Error persisting data:', e);
     }
@@ -770,6 +774,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     setRecords(updatedRecords);
     setBooks(updatedBooks);
     persistData(pageGoal, updatedRecords, updatedBooks, selectedBookId);
+    markReadingHabitCompleted(selectedDate || getLocalDateString());
 
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);
@@ -859,7 +864,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const activeBookPercent = activeBookStats ? activeBookStats.percent : 0;
 
   return (
-    <div className="max-w-xl mx-auto w-full space-y-3 pb-4">
+    <div className="w-full max-w-4xl mx-auto space-y-3 pb-4">
       {/* ========================================================================= */}
       {/* 1. TOP MINIMAL PULSE: TODAY'S READING PROGRESS                            */}
       {/* ========================================================================= */}
@@ -1033,28 +1038,28 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. LOG SESSION CARD (Clean, Instant, Single-Flow UX)                       */}
+      {/* 3. LOG SESSION CARD (Compact, Clean, Single-Flow UX on Mobile & Desktop)   */}
       {/* ========================================================================= */}
       <div className={cn(
-        "p-4 rounded-2xl border transition-all space-y-3",
+        "p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all space-y-1.5 sm:space-y-3",
         darkMode 
           ? "bg-[#121217] border-white/10 text-white" 
           : "bg-white border-slate-200/80 text-gray-900"
       )}>
         {/* Sub-header: Mode selector (Page Range vs Direct) */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-            <Bookmark size={13} className="text-indigo-500" />
+        <div className="flex items-center justify-between pb-0.5">
+          <span className="text-[10px] sm:text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+            <Bookmark size={11} className="text-indigo-500 shrink-0 sm:w-[13px] sm:h-[13px]" />
             <span>{isBn ? 'পড়ার সেশন লগ করুন' : 'Log Reading Session'}</span>
           </span>
 
           {/* Clean Segmented Pill */}
-          <div className="flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/60 dark:bg-white/5 text-[11px]">
+          <div className="flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/60 dark:bg-white/5 text-[9px] sm:text-[11px]">
             <button
               type="button"
               onClick={() => setUsePageRange(true)}
               className={cn(
-                "px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer",
+                "px-1.5 sm:px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer text-[8.5px] sm:text-[11px]",
                 usePageRange 
                   ? (darkMode ? "bg-white/20 text-white font-bold shadow-2xs" : "bg-white text-gray-900 font-bold shadow-2xs") 
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-800"
@@ -1066,7 +1071,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
               type="button"
               onClick={() => setUsePageRange(false)}
               className={cn(
-                "px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer",
+                "px-1.5 sm:px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer text-[8.5px] sm:text-[11px]",
                 !usePageRange 
                   ? (darkMode ? "bg-white/20 text-white font-bold shadow-2xs" : "bg-white text-gray-900 font-bold shadow-2xs") 
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-800"
@@ -1079,10 +1084,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
         {/* Inputs */}
         {usePageRange ? (
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1 sm:space-y-2">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
               <div>
-                <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+                <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1">
                   {isBn ? 'শুরু পৃষ্ঠা' : 'From page'}
                 </label>
                 <input
@@ -1092,14 +1097,14 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                   value={fromPageInput}
                   onChange={(e) => setFromPageInput(e.target.value)}
                   className={cn(
-                    "w-full px-3 py-2 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                    "w-full px-2 sm:px-3 py-0.5 sm:py-2 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
                   )}
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+                <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1">
                   {isBn ? 'শেষ পৃষ্ঠা' : 'To page'}
                 </label>
                 <input
@@ -1109,7 +1114,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                   value={toPageInput}
                   onChange={(e) => setToPageInput(e.target.value)}
                   className={cn(
-                    "w-full px-3 py-2 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                    "w-full px-2 sm:px-3 py-0.5 sm:py-2 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
                     darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
                   )}
                 />
@@ -1117,15 +1122,15 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
             </div>
 
             {/* Quick page increment pills */}
-            <div className="flex items-center gap-1.5 pt-0.5">
-              <span className="text-[10px] text-gray-400 font-medium mr-0.5">{isBn ? 'যোগ:' : 'Add:'}</span>
+            <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5 flex-wrap">
+              <span className="text-[8px] sm:text-[10px] text-gray-400 font-medium mr-0.5">{isBn ? 'যোগ:' : 'Add:'}</span>
               {[5, 10, 15, 20].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => applyQuickPages(num)}
                   className={cn(
-                    "px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold transition-all cursor-pointer border",
+                    "px-1 sm:px-2 py-0.2 sm:py-0.5 rounded text-[8.5px] sm:text-[10.5px] font-mono font-bold transition-all cursor-pointer border",
                     darkMode 
                       ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" 
                       : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
@@ -1134,15 +1139,15 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                   +{formatNum(num)}
                 </button>
               ))}
-              <div className="ml-auto text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+              <div className="ml-auto text-[9.5px] sm:text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
                 {formatNum(rangePagesRead)} {isBn ? 'পৃ' : 'pg'}
               </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1 sm:space-y-2">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+              <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1">
                 {isBn ? 'আজ কত পৃষ্ঠা পড়েছেন:' : 'Pages read today:'}
               </label>
               <input
@@ -1152,21 +1157,21 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 value={directPagesInput}
                 onChange={(e) => setDirectPagesInput(e.target.value)}
                 className={cn(
-                  "w-full px-3 py-2 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                  "w-full px-2 sm:px-3 py-0.5 sm:py-2 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
                   darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
                 )}
               />
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-gray-400 font-medium mr-0.5">{isBn ? 'যোগ:' : 'Add:'}</span>
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+              <span className="text-[8px] sm:text-[10px] text-gray-400 font-medium mr-0.5">{isBn ? 'যোগ:' : 'Add:'}</span>
               {[5, 10, 15, 20].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => applyQuickPages(num)}
                   className={cn(
-                    "px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold transition-all cursor-pointer border",
+                    "px-1 sm:px-2 py-0.2 sm:py-0.5 rounded text-[8.5px] sm:text-[10.5px] font-mono font-bold transition-all cursor-pointer border",
                     darkMode 
                       ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" 
                       : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
@@ -1180,10 +1185,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         )}
 
         {/* Time spent & Date Row */}
-        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 block mb-1 flex items-center gap-1">
-              <Clock size={11} className="text-amber-500" />
+            <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1 flex items-center gap-1">
+              <Clock size={9} className="text-amber-500 shrink-0 sm:w-[11px] sm:h-[11px]" />
               <span>{isBn ? 'পড়ার সময় (মিনিট)' : 'Time (minutes)'}</span>
             </label>
             <input
@@ -1193,15 +1198,15 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
               value={minutesInput}
               onChange={(e) => setMinutesInput(e.target.value)}
               className={cn(
-                "w-full px-3 py-1.5 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                "w-full px-1.5 sm:px-3 py-0.5 sm:py-1.5 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
                 darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
               )}
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 block mb-1 flex items-center gap-1">
-              <Calendar size={11} className="text-gray-400" />
+            <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1 flex items-center gap-1">
+              <Calendar size={9} className="text-gray-400 shrink-0 sm:w-[11px] sm:h-[11px]" />
               <span>{isBn ? 'তারিখ' : 'Date'}</span>
             </label>
             <input
@@ -1210,8 +1215,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className={cn(
-                "w-full px-2 py-1.5 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                darkMode ? "bg-white/5 border-white/10 text-white [color-scheme:dark]" : "bg-slate-50 border-slate-200 text-gray-900"
+                "w-full px-1 sm:px-2 py-0.5 sm:py-1.5 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[9.5px] sm:text-xs font-mono font-medium border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 [color-scheme:light] dark:[color-scheme:dark] max-w-full leading-none",
+                darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
               )}
             />
           </div>
@@ -1222,8 +1227,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           {showNoteField ? (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-semibold text-gray-400 flex items-center gap-1">
-                  <Quote size={10} />
+                <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 flex items-center gap-1">
+                  <Quote size={8} />
                   <span>{isBn ? 'সংক্ষিপ্ত নোট বা উদ্ধৃতি' : 'Note or quote'}</span>
                 </label>
                 <button
@@ -1232,9 +1237,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                     setShowNoteField(false);
                     setNoteInput('');
                   }}
-                  className="text-[10px] text-gray-400 hover:text-red-500 cursor-pointer"
+                  className="text-[8.5px] sm:text-[10px] text-gray-400 hover:text-red-500 cursor-pointer"
                 >
-                  <X size={12} />
+                  <X size={10} />
                 </button>
               </div>
               <input
@@ -1244,7 +1249,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 value={noteInput}
                 onChange={(e) => setNoteInput(e.target.value)}
                 className={cn(
-                  "w-full px-3 py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                  "w-full px-2 sm:px-2.5 py-0.5 sm:py-1.5 h-6.5 sm:h-8 rounded-md sm:rounded-xl text-[9.5px] sm:text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500",
                   darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
                 )}
               />
@@ -1253,9 +1258,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
             <button
               type="button"
               onClick={() => setShowNoteField(true)}
-              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
+              className="text-[9px] sm:text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
             >
-              <Plus size={12} />
+              <Plus size={10} />
               <span>{isBn ? '+ নোট বা উদ্ধৃতি যোগ করুন' : '+ Add a note or quote'}</span>
             </button>
           )}
@@ -1268,7 +1273,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           onClick={handleLogSession}
           disabled={usePageRange && (fromP <= 0 || toP < fromP)}
           className={cn(
-            "w-full py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98] text-white",
+            "w-full py-1 sm:py-2.5 h-7.5 sm:h-10 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98] text-white",
             savedToast 
               ? "bg-emerald-600 shadow-emerald-500/25" 
               : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/25 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1276,12 +1281,12 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         >
           {savedToast ? (
             <>
-              <Check size={14} strokeWidth={3} />
+              <Check size={12} strokeWidth={3} />
               <span>{isBn ? 'সংরক্ষিত হয়েছে!' : 'Logged Successfully!'}</span>
             </>
           ) : (
             <>
-              <Plus size={14} strokeWidth={2.5} />
+              <Plus size={12} strokeWidth={2.5} />
               <span>
                 {isBn 
                   ? `পড়া লগ করুন (${formatNum(activePagesToday)} পৃষ্ঠা)` 

@@ -6,6 +6,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { syncHabitsWithTrackers, markWaterHabitCompleted } from '../utils/habitSync';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -257,10 +258,20 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       };
       
       localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(dataToSave));
+      localStorage.setItem('ratool_water_tracker_data', JSON.stringify(dataToSave));
       
       const user = auth.currentUser;
       if (user) {
         setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), dataToSave, { merge: true }).catch(e => {});
+      }
+
+      // Auto-sync Habitor: if water target goal is consumed, auto-tick the Drink Mineral Water habit
+      const currentTotal = entries.reduce((acc, cur) => acc + (cur.amountMl || 0), 0);
+      const targetGoal = (goalGlasses || 12) * (glassVolumeMl || 250);
+      if (currentTotal >= targetGoal && targetGoal > 0) {
+        markWaterHabitCompleted(todayDate);
+      } else {
+        syncHabitsWithTrackers();
       }
     } catch (e) {
       console.error("Failed to save water tracker data", e);
@@ -821,6 +832,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     };
     setEntries(prev => [newEntry, ...prev]);
     setRedoStack([]); // Clear redo stack on new water entry
+
+    if (newTotal >= goalMl && goalMl > 0) {
+      markWaterHabitCompleted(getLocalDateString(new Date()));
+    }
   };
 
   const handleCustomAdd = (e: React.FormEvent) => {

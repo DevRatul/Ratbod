@@ -150,23 +150,23 @@ export default function Logify({
       <div className="flex flex-col md:flex-row items-start gap-3 md:gap-3.5 lg:gap-4 w-full">
         {/* Tab Content Area: five sub nav menu pages bottom padding will be 20 pixel only */}
         <div id={`logify_content_${activeTab}`} className="flex-1 min-w-0 w-full pb-0 md:pr-32 xl:pr-0">
-          <div className={activeTab === 'steps' ? 'block pb-[20px]' : 'hidden'}>
+          <div className={activeTab === 'steps' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
             <StepsTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'reading' ? 'block pb-[20px]' : 'hidden'}>
+          <div className={activeTab === 'reading' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
             <ReadingTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'water' ? 'block pb-[20px]' : 'hidden'}>
+          <div className={activeTab === 'water' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
             <WaterTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'salah' ? 'block pb-[20px]' : 'hidden'}>
+          <div className={activeTab === 'salah' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
             <SalahTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'sleep' ? 'block pb-[20px]' : 'hidden'}>
+          <div className={activeTab === 'sleep' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
             <SleepTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
         </div>
