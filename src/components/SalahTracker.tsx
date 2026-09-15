@@ -27,7 +27,9 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  Circle
+  Circle,
+  Palette,
+  Smartphone
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -38,6 +40,375 @@ import { onAuthStateChanged } from 'firebase/auth';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export type SalahTheme = 'clarity' | 'emerald' | 'indigo' | 'sand';
+
+export const SALAH_THEMES: Record<SalahTheme, {
+  nameBn: string;
+  nameEn: string;
+  dotColor: string;
+  bannerBg: string;
+  bannerBorder: string;
+  bannerTitle: string;
+  bannerSubtitle: string;
+  badge: string;
+  iconBox: string;
+  iconText: string;
+  dateBox: string;
+  dateHover: string;
+  todayBtn: string;
+  statsBorder: string;
+  statCard: string;
+  farzStatDone: string;
+  farzStatPending: string;
+  farzStatText: string;
+  // Waqt section
+  waqtClockIcon: string;
+  waqtTitle: string;
+  waqtCountBadge: string;
+  prayerCardDone: string;
+  prayerCardIdle: string;
+  prayerIconDone: string;
+  prayerIconIdle: string;
+  prayerNameDone: string;
+  prayerNameIdle: string;
+  prayerArabic: string;
+  jamaatBadge: string;
+  qazaBadge: string;
+  statusOnTime: string;
+  statusJamaat: string;
+  statusQaza: string;
+  statusIdle: string;
+  prayerBtnDone: string;
+  prayerBtnIdle: string;
+  expandBtn: string;
+  subPartDone: string;
+  subPartCheck: string;
+  subPartIdle: string;
+  // Nafl section
+  nafalIcon: string;
+  nafalBadge: string;
+  nafalDone: string;
+  nafalIdle: string;
+  nafalBtnDone: string;
+  nafalBtnIdle: string;
+  nafalPillDone: string;
+  nafalPillIdle: string;
+  nafalAddBtn: string;
+  // Tasbeeh section
+  tasbeehIcon: string;
+  tasbeehBadge: string;
+  tasbeehVibrateActive: string;
+  tasbeehUnitBg: string;
+  tasbeehArabic: string;
+  tasbeehBead: string;
+  tasbeehTargetActive: string;
+  tasbeehTargetIdle: string;
+  tasbeehItemDone: string;
+  tasbeehItemIdle: string;
+  tasbeehCountBadge: string;
+  tasbeehPlusBtn: string;
+  tasbeehAddBtn: string;
+  // Adhkar section
+  adhkarIcon: string;
+  adhkarBadge: string;
+  adhkarDone: string;
+  adhkarCheck: string;
+  adhkarIdle: string;
+}> = {
+  clarity: {
+    nameBn: 'হাই-কন্ট্রাস্ট',
+    nameEn: 'Pure Clarity',
+    dotColor: 'bg-emerald-700',
+    bannerBg: 'bg-white border-slate-300 text-slate-900 shadow-sm',
+    bannerBorder: 'border-slate-300',
+    bannerTitle: 'text-slate-950 font-black',
+    bannerSubtitle: 'text-slate-700 font-semibold',
+    badge: 'bg-emerald-100 text-emerald-950 border border-emerald-400 font-bold',
+    iconBox: 'bg-emerald-700 text-white shadow-xs',
+    iconText: 'text-emerald-700',
+    dateBox: 'bg-slate-50 border-slate-300 text-slate-900 shadow-xs font-bold',
+    dateHover: 'text-slate-900 hover:text-black hover:bg-slate-200/90 font-bold',
+    todayBtn: 'bg-emerald-700 text-white hover:bg-emerald-800 font-bold shadow-xs',
+    statsBorder: 'border-slate-300',
+    statCard: 'bg-slate-50 border-slate-300 text-slate-900 shadow-xs',
+    farzStatDone: 'bg-emerald-700 text-white shadow-xs font-black',
+    farzStatPending: 'bg-slate-200 text-slate-900 font-bold',
+    farzStatText: 'text-slate-950 font-black',
+    // Waqt section
+    waqtClockIcon: 'text-emerald-700',
+    waqtTitle: 'text-slate-950 font-black',
+    waqtCountBadge: 'text-slate-700 font-bold',
+    prayerCardDone: 'bg-emerald-50/90 border-emerald-400 shadow-xs',
+    prayerCardIdle: 'bg-white border-slate-300 hover:border-slate-400 shadow-xs',
+    prayerIconDone: 'bg-emerald-700 text-white shadow-sm',
+    prayerIconIdle: 'bg-slate-100 text-slate-800 border border-slate-200',
+    prayerNameDone: 'text-emerald-950 font-black',
+    prayerNameIdle: 'text-slate-950 font-extrabold',
+    prayerArabic: 'text-slate-700 font-bold',
+    jamaatBadge: 'bg-emerald-100 text-emerald-950 border-emerald-400 font-black',
+    qazaBadge: 'bg-amber-100 text-amber-950 border-amber-400 font-black',
+    statusOnTime: 'bg-emerald-700 text-white shadow-xs font-black',
+    statusJamaat: 'bg-emerald-900 text-white shadow-xs font-black',
+    statusQaza: 'bg-amber-700 text-white shadow-xs font-black',
+    statusIdle: 'text-slate-800 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold',
+    prayerBtnDone: 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm font-black',
+    prayerBtnIdle: 'bg-slate-900 text-white hover:bg-black border border-slate-900 font-bold shadow-xs',
+    expandBtn: 'text-slate-700 hover:text-slate-950 hover:bg-slate-100 font-bold',
+    subPartDone: 'bg-emerald-100/90 border-emerald-400 text-emerald-950 font-black shadow-xs',
+    subPartCheck: 'bg-emerald-700 border-emerald-700 text-white',
+    subPartIdle: 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400 font-semibold shadow-xs',
+    // Nafl section
+    nafalIcon: 'text-teal-700',
+    nafalBadge: 'text-teal-950 bg-teal-100 border-teal-400 font-bold',
+    nafalDone: 'bg-teal-50/90 border-teal-400 shadow-xs',
+    nafalIdle: 'bg-white border-slate-300 hover:border-slate-400 shadow-xs',
+    nafalBtnDone: 'bg-teal-700 text-white hover:bg-teal-800 shadow-sm font-bold',
+    nafalBtnIdle: 'bg-slate-900 text-white hover:bg-black border border-slate-900 font-bold shadow-xs',
+    nafalPillDone: 'bg-teal-700 text-white shadow-xs font-bold',
+    nafalPillIdle: 'bg-white text-slate-800 border border-slate-300 hover:bg-slate-100 font-semibold',
+    nafalAddBtn: 'border-teal-400 bg-teal-50 hover:bg-teal-100 text-teal-950 font-bold shadow-xs',
+    // Tasbeeh section
+    tasbeehIcon: 'text-emerald-700',
+    tasbeehBadge: 'text-emerald-950 bg-emerald-100 border-emerald-400 font-bold',
+    tasbeehVibrateActive: 'text-emerald-950 bg-emerald-100 font-black',
+    tasbeehUnitBg: 'bg-white border-slate-300 shadow-sm',
+    tasbeehArabic: 'text-slate-950 font-black',
+    tasbeehBead: 'border-emerald-700 hover:border-emerald-800 bg-emerald-700 hover:bg-emerald-800 text-white shadow-md font-bold',
+    tasbeehTargetActive: 'bg-emerald-700 text-white shadow-xs font-bold',
+    tasbeehTargetIdle: 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 font-semibold',
+    tasbeehItemDone: 'bg-emerald-50/90 border-emerald-400 shadow-xs',
+    tasbeehItemIdle: 'bg-white border-slate-300 hover:border-slate-400',
+    tasbeehCountBadge: 'bg-slate-100 text-slate-950 border-slate-300 shadow-xs font-bold',
+    tasbeehPlusBtn: 'bg-emerald-700 text-white font-black hover:bg-emerald-800 transition-all shadow-xs',
+    tasbeehAddBtn: 'border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold shadow-xs',
+    // Adhkar section
+    adhkarIcon: 'text-amber-700',
+    adhkarBadge: 'text-amber-950 bg-amber-100 border-amber-400 font-bold',
+    adhkarDone: 'bg-amber-50/90 border-amber-400 text-amber-950 font-bold shadow-xs',
+    adhkarCheck: 'bg-amber-700 border-amber-700 text-white',
+    adhkarIdle: 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400 font-semibold shadow-xs',
+  },
+  emerald: {
+    nameBn: 'মরুদ্যান এমারেল্ড',
+    nameEn: 'Emerald Oasis',
+    dotColor: 'bg-emerald-600',
+    bannerBg: 'bg-white border-emerald-300 text-slate-900 shadow-xs',
+    bannerBorder: 'border-emerald-300',
+    bannerTitle: 'text-emerald-950 font-black',
+    bannerSubtitle: 'text-slate-700 font-semibold',
+    badge: 'bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold',
+    iconBox: 'bg-emerald-600 text-white shadow-xs',
+    iconText: 'text-emerald-700',
+    dateBox: 'bg-white border-emerald-300 text-slate-900 shadow-xs font-bold',
+    dateHover: 'text-slate-800 hover:text-slate-950 hover:bg-emerald-50',
+    todayBtn: 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-xs font-bold',
+    statsBorder: 'border-emerald-200',
+    statCard: 'bg-white border-emerald-300 shadow-xs',
+    farzStatDone: 'bg-emerald-700 text-white shadow-xs font-black',
+    farzStatPending: 'bg-emerald-100 text-emerald-950 font-bold',
+    farzStatText: 'text-slate-950 font-black',
+    // Waqt section
+    waqtClockIcon: 'text-emerald-700',
+    waqtTitle: 'text-slate-950 font-black',
+    waqtCountBadge: 'text-slate-700 font-bold',
+    prayerCardDone: 'bg-emerald-50/90 border-emerald-400 shadow-xs',
+    prayerCardIdle: 'bg-white border-slate-300 hover:border-emerald-300 shadow-xs',
+    prayerIconDone: 'bg-emerald-700 text-white shadow-sm',
+    prayerIconIdle: 'bg-slate-100 text-slate-800 border border-slate-200',
+    prayerNameDone: 'text-emerald-950 font-black',
+    prayerNameIdle: 'text-slate-950 font-extrabold',
+    prayerArabic: 'text-slate-700 font-bold',
+    jamaatBadge: 'bg-emerald-100 text-emerald-950 border-emerald-400 font-bold',
+    qazaBadge: 'bg-amber-100 text-amber-950 border-amber-400 font-bold',
+    statusOnTime: 'bg-emerald-700 text-white shadow-xs font-bold',
+    statusJamaat: 'bg-emerald-900 text-white shadow-xs font-bold',
+    statusQaza: 'bg-amber-700 text-white shadow-xs font-bold',
+    statusIdle: 'text-slate-800 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold',
+    prayerBtnDone: 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm font-bold',
+    prayerBtnIdle: 'bg-slate-900 text-white hover:bg-black border border-slate-900 font-bold shadow-xs',
+    expandBtn: 'text-slate-700 hover:text-slate-950 hover:bg-slate-100 font-bold',
+    subPartDone: 'bg-emerald-100/90 border-emerald-400 text-emerald-950 font-bold shadow-xs',
+    subPartCheck: 'bg-emerald-700 border-emerald-700 text-white',
+    subPartIdle: 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400 font-medium shadow-xs',
+    // Nafl section
+    nafalIcon: 'text-teal-700',
+    nafalBadge: 'text-teal-950 bg-teal-50 border-teal-300 font-bold',
+    nafalDone: 'bg-teal-50/90 border-teal-400 shadow-xs',
+    nafalIdle: 'bg-white border-slate-300 hover:border-teal-300 shadow-xs',
+    nafalBtnDone: 'bg-teal-700 text-white hover:bg-teal-800 shadow-sm font-bold',
+    nafalBtnIdle: 'bg-slate-900 text-white hover:bg-black border border-slate-900 font-bold shadow-xs',
+    nafalPillDone: 'bg-teal-700 text-white shadow-xs font-bold',
+    nafalPillIdle: 'bg-white text-slate-800 border border-slate-300 hover:bg-teal-50 hover:text-teal-950 font-semibold',
+    nafalAddBtn: 'border-teal-400 bg-teal-50 hover:bg-teal-100 text-teal-950 font-bold shadow-xs',
+    // Tasbeeh section
+    tasbeehIcon: 'text-teal-700',
+    tasbeehBadge: 'text-teal-950 bg-teal-50 border-teal-300 font-bold',
+    tasbeehVibrateActive: 'text-teal-950 bg-teal-100 font-bold',
+    tasbeehUnitBg: 'bg-white border-teal-300 shadow-sm',
+    tasbeehArabic: 'text-slate-950 font-black',
+    tasbeehBead: 'border-teal-700 hover:border-teal-800 bg-teal-700 text-white shadow-md font-bold',
+    tasbeehTargetActive: 'bg-teal-700 text-white shadow-xs font-bold',
+    tasbeehTargetIdle: 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 font-semibold',
+    tasbeehItemDone: 'bg-teal-50/90 border-teal-400 shadow-xs',
+    tasbeehItemIdle: 'bg-white border-slate-300 hover:border-teal-300',
+    tasbeehCountBadge: 'bg-slate-100 text-slate-950 border-slate-300 shadow-xs font-bold',
+    tasbeehPlusBtn: 'bg-teal-700 text-white font-black hover:bg-teal-800 transition-all shadow-xs',
+    tasbeehAddBtn: 'border-teal-400 bg-teal-50 hover:bg-teal-100 text-teal-950 font-bold shadow-xs',
+    // Adhkar section
+    adhkarIcon: 'text-amber-600',
+    adhkarBadge: 'text-amber-950 bg-amber-50 border-amber-300 font-bold',
+    adhkarDone: 'bg-amber-50/90 border-amber-400 text-amber-950 font-bold shadow-xs',
+    adhkarCheck: 'bg-amber-600 border-amber-600 text-white',
+    adhkarIdle: 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400 font-medium',
+  },
+  indigo: {
+    nameBn: 'রয়েল ইন্দিগো',
+    nameEn: 'Royal Indigo',
+    dotColor: 'bg-indigo-600',
+    bannerBg: 'bg-white border-indigo-200 text-slate-900 shadow-xs',
+    bannerBorder: 'border-indigo-200',
+    bannerTitle: 'text-indigo-950 font-black',
+    bannerSubtitle: 'text-slate-700 font-semibold',
+    badge: 'bg-indigo-100 text-indigo-950 border border-indigo-300 font-bold',
+    iconBox: 'bg-indigo-600 text-white shadow-xs',
+    iconText: 'text-indigo-700',
+    dateBox: 'bg-white border-indigo-200 text-slate-900 shadow-xs font-bold',
+    dateHover: 'text-slate-800 hover:text-slate-950 hover:bg-indigo-50',
+    todayBtn: 'bg-indigo-700 text-white hover:bg-indigo-800 shadow-xs font-bold',
+    statsBorder: 'border-indigo-200',
+    statCard: 'bg-white border-indigo-200 shadow-xs',
+    farzStatDone: 'bg-indigo-700 text-white shadow-xs font-black',
+    farzStatPending: 'bg-indigo-100 text-indigo-950 font-bold',
+    farzStatText: 'text-indigo-950 font-black',
+    // Waqt section
+    waqtClockIcon: 'text-indigo-700',
+    waqtTitle: 'text-slate-950 font-black',
+    waqtCountBadge: 'text-slate-700 font-bold',
+    prayerCardDone: 'bg-indigo-50/90 border-indigo-300 shadow-xs',
+    prayerCardIdle: 'bg-white border-slate-300 hover:border-indigo-300 shadow-xs',
+    prayerIconDone: 'bg-indigo-700 text-white shadow-sm',
+    prayerIconIdle: 'bg-slate-100 text-slate-800 border border-slate-200',
+    prayerNameDone: 'text-indigo-950 font-black',
+    prayerNameIdle: 'text-slate-950 font-extrabold',
+    prayerArabic: 'text-slate-700 font-bold',
+    jamaatBadge: 'bg-indigo-100 text-indigo-950 border-indigo-300 font-bold',
+    qazaBadge: 'bg-amber-100 text-amber-950 border-amber-300 font-bold',
+    statusOnTime: 'bg-indigo-700 text-white shadow-xs font-bold',
+    statusJamaat: 'bg-indigo-900 text-white shadow-xs font-bold',
+    statusQaza: 'bg-amber-700 text-white shadow-xs font-bold',
+    statusIdle: 'text-slate-800 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold',
+    prayerBtnDone: 'bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm font-bold',
+    prayerBtnIdle: 'bg-slate-900 text-white hover:bg-black border border-slate-900 font-bold shadow-xs',
+    expandBtn: 'text-slate-700 hover:text-slate-950 hover:bg-slate-100 font-bold',
+    subPartDone: 'bg-indigo-100/90 border-indigo-300 text-indigo-950 font-bold shadow-xs',
+    subPartCheck: 'bg-indigo-700 border-indigo-700 text-white',
+    subPartIdle: 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400 font-medium shadow-xs',
+    // Nafl section
+    nafalIcon: 'text-sky-700',
+    nafalBadge: 'text-sky-950 bg-sky-50 border-sky-300 font-bold',
+    nafalDone: 'bg-sky-50/90 border-sky-300 shadow-xs',
+    nafalIdle: 'bg-white border-slate-300 hover:border-sky-300 shadow-xs',
+    nafalBtnDone: 'bg-sky-700 text-white shadow-sm hover:bg-sky-800 font-bold',
+    nafalBtnIdle: 'bg-slate-900 text-white hover:bg-black border border-slate-900 font-bold shadow-xs',
+    nafalPillDone: 'bg-sky-700 text-white shadow-xs font-bold',
+    nafalPillIdle: 'bg-white text-slate-800 border border-slate-300 hover:bg-sky-50 hover:text-sky-950 font-semibold',
+    nafalAddBtn: 'border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-950 font-bold shadow-xs',
+    // Tasbeeh section
+    tasbeehIcon: 'text-indigo-700',
+    tasbeehBadge: 'text-indigo-950 bg-indigo-50 border-indigo-300 font-bold',
+    tasbeehVibrateActive: 'text-indigo-950 bg-indigo-100 font-bold',
+    tasbeehUnitBg: 'bg-white border-indigo-300 shadow-sm',
+    tasbeehArabic: 'text-slate-950 font-black',
+    tasbeehBead: 'border-indigo-700 hover:border-indigo-800 bg-indigo-700 text-white shadow-md font-bold',
+    tasbeehTargetActive: 'bg-indigo-700 text-white shadow-xs font-bold',
+    tasbeehTargetIdle: 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 font-semibold',
+    tasbeehItemDone: 'bg-indigo-50/90 border-indigo-300 shadow-xs',
+    tasbeehItemIdle: 'bg-white border-slate-300 hover:border-indigo-300',
+    tasbeehCountBadge: 'bg-slate-100 text-slate-950 border-slate-300 shadow-xs font-bold',
+    tasbeehPlusBtn: 'bg-indigo-700 text-white font-black hover:bg-indigo-800 transition-all shadow-xs',
+    tasbeehAddBtn: 'border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-950 font-bold shadow-xs',
+    // Adhkar section
+    adhkarIcon: 'text-amber-600',
+    adhkarBadge: 'text-amber-950 bg-amber-50 border-amber-300 font-bold',
+    adhkarDone: 'bg-amber-50/90 border-amber-300 text-amber-950 font-bold shadow-xs',
+    adhkarCheck: 'bg-amber-600 border-amber-600 text-white',
+    adhkarIdle: 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400 font-medium',
+  },
+  sand: {
+    nameBn: 'মরু বালুকা',
+    nameEn: 'Warm Sand',
+    dotColor: 'bg-amber-600',
+    bannerBg: 'bg-white border-amber-300 text-slate-900 shadow-xs',
+    bannerBorder: 'border-amber-300',
+    bannerTitle: 'text-stone-950 font-black',
+    bannerSubtitle: 'text-stone-700 font-semibold',
+    badge: 'bg-amber-100 text-amber-950 border border-amber-300 font-bold',
+    iconBox: 'bg-amber-700 text-white shadow-xs',
+    iconText: 'text-amber-700',
+    dateBox: 'bg-white border-amber-300 text-slate-900 shadow-xs font-bold',
+    dateHover: 'text-stone-800 hover:text-stone-950 hover:bg-amber-50',
+    todayBtn: 'bg-amber-700 text-white hover:bg-amber-800 shadow-xs font-bold',
+    statsBorder: 'border-amber-200',
+    statCard: 'bg-white border-amber-300 shadow-xs',
+    farzStatDone: 'bg-amber-700 text-white shadow-xs font-black',
+    farzStatPending: 'bg-amber-100 text-amber-950 font-bold',
+    farzStatText: 'text-stone-950 font-black',
+    // Waqt section
+    waqtClockIcon: 'text-amber-700',
+    waqtTitle: 'text-stone-950 font-black',
+    waqtCountBadge: 'text-stone-700 font-bold',
+    prayerCardDone: 'bg-amber-50/90 border-amber-400 shadow-xs',
+    prayerCardIdle: 'bg-white border-stone-300 hover:border-amber-300 shadow-xs',
+    prayerIconDone: 'bg-amber-700 text-white shadow-sm',
+    prayerIconIdle: 'bg-stone-100 text-stone-800 border border-stone-200',
+    prayerNameDone: 'text-stone-950 font-black',
+    prayerNameIdle: 'text-stone-950 font-extrabold',
+    prayerArabic: 'text-stone-700 font-bold',
+    jamaatBadge: 'bg-amber-100 text-amber-950 border-amber-400 font-bold',
+    qazaBadge: 'bg-orange-100 text-orange-950 border-orange-400 font-bold',
+    statusOnTime: 'bg-amber-700 text-white shadow-xs font-bold',
+    statusJamaat: 'bg-stone-900 text-white shadow-xs font-bold',
+    statusQaza: 'bg-orange-600 text-white shadow-xs font-bold',
+    statusIdle: 'text-stone-800 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 border border-stone-300 font-bold',
+    prayerBtnDone: 'bg-amber-700 text-white hover:bg-amber-800 shadow-sm font-bold',
+    prayerBtnIdle: 'bg-stone-900 text-white hover:bg-black border border-stone-900 font-bold shadow-xs',
+    expandBtn: 'text-stone-700 hover:text-stone-950 hover:bg-stone-100 font-bold',
+    subPartDone: 'bg-amber-100/90 border-amber-400 text-amber-950 font-bold shadow-xs',
+    subPartCheck: 'bg-amber-700 border-amber-700 text-white',
+    subPartIdle: 'bg-white border-stone-300 text-stone-900 hover:bg-stone-50 hover:border-stone-400 font-medium shadow-xs',
+    // Nafl section
+    nafalIcon: 'text-amber-700',
+    nafalBadge: 'text-amber-950 bg-amber-50 border-amber-300 font-bold',
+    nafalDone: 'bg-orange-50/90 border-orange-300 shadow-xs',
+    nafalIdle: 'bg-white border-stone-300 hover:border-orange-300 shadow-xs',
+    nafalBtnDone: 'bg-orange-700 text-white shadow-sm hover:bg-orange-800 font-bold',
+    nafalBtnIdle: 'bg-stone-900 text-white hover:bg-black border border-stone-900 font-bold shadow-xs',
+    nafalPillDone: 'bg-orange-700 text-white shadow-xs font-bold',
+    nafalPillIdle: 'bg-white text-stone-800 border border-stone-300 hover:bg-orange-50 hover:text-orange-950 font-semibold',
+    nafalAddBtn: 'border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-950 font-bold shadow-xs',
+    // Tasbeeh section
+    tasbeehIcon: 'text-amber-700',
+    tasbeehBadge: 'text-amber-950 bg-amber-50 border-amber-300 font-bold',
+    tasbeehVibrateActive: 'text-amber-950 bg-amber-100 font-bold',
+    tasbeehUnitBg: 'bg-white border-amber-300 shadow-sm',
+    tasbeehArabic: 'text-stone-950 font-black',
+    tasbeehBead: 'border-amber-700 hover:border-amber-800 bg-amber-700 text-white shadow-md font-bold',
+    tasbeehTargetActive: 'bg-amber-700 text-white shadow-xs font-bold',
+    tasbeehTargetIdle: 'bg-white border border-stone-300 text-stone-800 hover:bg-stone-100 font-semibold',
+    tasbeehItemDone: 'bg-amber-50/90 border-amber-300 shadow-xs',
+    tasbeehItemIdle: 'bg-white border-stone-300 hover:border-amber-300',
+    tasbeehCountBadge: 'bg-stone-100 text-stone-950 border-stone-300 shadow-xs font-bold',
+    tasbeehPlusBtn: 'bg-amber-700 text-white font-black hover:bg-amber-800 transition-all shadow-xs',
+    tasbeehAddBtn: 'border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold shadow-xs',
+    // Adhkar section
+    adhkarIcon: 'text-amber-700',
+    adhkarBadge: 'text-amber-950 bg-amber-50 border-amber-300 font-bold',
+    adhkarDone: 'bg-amber-100/90 border-amber-400 text-amber-950 font-bold shadow-xs',
+    adhkarCheck: 'bg-amber-700 border-amber-700 text-white',
+    adhkarIdle: 'bg-white border-stone-300 text-stone-900 hover:bg-stone-50 hover:border-stone-400 font-medium',
+  }
+};
 
 export type PrayerStatus = 'not_prayed' | 'prayed_on_time' | 'prayed_jamaat' | 'qaza';
 
@@ -199,6 +570,139 @@ const DEFAULT_RECORD = (dateStr: string): DailySalahRecord => ({
   updatedAt: Date.now()
 });
 
+// Web Audio API Sound Synthesizer for Tasbeeh & Adhkar
+let salahAudioCtx: AudioContext | null = null;
+
+function getSalahAudioContext(): AudioContext | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    if (!salahAudioCtx) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtxClass) {
+        salahAudioCtx = new AudioCtxClass();
+      }
+    }
+    if (salahAudioCtx && salahAudioCtx.state === 'suspended') {
+      salahAudioCtx.resume().catch(() => {});
+    }
+    return salahAudioCtx;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Tactile wooden bead clack sound on each tasbeeh bead tap
+ */
+function playTasbeehClick() {
+  try {
+    const ctx = getSalahAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(820, now);
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.035);
+
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.04);
+  } catch (e) {}
+}
+
+/**
+ * Harmonic bell chime when reaching target (33, 100, etc.)
+ */
+function playTargetReachedSound() {
+  try {
+    const ctx = getSalahAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // Harmonic bell notes: E5, A5, C#6
+    const freqs = [659.25, 880, 1108.73];
+    freqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      const startTime = now + idx * 0.05;
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0.22, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.6);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.65);
+    });
+  } catch (e) {}
+}
+
+/**
+ * Sweet confirmation chime for Daily Adhkar Checklist
+ */
+function playAzkarCheckSound() {
+  try {
+    const ctx = getSalahAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, now); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // A5
+
+    gain.gain.setValueAtTime(0.24, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.16);
+  } catch (e) {}
+}
+
+/**
+ * Subtle reset sound
+ */
+function playResetSound() {
+  try {
+    const ctx = getSalahAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.07);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.09);
+  } catch (e) {}
+}
+
 export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProps) {
   const isBn = lang === 'bn';
 
@@ -219,7 +723,20 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
   const [recordsMap, setRecordsMap] = useState<Record<string, DailySalahRecord>>({});
   const [activeTasbeehDhikr, setActiveTasbeehDhikr] = useState<string>('subhanallah');
   const [tasbeehTarget, setTasbeehTarget] = useState<number>(33);
-  const [tasbeehVibrate, setTasbeehVibrate] = useState<boolean>(true);
+  const [tasbeehSound, setTasbeehSound] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_tasbeeh_sound');
+      if (saved !== null) return JSON.parse(saved);
+    } catch (e) {}
+    return true;
+  });
+  const [tasbeehVibrate, setTasbeehVibrate] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_tasbeeh_vibrate');
+      if (saved !== null) return JSON.parse(saved);
+    } catch (e) {}
+    return true;
+  });
   const [expandedPrayer, setExpandedPrayer] = useState<string | null>(null);
 
   // New custom nafl modal / form states
@@ -232,6 +749,50 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
   const [customDhikrTarget, setCustomDhikrTarget] = useState<number>(33);
   const [showAddCustomDhikr, setShowAddCustomDhikr] = useState<boolean>(false);
   const [userCustomDhikrs, setUserCustomDhikrs] = useState<Array<{ id: string; title: string; target: number }>>([]);
+
+  // Salah section theme state
+  const [salahTheme, setSalahTheme] = useState<SalahTheme>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_salah_light_theme');
+      if (saved === 'clarity' || saved === 'emerald' || saved === 'indigo' || saved === 'sand') return saved;
+    } catch (e) {}
+    return 'clarity';
+  });
+
+  const handleThemeChange = (newTheme: SalahTheme) => {
+    setSalahTheme(newTheme);
+    try {
+      localStorage.setItem('ratbod_salah_light_theme', newTheme);
+    } catch (e) {}
+  };
+
+  const handleToggleSound = () => {
+    setTasbeehSound(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ratbod_tasbeeh_sound', JSON.stringify(next));
+      } catch (e) {}
+      if (next) {
+        playTasbeehClick();
+      }
+      return next;
+    });
+  };
+
+  const handleToggleVibrate = () => {
+    setTasbeehVibrate(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ratbod_tasbeeh_vibrate', JSON.stringify(next));
+      } catch (e) {}
+      if (next && typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(25);
+      }
+      return next;
+    });
+  };
+
+  const st = SALAH_THEMES[salahTheme] || SALAH_THEMES.clarity;
 
   // Load from LocalStorage & Firestore
   useEffect(() => {
@@ -478,25 +1039,59 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
   // Toggle Azkar Checklist
   const toggleAzkarCheck = (key: keyof DailySalahRecord['azkarChecklist']) => {
     const updated = JSON.parse(JSON.stringify(currentRecord)) as DailySalahRecord;
-    updated.azkarChecklist[key] = !updated.azkarChecklist[key];
+    const isNowChecked = !updated.azkarChecklist[key];
+    updated.azkarChecklist[key] = isNowChecked;
     updated.updatedAt = Date.now();
     saveRecord(updated);
+
+    if (isNowChecked) {
+      if (tasbeehSound) {
+        playAzkarCheckSound();
+      }
+      if (tasbeehVibrate && typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(25);
+      }
+    }
   };
 
   // Tactile Digital Tasbeeh increment
   const handleTasbeehTap = (dhikrId: string = activeTasbeehDhikr) => {
-    if (tasbeehVibrate && typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(15);
-    }
     const updated = JSON.parse(JSON.stringify(currentRecord)) as DailySalahRecord;
     if (!updated.dhikrCounts) updated.dhikrCounts = {};
     const current = updated.dhikrCounts[dhikrId] || 0;
-    updated.dhikrCounts[dhikrId] = current + 1;
+    const nextCount = current + 1;
+    updated.dhikrCounts[dhikrId] = nextCount;
     updated.updatedAt = Date.now();
     saveRecord(updated);
+
+    const isTargetReached = (tasbeehTarget > 0 && nextCount % tasbeehTarget === 0);
+
+    // Audio feedback
+    if (tasbeehSound) {
+      if (isTargetReached) {
+        playTargetReachedSound();
+      } else {
+        playTasbeehClick();
+      }
+    }
+
+    // Haptic feedback
+    if (tasbeehVibrate && typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (isTargetReached) {
+        navigator.vibrate([35, 50, 65]);
+      } else {
+        navigator.vibrate(15);
+      }
+    }
   };
 
   const handleTasbeehReset = (dhikrId: string) => {
+    if (tasbeehSound) {
+      playResetSound();
+    }
+    if (tasbeehVibrate && typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(25);
+    }
     const updated = JSON.parse(JSON.stringify(currentRecord)) as DailySalahRecord;
     if (!updated.dhikrCounts) updated.dhikrCounts = {};
     updated.dhikrCounts[dhikrId] = 0;
@@ -654,115 +1249,180 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
         "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-sm",
         darkMode 
           ? "bg-gradient-to-br from-[#121b18] to-[#161a1e] border-emerald-500/20 text-white" 
-          : "bg-gradient-to-br from-emerald-50/70 to-teal-50/40 border-emerald-200 text-gray-900"
+          : st.bannerBg
       )}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <Compass size={16} className="text-emerald-500 animate-pulse" />
+              <div className={cn(
+                "w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center",
+                darkMode ? "bg-emerald-500/20 text-emerald-400" : st.iconBox
+              )}>
+                <Compass size={16} className={cn("animate-pulse", darkMode ? "text-emerald-500" : st.iconText)} />
               </div>
-              <h1 className="text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5">
+              <h1 className={cn("text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5", darkMode ? "text-white" : st.bannerTitle)}>
                 {isBn ? 'সালাত ও ইবাদত ট্র্যাকার' : 'Salah & Ibadat Tracker'}
-                <span className="text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+                <span className={cn(
+                  "text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold",
+                  darkMode ? "bg-emerald-500/20 text-emerald-400" : st.badge
+                )}>
                   {isBn ? '৫ ওয়াক্ত' : '5 Waqt'}
                 </span>
               </h1>
             </div>
-            <p className="text-xs text-neutral-400 hidden sm:block">
+            <p className={cn("text-xs hidden sm:block", darkMode ? "text-neutral-400" : st.bannerSubtitle)}>
               {isBn 
                 ? 'পাঁচ ওয়াক্ত ফরজ সালাত, নফল ইবাদত ও যিকির-আযকার নিয়মিত আদায় করুন।' 
                 : 'Track daily five waqt prayers, nafal ibadat, and daily zikar azkar with peace of mind.'}
             </p>
           </div>
 
-          {/* Quick Date Switcher */}
-          <div className="flex items-center gap-1 self-start sm:self-auto bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
-            <button
-              onClick={handlePrevDay}
-              className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-              title="Previous Day"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <div className="flex items-center gap-1 px-1.5 text-[11px] sm:text-xs font-semibold">
-              <Calendar size={12} className="text-emerald-500" />
-              <span>{formattedDisplayDate}</span>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {/* Quick Theme Switcher */}
+            <div className={cn(
+              "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
+              darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
+            )}>
+              <Palette size={13} className={cn("ml-1 shrink-0", darkMode ? "text-neutral-400" : "text-gray-500")} />
+              {(['clarity', 'emerald', 'indigo', 'sand'] as SalahTheme[]).map(thKey => (
+                <button
+                  key={thKey}
+                  type="button"
+                  onClick={() => handleThemeChange(thKey)}
+                  className={cn(
+                    "px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1",
+                    salahTheme === thKey
+                      ? (darkMode ? "bg-white/20 text-white shadow-xs" : `${SALAH_THEMES[thKey].dotColor} text-white shadow-xs font-black`)
+                      : (darkMode ? "text-neutral-400 hover:text-white" : "text-slate-800 hover:text-slate-950 hover:bg-black/5 font-semibold")
+                  )}
+                  title={isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}
+                >
+                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", salahTheme === thKey ? "bg-white" : SALAH_THEMES[thKey].dotColor)} />
+                  <span className="hidden xs:inline">{isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}</span>
+                </button>
+              ))}
             </div>
-            <button
-              onClick={handleNextDay}
-              className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-              title="Next Day"
-            >
-              <ChevronRight size={15} />
-            </button>
-            {selectedDate !== getLocalDateString() && (
+
+            {/* Quick Date Switcher */}
+            <div className={cn(
+              "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
+              darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
+            )}>
               <button
-                onClick={handleToday}
-                className="ml-1 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-all cursor-pointer"
+                onClick={handlePrevDay}
+                className={cn(
+                  "p-1 rounded-lg transition-colors cursor-pointer",
+                  darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
+                )}
+                title="Previous Day"
               >
-                {isBn ? 'আজ' : 'Today'}
+                <ChevronLeft size={15} />
               </button>
-            )}
+              <div className="flex items-center gap-1 px-1.5 text-[11px] sm:text-xs font-bold">
+                <Calendar size={12} className={cn(darkMode ? "text-emerald-500" : st.iconText)} />
+                <span>{formattedDisplayDate}</span>
+              </div>
+              <button
+                onClick={handleNextDay}
+                className={cn(
+                  "p-1 rounded-lg transition-colors cursor-pointer",
+                  darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
+                )}
+                title="Next Day"
+              >
+                <ChevronRight size={15} />
+              </button>
+              {selectedDate !== getLocalDateString() && (
+                <button
+                  onClick={handleToday}
+                  className={cn("ml-1 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md transition-all cursor-pointer shadow-xs", darkMode ? "bg-emerald-600 text-white hover:bg-emerald-700" : st.todayBtn)}
+                >
+                  {isBn ? 'আজ' : 'Today'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Stats Strip: 4 stats in a single compact row on mobile */}
-        <div className="grid grid-cols-4 gap-1 sm:gap-2.5 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t border-emerald-500/15 text-xs">
-          <div className="flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-black/5 dark:bg-black/20 border border-emerald-500/10 min-w-0">
+        {/* Stats Strip: 4 stats in a single compact row */}
+        <div className={cn("grid grid-cols-4 gap-1 sm:gap-2.5 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
+          <div className={cn(
+            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+          )}>
             <div className={cn(
               "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black text-[11px] sm:text-sm shrink-0",
-              farzCount === 5 ? "bg-emerald-500 text-white" : "bg-emerald-500/20 text-emerald-400"
+              farzCount === 5 
+                ? (darkMode ? "bg-emerald-600 text-white shadow-xs" : st.farzStatDone)
+                : (darkMode ? "bg-emerald-500/20 text-emerald-400" : st.farzStatPending)
             )}>
               {formatNum(farzCount)}/৫
             </div>
             <div className="min-w-0 w-full">
-              <span className="block text-[8px] sm:text-[10px] text-neutral-400 font-medium truncate">
+              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
                 {isBn ? 'ফরজ সালাত' : 'Fard'}
               </span>
-              <span className="font-bold text-[10px] sm:text-xs truncate block">
+              <span className={cn("font-black text-[10px] sm:text-xs truncate block", darkMode ? "text-white" : st.farzStatText)}>
                 {farzCount === 5 ? (isBn ? '৫/৫ ★' : '5/5 ★') : `${formatNum(farzCount)}/5`}
               </span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-black/5 dark:bg-black/20 border border-emerald-500/10 min-w-0">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shrink-0">
-              <Flame size={13} className="sm:w-4 sm:h-4 text-amber-500" />
+          <div className={cn(
+            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+          )}>
+            <div className={cn(
+              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black shrink-0",
+              darkMode ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-900 font-bold"
+            )}>
+              <Flame size={13} className="sm:w-4 sm:h-4 text-amber-600 dark:text-amber-500" />
             </div>
             <div className="min-w-0 w-full">
-              <span className="block text-[8px] sm:text-[10px] text-neutral-400 font-medium truncate">
+              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
                 {isBn ? 'ধারাবাহিক' : 'Streak'}
               </span>
-              <span className="font-bold text-[10px] sm:text-xs text-amber-400 truncate block">
+              <span className={cn("font-black text-[10px] sm:text-xs truncate block", darkMode ? "text-amber-400" : "text-amber-900 font-black")}>
                 {formatNum(currentStreak)}{isBn ? ' দিন' : 'd'}
               </span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-black/5 dark:bg-black/20 border border-emerald-500/10 min-w-0">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-black shrink-0">
-              <Sparkles size={13} className="sm:w-4 sm:h-4 text-teal-400" />
+          <div className={cn(
+            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+          )}>
+            <div className={cn(
+              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black shrink-0",
+              darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-100 text-teal-900 font-bold"
+            )}>
+              <Sparkles size={13} className="sm:w-4 sm:h-4 text-teal-600 dark:text-teal-400" />
             </div>
             <div className="min-w-0 w-full">
-              <span className="block text-[8px] sm:text-[10px] text-neutral-400 font-medium truncate">
+              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
                 {isBn ? 'নফল রাকাত' : 'Nafl'}
               </span>
-              <span className="font-bold text-[10px] sm:text-xs text-teal-400 truncate block">
+              <span className={cn("font-black text-[10px] sm:text-xs truncate block", darkMode ? "text-teal-400" : "text-teal-900 font-black")}>
                 {formatNum(totalNaflRakahs)}{isBn ? ' রা' : 'R'}
               </span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-black/5 dark:bg-black/20 border border-emerald-500/10 min-w-0">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-black shrink-0">
-              <Heart size={13} className="sm:w-4 sm:h-4 text-cyan-400" />
+          <div className={cn(
+            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+          )}>
+            <div className={cn(
+              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black shrink-0",
+              darkMode ? "bg-cyan-500/20 text-cyan-400" : "bg-cyan-100 text-cyan-900 font-bold"
+            )}>
+              <Heart size={13} className="sm:w-4 sm:h-4 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div className="min-w-0 w-full">
-              <span className="block text-[8px] sm:text-[10px] text-neutral-400 font-medium truncate">
+              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
                 {isBn ? 'যিকির' : 'Dhikr'}
               </span>
-              <span className="font-bold text-[10px] sm:text-xs text-cyan-400 font-mono truncate block">
+              <span className={cn("font-black text-[10px] sm:text-xs font-mono truncate block", darkMode ? "text-cyan-400" : "text-cyan-950 font-black")}>
                 {formatNum(totalDhikrToday)}
               </span>
             </div>
@@ -772,17 +1432,17 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
 
       {/* 2. Five Waqt Salah Section */}
       <div className={cn(
-        "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all",
-        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200"
+        "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-xs",
+        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-slate-300 shadow-sm"
       )}>
         <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-emerald-500" />
-            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">
+            <Clock size={16} className={cn(darkMode ? "text-emerald-500" : st.waqtClockIcon)} />
+            <h2 className={cn("text-sm sm:text-base font-black tracking-tight", darkMode ? "text-white" : st.waqtTitle)}>
               {isBn ? 'পাঁচ ওয়াক্ত ফরজ সালাত' : 'Five Waqt Farz Salah'}
             </h2>
           </div>
-          <span className="text-[10px] sm:text-[11px] font-semibold text-neutral-400">
+          <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : st.waqtCountBadge)}>
             {formatNum(farzCount)} / {formatNum(5)} {isBn ? 'আদায়' : 'Offered'}
           </span>
         </div>
@@ -803,8 +1463,8 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                 className={cn(
                   "rounded-lg sm:rounded-xl border transition-all p-2.5 sm:p-3.5",
                   isFardPrayed
-                    ? (darkMode ? "bg-emerald-950/20 border-emerald-500/30" : "bg-emerald-50/60 border-emerald-300/80")
-                    : (darkMode ? "bg-white/[0.02] border-white/5 hover:border-white/10" : "bg-gray-50/50 border-gray-200 hover:border-gray-300")
+                    ? (darkMode ? "bg-emerald-950/20 border-emerald-500/30" : st.prayerCardDone)
+                    : (darkMode ? "bg-white/[0.02] border-white/5 hover:border-white/10" : st.prayerCardIdle)
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -813,27 +1473,33 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     <div className={cn(
                       "w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-colors",
                       isFardPrayed 
-                        ? "bg-emerald-500 text-white shadow-sm" 
-                        : (darkMode ? "bg-white/5 text-neutral-400" : "bg-gray-200 text-gray-600")
+                        ? (darkMode ? "bg-emerald-600 text-white shadow-sm" : st.prayerIconDone)
+                        : (darkMode ? "bg-white/5 text-neutral-400" : st.prayerIconIdle)
                     )}>
                       <Icon size={15} className="sm:w-4 sm:h-4" />
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                        <span className="font-extrabold text-xs sm:text-base tracking-tight truncate">
+                        <span className={cn("font-black text-xs sm:text-base tracking-tight truncate", darkMode ? "text-white" : (isFardPrayed ? st.prayerNameDone : st.prayerNameIdle))}>
                           {isBn ? item.nameBn : item.nameEn}
                         </span>
-                        <span className="text-[10px] sm:text-xs text-neutral-400 font-serif">
+                        <span className={cn("text-[10px] sm:text-xs font-serif font-medium", darkMode ? "text-neutral-400" : st.prayerArabic)}>
                           {item.arabic}
                         </span>
                         {isJamaat && (
-                          <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
+                          <span className={cn(
+                            "px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-black border uppercase",
+                            darkMode ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : st.jamaatBadge
+                          )}>
                             {isBn ? 'জামাআত' : 'Jama\'at'}
                           </span>
                         )}
                         {isQaza && (
-                          <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                          <span className={cn(
+                            "px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-black border uppercase",
+                            darkMode ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : st.qazaBadge
+                          )}>
                             {isBn ? 'কাজা' : 'Qaza'}
                           </span>
                         )}
@@ -845,10 +1511,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                           type="button"
                           onClick={() => setPrayerStatus(item.key, 'prayed_on_time')}
                           className={cn(
-                            "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold transition-all cursor-pointer",
+                            "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] transition-all cursor-pointer",
                             currentPrayer.status === 'prayed_on_time'
-                              ? "bg-emerald-500 text-white shadow-xs font-bold"
-                              : "text-neutral-400 hover:text-white bg-black/5 dark:bg-white/5"
+                              ? (darkMode ? "bg-emerald-600 text-white shadow-xs font-bold" : st.statusOnTime)
+                              : (darkMode ? "text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10" : st.statusIdle)
                           )}
                         >
                           {isBn ? 'সময়মত' : 'On Time'}
@@ -857,10 +1523,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                           type="button"
                           onClick={() => setPrayerStatus(item.key, 'prayed_jamaat')}
                           className={cn(
-                            "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold transition-all cursor-pointer",
+                            "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] transition-all cursor-pointer",
                             currentPrayer.status === 'prayed_jamaat'
-                              ? "bg-emerald-600 text-white shadow-xs font-bold"
-                              : "text-neutral-400 hover:text-white bg-black/5 dark:bg-white/5"
+                              ? (darkMode ? "bg-emerald-700 text-white shadow-xs font-bold" : st.statusJamaat)
+                              : (darkMode ? "text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10" : st.statusIdle)
                           )}
                         >
                           {isBn ? 'জামাআতে' : 'In Jama\'at'}
@@ -869,10 +1535,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                           type="button"
                           onClick={() => setPrayerStatus(item.key, 'qaza')}
                           className={cn(
-                            "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold transition-all cursor-pointer",
+                            "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] transition-all cursor-pointer",
                             currentPrayer.status === 'qaza'
-                              ? "bg-amber-500 text-white shadow-xs font-bold"
-                              : "text-neutral-400 hover:text-white bg-black/5 dark:bg-white/5"
+                              ? (darkMode ? "bg-amber-600 text-white shadow-xs font-bold" : st.statusQaza)
+                              : (darkMode ? "text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10" : st.statusIdle)
                           )}
                         >
                           {isBn ? 'কাজা' : 'Qaza'}
@@ -889,8 +1555,8 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                       className={cn(
                         "flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs transition-all cursor-pointer active:scale-95",
                         isFardPrayed
-                          ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/20"
-                          : (darkMode ? "bg-white/10 text-neutral-300 hover:bg-white/15" : "bg-gray-100 text-gray-700 hover:bg-gray-200")
+                          ? (darkMode ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20" : st.prayerBtnDone)
+                          : (darkMode ? "bg-white/10 text-neutral-300 hover:bg-white/15" : st.prayerBtnIdle)
                       )}
                     >
                       {isFardPrayed ? (
@@ -909,7 +1575,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     <button
                       type="button"
                       onClick={() => setExpandedPrayer(isExpanded ? null : item.key)}
-                      className="p-1 sm:p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                      className={cn(
+                        "p-1 sm:p-1.5 rounded-lg transition-colors cursor-pointer",
+                        darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.expandBtn
+                      )}
                       title="Toggle rak'ahs breakdown"
                     >
                       {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
@@ -919,7 +1588,7 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
 
                 {/* Granular Rak'ah Breakdown Details */}
                 {isExpanded && (
-                  <div className="mt-2.5 pt-2.5 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
+                  <div className={cn("mt-2.5 pt-2.5 border-t grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-[11px] sm:text-xs", darkMode ? "border-white/10" : "border-gray-200")}>
                     {item.breakdown.map(sub => {
                       const isSubChecked = Boolean((currentPrayer as any)[sub.key]);
                       return (
@@ -930,14 +1599,16 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                           className={cn(
                             "flex items-center justify-between p-1.5 sm:p-2 rounded-lg border transition-all cursor-pointer text-left",
                             isSubChecked
-                              ? (darkMode ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-800")
-                              : (darkMode ? "bg-white/5 border-white/5 text-neutral-400 hover:bg-white/10" : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100")
+                              ? (darkMode ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : st.subPartDone)
+                              : (darkMode ? "bg-white/5 border-white/5 text-neutral-300 hover:bg-white/10" : st.subPartIdle)
                           )}
                         >
-                          <span className="font-medium">{isBn ? sub.labelBn : sub.labelEn}</span>
+                          <span>{isBn ? sub.labelBn : sub.labelEn}</span>
                           <span className={cn(
                             "w-4 h-4 rounded flex items-center justify-center border text-[10px]",
-                            isSubChecked ? "bg-emerald-500 border-emerald-500 text-white" : "border-neutral-500"
+                            isSubChecked 
+                              ? (darkMode ? "bg-emerald-600 border-emerald-600 text-white" : st.subPartCheck)
+                              : (darkMode ? "border-neutral-500" : "border-gray-400")
                           )}>
                             {isSubChecked && <Check size={10} className="stroke-[3]" />}
                           </span>
@@ -955,45 +1626,51 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
       {/* 3. Nafal Ibadat Section */}
       <div className={cn(
         "rounded-xl sm:rounded-2xl border transition-all overflow-hidden shadow-xs",
-        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200"
+        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-slate-300 shadow-sm"
       )}>
         <button
           type="button"
           onClick={() => setIsNafalExpanded(!isNafalExpanded)}
-          className="w-full p-3 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors text-left"
+          className={cn(
+            "w-full p-3 sm:p-5 flex items-center justify-between cursor-pointer transition-colors text-left",
+            darkMode ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/80"
+          )}
         >
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-teal-400" />
-            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">
+            <Sparkles size={16} className={cn(darkMode ? "text-teal-400" : st.nafalIcon)} />
+            <h2 className={cn("text-sm sm:text-base font-black tracking-tight", darkMode ? "text-white" : "text-gray-950")}>
               {isBn ? 'নফল ইবাদত ও সালাত' : 'Nafal Ibadat & Voluntary Prayers'}
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-md border border-teal-500/20">
+            <span className={cn(
+              "text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-md border",
+              darkMode ? "text-teal-400 bg-teal-500/10 border-teal-500/20" : st.nafalBadge
+            )}>
               {formatNum(totalNaflRakahs)} {isBn ? 'রাকাত আদায়' : 'Rakahs Today'}
             </span>
-            <div className="p-1 rounded-lg text-neutral-400">
+            <div className={cn("p-1 rounded-lg", darkMode ? "text-neutral-400" : "text-slate-700")}>
               {isNafalExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </div>
           </div>
         </button>
 
         {isNafalExpanded && (
-          <div className="px-3 pb-3 sm:px-5 sm:pb-5 pt-1 border-t border-white/5 space-y-3">
+          <div className={cn("px-3 pb-3 sm:px-5 sm:pb-5 pt-1 border-t space-y-3", darkMode ? "border-white/5" : "border-slate-200")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
               {/* Tahajjud */}
               <div className={cn(
-                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2",
+                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 shadow-xs",
                 currentRecord.nafal.tahajjud.completed
-                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : "bg-teal-50/60 border-teal-300")
-                  : (darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-gray-200")
+                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : st.nafalDone)
+                  : (darkMode ? "bg-white/[0.02] border-white/5" : st.nafalIdle)
               )}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs sm:text-sm block">
+                    <span className={cn("font-black text-xs sm:text-sm block", darkMode ? "text-white" : "text-gray-950")}>
                       {isBn ? 'তাহাজ্জুদ সালাত' : 'Tahajjud (Qiyam al-Layl)'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] text-neutral-400">
+                    <span className={cn("text-[10px] sm:text-[11px] font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>
                       {isBn ? 'রাতের শেষ তৃতীয়াংশের সালাত' : 'Night vigil prayer before Fajr'}
                     </span>
                   </div>
@@ -1003,26 +1680,26 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0",
                       currentRecord.nafal.tahajjud.completed
-                        ? "bg-teal-500 text-white shadow-sm"
-                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : "bg-gray-200 text-gray-600 hover:bg-gray-300")
+                        ? (darkMode ? "bg-teal-600 text-white shadow-sm hover:bg-teal-700" : st.nafalBtnDone)
+                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : st.nafalBtnIdle)
                     )}
                   >
                     {currentRecord.nafal.tahajjud.completed ? <Check size={15} className="stroke-[3]" /> : <Plus size={14} />}
                   </button>
                 </div>
                 {currentRecord.nafal.tahajjud.completed && (
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 text-xs">
-                    <span className="text-neutral-400 text-[10px] sm:text-[11px]">{isBn ? 'রাকাত:' : 'Rakahs:'}</span>
+                  <div className={cn("flex items-center gap-1.5 pt-1 border-t text-xs", darkMode ? "border-white/10" : "border-gray-200")}>
+                    <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : "text-gray-950")}>{isBn ? 'রাকাত:' : 'Rakahs:'}</span>
                     {[2, 4, 8, 12].map(r => (
                       <button
                         key={r}
                         type="button"
                         onClick={() => setNaflRakahs('tahajjud', r)}
                         className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer",
+                          "px-2 py-0.5 rounded text-[10px] font-black transition-colors cursor-pointer",
                           currentRecord.nafal.tahajjud.rakahs === r
-                            ? "bg-teal-500 text-white"
-                            : "bg-white/10 text-neutral-400 hover:text-white"
+                            ? (darkMode ? "bg-teal-600 text-white shadow-xs" : st.nafalPillDone)
+                            : (darkMode ? "bg-white/10 text-neutral-400 hover:text-white" : st.nafalPillIdle)
                         )}
                       >
                         {formatNum(r)}
@@ -1034,17 +1711,17 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
 
               {/* Ishraq / Duha */}
               <div className={cn(
-                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2",
+                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 shadow-xs",
                 currentRecord.nafal.ishraq.completed
-                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : "bg-teal-50/60 border-teal-300")
-                  : (darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-gray-200")
+                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : st.nafalDone)
+                  : (darkMode ? "bg-white/[0.02] border-white/5" : st.nafalIdle)
               )}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs sm:text-sm block">
+                    <span className={cn("font-black text-xs sm:text-sm block", darkMode ? "text-white" : "text-gray-950")}>
                       {isBn ? 'ইশরাক ও চাশত / দুহা' : 'Ishraq & Duha (Chasht)'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] text-neutral-400">
+                    <span className={cn("text-[10px] sm:text-[11px] font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>
                       {isBn ? 'সূর্যোদয়ের পরের বরকতময় সালাত' : 'Morning forenoon prayer'}
                     </span>
                   </div>
@@ -1054,26 +1731,26 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0",
                       currentRecord.nafal.ishraq.completed
-                        ? "bg-teal-500 text-white shadow-sm"
-                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : "bg-gray-200 text-gray-600 hover:bg-gray-300")
+                        ? (darkMode ? "bg-teal-600 text-white shadow-sm hover:bg-teal-700" : st.nafalBtnDone)
+                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : st.nafalBtnIdle)
                     )}
                   >
                     {currentRecord.nafal.ishraq.completed ? <Check size={15} className="stroke-[3]" /> : <Plus size={14} />}
                   </button>
                 </div>
                 {currentRecord.nafal.ishraq.completed && (
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 text-xs">
-                    <span className="text-neutral-400 text-[10px] sm:text-[11px]">{isBn ? 'রাকাত:' : 'Rakahs:'}</span>
+                  <div className={cn("flex items-center gap-1.5 pt-1 border-t text-xs", darkMode ? "border-white/10" : "border-gray-200")}>
+                    <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : "text-gray-950")}>{isBn ? 'রাকাত:' : 'Rakahs:'}</span>
                     {[2, 4, 8].map(r => (
                       <button
                         key={r}
                         type="button"
                         onClick={() => setNaflRakahs('ishraq', r)}
                         className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer",
+                          "px-2 py-0.5 rounded text-[10px] font-black transition-colors cursor-pointer",
                           currentRecord.nafal.ishraq.rakahs === r
-                            ? "bg-teal-500 text-white"
-                            : "bg-white/10 text-neutral-400 hover:text-white"
+                            ? (darkMode ? "bg-teal-600 text-white shadow-xs" : st.nafalPillDone)
+                            : (darkMode ? "bg-white/10 text-neutral-400 hover:text-white" : st.nafalPillIdle)
                         )}
                       >
                         {formatNum(r)}
@@ -1085,17 +1762,17 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
 
               {/* Awwabin */}
               <div className={cn(
-                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2",
+                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 shadow-xs",
                 currentRecord.nafal.awwabin.completed
-                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : "bg-teal-50/60 border-teal-300")
-                  : (darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-gray-200")
+                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : st.nafalDone)
+                  : (darkMode ? "bg-white/[0.02] border-white/5" : st.nafalIdle)
               )}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs sm:text-sm block">
+                    <span className={cn("font-black text-xs sm:text-sm block", darkMode ? "text-white" : "text-gray-950")}>
                       {isBn ? 'আউওয়াবিন সালাত' : 'Awwabin Prayer'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] text-neutral-400">
+                    <span className={cn("text-[10px] sm:text-[11px] font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>
                       {isBn ? 'মাগরিবের পর ২ থেকে ৬ রাকাত' : '2-6 rakahs after Maghrib'}
                     </span>
                   </div>
@@ -1105,26 +1782,26 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0",
                       currentRecord.nafal.awwabin.completed
-                        ? "bg-teal-500 text-white shadow-sm"
-                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : "bg-gray-200 text-gray-600 hover:bg-gray-300")
+                        ? (darkMode ? "bg-teal-600 text-white shadow-sm hover:bg-teal-700" : st.nafalBtnDone)
+                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : st.nafalBtnIdle)
                     )}
                   >
                     {currentRecord.nafal.awwabin.completed ? <Check size={15} className="stroke-[3]" /> : <Plus size={14} />}
                   </button>
                 </div>
                 {currentRecord.nafal.awwabin.completed && (
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 text-xs">
-                    <span className="text-neutral-400 text-[10px] sm:text-[11px]">{isBn ? 'রাকাত:' : 'Rakahs:'}</span>
+                  <div className={cn("flex items-center gap-1.5 pt-1 border-t text-xs", darkMode ? "border-white/10" : "border-gray-200")}>
+                    <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : "text-gray-950")}>{isBn ? 'রাকাত:' : 'Rakahs:'}</span>
                     {[2, 4, 6].map(r => (
                       <button
                         key={r}
                         type="button"
                         onClick={() => setNaflRakahs('awwabin', r)}
                         className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer",
+                          "px-2 py-0.5 rounded text-[10px] font-black transition-colors cursor-pointer",
                           currentRecord.nafal.awwabin.rakahs === r
-                            ? "bg-teal-500 text-white"
-                            : "bg-white/10 text-neutral-400 hover:text-white"
+                            ? (darkMode ? "bg-teal-600 text-white shadow-xs" : st.nafalPillDone)
+                            : (darkMode ? "bg-white/10 text-neutral-400 hover:text-white" : st.nafalPillIdle)
                         )}
                       >
                         {formatNum(r)}
@@ -1136,17 +1813,17 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
 
               {/* Salatut Tasbih */}
               <div className={cn(
-                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2",
+                "p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 shadow-xs",
                 currentRecord.nafal.salatutTasbih.completed
-                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : "bg-teal-50/60 border-teal-300")
-                  : (darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-gray-200")
+                  ? (darkMode ? "bg-teal-950/20 border-teal-500/30" : st.nafalDone)
+                  : (darkMode ? "bg-white/[0.02] border-white/5" : st.nafalIdle)
               )}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs sm:text-sm block">
+                    <span className={cn("font-black text-xs sm:text-sm block", darkMode ? "text-white" : "text-gray-950")}>
                       {isBn ? 'সালাতুত তাসবীহ (৪ রাকাত)' : 'Salatut Tasbih (4 Rakahs)'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] text-neutral-400">
+                    <span className={cn("text-[10px] sm:text-[11px] font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>
                       {isBn ? '৩০০ বার তাসবীহ পাঠের সালাত' : 'Special 300 tasbeeh prayer'}
                     </span>
                   </div>
@@ -1156,8 +1833,8 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0",
                       currentRecord.nafal.salatutTasbih.completed
-                        ? "bg-teal-500 text-white shadow-sm"
-                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : "bg-gray-200 text-gray-600 hover:bg-gray-300")
+                        ? (darkMode ? "bg-teal-600 text-white shadow-sm hover:bg-teal-700" : st.nafalBtnDone)
+                        : (darkMode ? "bg-white/10 text-neutral-400 hover:bg-white/20" : st.nafalBtnIdle)
                     )}
                   >
                     {currentRecord.nafal.salatutTasbih.completed ? <Check size={15} className="stroke-[3]" /> : <Plus size={14} />}
@@ -1168,15 +1845,15 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
 
             {/* Custom Nafl List */}
             {(currentRecord.nafal.customNafal || []).length > 0 && (
-              <div className="mt-2.5 space-y-1.5 pt-2.5 border-t border-white/10">
+              <div className={cn("mt-2.5 space-y-1.5 pt-2.5 border-t", darkMode ? "border-white/10" : "border-gray-200")}>
                 {(currentRecord.nafal.customNafal || []).map(item => (
                   <div
                     key={item.id}
                     className={cn(
-                      "flex items-center justify-between p-2 sm:p-2.5 rounded-xl border text-xs",
+                      "flex items-center justify-between p-2 sm:p-2.5 rounded-xl border text-xs shadow-xs",
                       item.completed 
-                        ? (darkMode ? "bg-teal-950/20 border-teal-500/30 text-teal-300" : "bg-teal-50 border-teal-300 text-teal-900")
-                        : (darkMode ? "bg-white/5 border-white/5 text-neutral-400" : "bg-gray-50 border-gray-200 text-gray-600")
+                        ? (darkMode ? "bg-teal-950/20 border-teal-500/30 text-teal-300" : st.nafalDone)
+                        : (darkMode ? "bg-white/5 border-white/5 text-neutral-300" : "bg-white border-gray-200 text-gray-800")
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -1185,20 +1862,25 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                         onClick={() => toggleCustomNafl(item.id)}
                         className={cn(
                           "w-5 h-5 rounded flex items-center justify-center border transition-colors cursor-pointer",
-                          item.completed ? "bg-teal-500 border-teal-500 text-white" : "border-neutral-500"
+                          item.completed 
+                            ? (darkMode ? "bg-teal-600 border-teal-600 text-white" : st.nafalBtnDone)
+                            : (darkMode ? "border-neutral-500" : "border-gray-400")
                         )}
                       >
                         {item.completed && <Check size={12} className="stroke-[3]" />}
                       </button>
                       <span className="font-bold">{item.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/10 dark:bg-white/10 font-mono">
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.2 rounded font-mono font-bold",
+                        darkMode ? "bg-white/10 text-neutral-300" : "bg-gray-100 text-gray-700"
+                      )}>
                         {formatNum(item.rakahs)} {isBn ? 'রাকাত' : 'rakahs'}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => deleteCustomNafl(item.id)}
-                      className="text-neutral-500 hover:text-red-400 p-1 transition-colors cursor-pointer"
+                      className={cn("p-1 transition-colors cursor-pointer", darkMode ? "text-neutral-500 hover:text-red-400" : "text-gray-400 hover:text-red-600")}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -1212,13 +1894,21 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
               <button
                 type="button"
                 onClick={() => setShowAddCustomNafl(true)}
-                className="w-full py-1.5 sm:py-2 rounded-xl border border-dashed border-teal-500/30 hover:border-teal-500/60 text-teal-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className={cn(
+                  "w-full py-1.5 sm:py-2 rounded-xl border border-dashed text-xs font-black flex items-center justify-center gap-1.5 transition-colors cursor-pointer",
+                  darkMode 
+                    ? "border-teal-500/30 hover:border-teal-500/60 text-teal-400" 
+                    : st.nafalAddBtn
+                )}
               >
                 <Plus size={14} />
                 <span>{isBn ? 'অন্যান্য নফল / কাজা উমরি যোগ করুন' : 'Add Custom Nafl / Qada Prayer'}</span>
               </button>
             ) : (
-              <div className="p-3 rounded-xl border border-teal-500/30 bg-black/5 dark:bg-black/20 space-y-2">
+              <div className={cn(
+                "p-3 rounded-xl border space-y-2",
+                darkMode ? "border-teal-500/30 bg-black/20" : "border-gray-300 bg-gray-50/70 shadow-xs"
+              )}>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1227,7 +1917,7 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     onChange={e => setCustomNaflName(e.target.value)}
                     className={cn(
                       "flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 min-h-[38px]",
-                      darkMode ? "bg-black/40 border-white/10 text-white placeholder:text-neutral-500" : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+                      darkMode ? "bg-black/40 border-white/10 text-white placeholder:text-neutral-500" : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
                     )}
                   />
                   <input
@@ -1247,14 +1937,14 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                   <button
                     type="button"
                     onClick={() => setShowAddCustomNafl(false)}
-                    className="px-3 py-1 rounded-lg text-neutral-400 hover:text-white cursor-pointer"
+                    className={cn("px-3 py-1 rounded-lg cursor-pointer font-bold", darkMode ? "text-neutral-400 hover:text-white" : "text-gray-600 hover:text-gray-900")}
                   >
                     {isBn ? 'বাতিল' : 'Cancel'}
                   </button>
                   <button
                     type="button"
                     onClick={handleAddCustomNafl}
-                    className="px-3 py-1 rounded-lg bg-teal-500 text-white font-bold hover:bg-teal-600 transition-colors cursor-pointer"
+                    className={cn("px-3 py-1 rounded-lg font-black transition-colors cursor-pointer shadow-xs", darkMode ? "bg-teal-600 text-white hover:bg-teal-700" : st.nafalBtnDone)}
                   >
                     {isBn ? 'যুক্ত করুন' : 'Save'}
                   </button>
@@ -1268,7 +1958,7 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
       {/* 4. Digital Tasbeeh & Zikar Azkar Section */}
       <div className={cn(
         "rounded-xl sm:rounded-2xl border transition-all overflow-hidden shadow-xs",
-        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200"
+        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-slate-300 shadow-sm"
       )}>
         <div className="p-3 sm:p-5 flex items-center justify-between">
           <button
@@ -1277,32 +1967,56 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
             className="flex-1 flex items-center justify-between cursor-pointer text-left mr-2 min-w-0"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <Heart size={16} className="text-cyan-400 shrink-0" />
-              <h2 className="text-sm sm:text-base font-extrabold tracking-tight truncate">
+              <Heart size={16} className={cn(darkMode ? "text-cyan-400" : st.tasbeehIcon, "shrink-0")} />
+              <h2 className={cn("text-sm sm:text-base font-black tracking-tight truncate", darkMode ? "text-white" : "text-gray-950")}>
                 {isBn ? 'যিকির ও ডিজিটাল তাসবীহ' : 'Zikar Azkar & Digital Tasbeeh'}
               </h2>
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20 font-mono shrink-0 ml-2 hidden xs:inline-block truncate max-w-[140px]">
+            <span className={cn(
+              "text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md border font-mono shrink-0 ml-2 hidden xs:inline-block truncate max-w-[140px]",
+              darkMode ? "text-cyan-400 bg-cyan-500/10 border-cyan-500/20" : st.tasbeehBadge
+            )}>
               {activeDhikrMeta.transliteration}: {formatNum(activeDhikrCount)}/{formatNum(tasbeehTarget)}
             </span>
           </button>
           
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Audio Sound Toggle */}
             <button
               type="button"
-              onClick={() => setTasbeehVibrate(!tasbeehVibrate)}
+              onClick={handleToggleSound}
               className={cn(
-                "p-1.5 rounded-lg text-xs transition-colors cursor-pointer",
-                tasbeehVibrate ? "text-cyan-400 bg-cyan-500/10" : "text-neutral-500 hover:text-neutral-400"
+                "p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center",
+                tasbeehSound 
+                  ? (darkMode ? "text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 shadow-xs" : "text-emerald-800 bg-emerald-100/90 border border-emerald-300 shadow-xs") 
+                  : (darkMode ? "text-neutral-500 hover:text-neutral-400" : "text-slate-500 hover:text-slate-800 border border-transparent")
               )}
-              title={tasbeehVibrate ? "Haptic ON" : "Haptic OFF"}
+              title={tasbeehSound ? (isBn ? "সাউন্ড চালু (মিউট করতে ক্লিক করুন)" : "Sound ON (Click to mute)") : (isBn ? "সাউন্ড বন্ধ (চালু করতে ক্লিক করুন)" : "Sound OFF (Click to unmute)")}
+              aria-label={tasbeehSound ? "Sound ON" : "Sound OFF"}
             >
-              {tasbeehVibrate ? <Volume2 size={15} /> : <VolumeX size={15} />}
+              {tasbeehSound ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
+
+            {/* Haptic / Vibration Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleVibrate}
+              className={cn(
+                "p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center",
+                tasbeehVibrate 
+                  ? (darkMode ? "text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 shadow-xs" : "text-emerald-800 bg-emerald-100/90 border border-emerald-300 shadow-xs") 
+                  : (darkMode ? "text-neutral-500 hover:text-neutral-400" : "text-slate-500 hover:text-slate-800 border border-transparent")
+              )}
+              title={tasbeehVibrate ? (isBn ? "ভাইব্রেশন চালু" : "Vibration ON") : (isBn ? "ভাইব্রেশন বন্ধ" : "Vibration OFF")}
+              aria-label={tasbeehVibrate ? "Vibration ON" : "Vibration OFF"}
+            >
+              <Smartphone size={15} />
+            </button>
+
             <button
               type="button"
               onClick={() => setIsTasbeehExpanded(!isTasbeehExpanded)}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white cursor-pointer"
+              className={cn("p-1.5 rounded-lg cursor-pointer", darkMode ? "text-neutral-400 hover:text-white" : "text-slate-700 hover:text-gray-950")}
             >
               {isTasbeehExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
@@ -1310,21 +2024,23 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
         </div>
 
         {isTasbeehExpanded && (
-          <div className="px-3 pb-3 sm:px-5 sm:pb-5 pt-1 border-t border-white/5 space-y-4">
+          <div className={cn("px-3 pb-3 sm:px-5 sm:pb-5 pt-1 border-t space-y-4", darkMode ? "border-white/5" : "border-slate-200")}>
             {/* Tactile Interactive Tasbeeh Unit */}
             <div className={cn(
               "rounded-xl sm:rounded-2xl p-3 sm:p-5 border flex flex-col items-center justify-center text-center transition-all shadow-inner",
-              darkMode ? "bg-gradient-to-b from-[#141b22] to-[#0d1217] border-cyan-500/20" : "bg-gradient-to-b from-cyan-50/70 to-teal-50/40 border-cyan-200"
+              darkMode 
+                ? "bg-gradient-to-b from-[#141b22] to-[#0d1217] border-cyan-500/20" 
+                : st.tasbeehUnitBg
             )}>
               {/* Active Dhikr Title */}
               <div className="mb-1 max-w-sm">
-                <span className="text-base sm:text-2xl font-serif text-cyan-400 block mb-0.5">
+                <span className={cn("text-base sm:text-2xl font-serif block mb-0.5", darkMode ? "text-cyan-400" : st.tasbeehArabic)}>
                   {activeDhikrMeta.arabic}
                 </span>
-                <span className="text-xs sm:text-sm font-black tracking-tight block">
+                <span className={cn("text-xs sm:text-sm font-black tracking-tight block", darkMode ? "text-white" : "text-gray-950")}>
                   {activeDhikrMeta.transliteration}
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-neutral-400 line-clamp-1">
+                <span className={cn("text-[10px] sm:text-[11px] line-clamp-1 font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>
                   {isBn ? activeDhikrMeta.meaningBn : activeDhikrMeta.meaningEn}
                 </span>
               </div>
@@ -1333,32 +2049,41 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
               <button
                 type="button"
                 onClick={() => handleTasbeehTap(activeTasbeehDhikr)}
-                className="relative my-2 sm:my-3 w-32 h-32 sm:w-44 sm:h-44 rounded-full border-4 border-cyan-500/40 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 flex flex-col items-center justify-center transition-all cursor-pointer select-none group shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+                className={cn(
+                  "relative my-2 sm:my-3 w-32 h-32 sm:w-44 sm:h-44 rounded-full border-4 active:scale-95 flex flex-col items-center justify-center transition-all cursor-pointer select-none group shadow-lg",
+                  darkMode 
+                    ? "border-cyan-500/40 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 shadow-[0_0_30px_rgba(6,182,212,0.2)]" 
+                    : st.tasbeehBead
+                )}
               >
-                <span className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-white group-hover:text-cyan-300 drop-shadow">
+                <span className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-white drop-shadow">
                   {formatNum(activeDhikrCount)}
                 </span>
-                <span className="text-[9px] sm:text-xs font-bold text-cyan-400 uppercase tracking-widest mt-1">
+                <span className={cn(
+                  "text-[9px] sm:text-xs font-black uppercase tracking-widest mt-1 text-white/90"
+                )}>
                   {isBn ? 'ট্যাপ করুন' : 'Tap Bead'}
                 </span>
-                <div className="text-[9px] sm:text-[10px] text-neutral-400 font-mono">
+                <div className={cn(
+                  "text-[9px] sm:text-[10px] font-mono text-white/80 font-bold"
+                )}>
                   / {formatNum(tasbeehTarget)}
                 </div>
               </button>
 
               {/* Target Preset Selectors & Reset */}
               <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[10px] sm:text-[11px] text-neutral-400">{isBn ? 'টার্গেট:' : 'Target:'}</span>
+                <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : "text-gray-700")}>{isBn ? 'টার্গেট:' : 'Target:'}</span>
                 {[33, 100, 300, 1000].map(tg => (
                   <button
                     key={tg}
                     type="button"
                     onClick={() => setTasbeehTarget(tg)}
                     className={cn(
-                      "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold transition-all cursor-pointer font-mono",
+                      "px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all cursor-pointer font-mono",
                       tasbeehTarget === tg
-                        ? "bg-cyan-500 text-white shadow-xs"
-                        : "bg-black/10 dark:bg-white/5 text-neutral-400 hover:text-white"
+                        ? (darkMode ? "bg-cyan-500 text-white shadow-xs" : st.tasbeehTargetActive)
+                        : (darkMode ? "bg-white/5 text-neutral-400 hover:text-white" : st.tasbeehTargetIdle)
                     )}
                   >
                     {formatNum(tg)}
@@ -1368,7 +2093,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                 <button
                   type="button"
                   onClick={() => handleTasbeehReset(activeTasbeehDhikr)}
-                  className="ml-1.5 p-1 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  className={cn(
+                    "ml-1.5 p-1 rounded-lg transition-colors cursor-pointer",
+                    darkMode ? "text-neutral-400 hover:text-red-400 hover:bg-red-500/10" : "text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200"
+                  )}
                   title="Reset Counter"
                 >
                   <RotateCcw size={13} />
@@ -1379,10 +2107,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
             {/* Quick Dhikr List */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-extrabold text-neutral-300 text-[11px] sm:text-xs">
+                <span className={cn("font-black text-[11px] sm:text-xs", darkMode ? "text-neutral-300" : "text-gray-900")}>
                   {isBn ? 'দৈনন্দিন মাসনুন যিকির তালিকা' : 'Daily Masnoon Dhikr Selection'}
                 </span>
-                <span className="text-[9px] sm:text-[10px] text-neutral-400">
+                <span className={cn("text-[9px] sm:text-[10px]", darkMode ? "text-neutral-400" : "text-gray-500 font-medium")}>
                   {isBn ? 'ট্যাপ করে সেট করুন' : 'Tap to set in tasbeeh'}
                 </span>
               </div>
@@ -1400,34 +2128,37 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                         setTasbeehTarget(preset.defaultTarget);
                       }}
                       className={cn(
-                        "p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2",
+                        "p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 shadow-xs",
                         isSelected
-                          ? (darkMode ? "bg-cyan-950/30 border-cyan-500/50 shadow-sm" : "bg-cyan-50 border-cyan-300")
-                          : (darkMode ? "bg-white/[0.02] border-white/5 hover:bg-white/5" : "bg-gray-50 border-gray-200 hover:bg-gray-100")
+                          ? (darkMode ? "bg-cyan-950/30 border-cyan-500/50 shadow-sm" : st.tasbeehItemDone)
+                          : (darkMode ? "bg-white/[0.02] border-white/5 hover:bg-white/5" : st.tasbeehItemIdle)
                       )}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs truncate">
+                          <span className={cn("font-black text-xs truncate", darkMode ? "text-white" : "text-gray-950")}>
                             {preset.transliteration}
                           </span>
                           {isSelected && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping shrink-0" />
                           )}
                         </div>
-                        <span className="text-[9px] sm:text-[10px] text-neutral-400 block truncate">
+                        <span className={cn("text-[9px] sm:text-[10px] block truncate font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>
                           {isBn ? preset.meaningBn : preset.meaningEn}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                        <span className="text-xs font-bold font-mono px-1.5 sm:px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 text-cyan-300">
+                        <span className={cn(
+                          "text-xs font-black font-mono px-1.5 sm:px-2 py-0.5 rounded border",
+                          darkMode ? "bg-white/10 text-cyan-300 border-white/5" : st.tasbeehCountBadge
+                        )}>
                           {formatNum(count)}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleTasbeehTap(preset.id)}
-                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-cyan-500 text-white font-bold text-xs flex items-center justify-center hover:bg-cyan-600 active:scale-90 transition-all cursor-pointer"
+                          className={cn("w-6 h-6 sm:w-7 sm:h-7 rounded-lg font-black text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs", darkMode ? "bg-cyan-600 text-white hover:bg-cyan-700" : st.tasbeehPlusBtn)}
                         >
                           +1
                         </button>
@@ -1449,24 +2180,27 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                         setTasbeehTarget(custom.target);
                       }}
                       className={cn(
-                        "p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2",
+                        "p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 shadow-xs",
                         isSelected
-                          ? (darkMode ? "bg-cyan-950/30 border-cyan-500/50" : "bg-cyan-50 border-cyan-300")
-                          : (darkMode ? "bg-white/[0.02] border-white/5 hover:bg-white/5" : "bg-gray-50 border-gray-200")
+                          ? (darkMode ? "bg-cyan-950/30 border-cyan-500/50" : st.tasbeehItemDone)
+                          : (darkMode ? "bg-white/[0.02] border-white/5 hover:bg-white/5" : st.tasbeehItemIdle)
                       )}
                     >
                       <div className="min-w-0 flex-1">
-                        <span className="font-bold text-xs truncate block">{custom.title}</span>
-                        <span className="text-[9px] sm:text-[10px] text-neutral-400">Target: {formatNum(custom.target)}</span>
+                        <span className={cn("font-black text-xs truncate block", darkMode ? "text-white" : "text-gray-950")}>{custom.title}</span>
+                        <span className={cn("text-[9px] sm:text-[10px] font-semibold", darkMode ? "text-neutral-400" : "text-slate-700")}>Target: {formatNum(custom.target)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                        <span className="text-xs font-bold font-mono px-1.5 sm:px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 text-cyan-300">
+                        <span className={cn(
+                          "text-xs font-black font-mono px-1.5 sm:px-2 py-0.5 rounded border",
+                          darkMode ? "bg-white/10 text-cyan-300 border-white/5" : st.tasbeehCountBadge
+                        )}>
                           {formatNum(count)}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleTasbeehTap(custom.id)}
-                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-cyan-500 text-white font-bold text-xs flex items-center justify-center hover:bg-cyan-600 active:scale-90 transition-all cursor-pointer"
+                          className={cn("w-6 h-6 sm:w-7 sm:h-7 rounded-lg font-black text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs", darkMode ? "bg-cyan-600 text-white hover:bg-cyan-700" : st.tasbeehPlusBtn)}
                         >
                           +1
                         </button>
@@ -1481,13 +2215,19 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                 <button
                   type="button"
                   onClick={() => setShowAddCustomDhikr(true)}
-                  className="w-full py-1.5 rounded-xl border border-dashed border-cyan-500/30 hover:border-cyan-500/60 text-cyan-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className={cn(
+                    "w-full py-1.5 rounded-xl border border-dashed text-xs font-black flex items-center justify-center gap-1.5 transition-colors cursor-pointer",
+                    darkMode ? "border-cyan-500/30 hover:border-cyan-500/60 text-cyan-400" : st.tasbeehAddBtn
+                  )}
                 >
                   <Plus size={13} />
                   <span>{isBn ? 'কাস্টম যিকির যোগ করুন' : 'Add Custom Dhikr'}</span>
                 </button>
               ) : (
-                <div className="p-3 rounded-xl border border-cyan-500/30 bg-black/5 dark:bg-black/20 space-y-2">
+                <div className={cn(
+                  "p-3 rounded-xl border space-y-2",
+                  darkMode ? "border-cyan-500/30 bg-black/20" : "border-gray-300 bg-gray-50/70 shadow-xs"
+                )}>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -1496,7 +2236,7 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                       onChange={e => setCustomDhikrName(e.target.value)}
                       className={cn(
                         "flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50 min-h-[38px]",
-                        darkMode ? "bg-black/40 border-white/10 text-white placeholder:text-neutral-500" : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+                        darkMode ? "bg-black/40 border-white/10 text-white placeholder:text-neutral-500" : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
                       )}
                     />
                     <input
@@ -1516,14 +2256,14 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     <button
                       type="button"
                       onClick={() => setShowAddCustomDhikr(false)}
-                      className="px-3 py-1 rounded-lg text-neutral-400 hover:text-white cursor-pointer"
+                      className={cn("px-3 py-1 rounded-lg cursor-pointer font-bold", darkMode ? "text-neutral-400 hover:text-white" : "text-gray-600 hover:text-gray-900")}
                     >
                       {isBn ? 'বাতিল' : 'Cancel'}
                     </button>
                     <button
                       type="button"
                       onClick={handleAddCustomDhikr}
-                      className="px-3 py-1 rounded-lg bg-cyan-500 text-white font-bold hover:bg-cyan-600 transition-colors cursor-pointer"
+                      className={cn("px-3 py-1 rounded-lg font-black transition-colors cursor-pointer shadow-xs", darkMode ? "bg-cyan-600 text-white hover:bg-cyan-700" : st.tasbeehPlusBtn)}
                     >
                       {isBn ? 'যুক্ত করুন' : 'Save'}
                     </button>
@@ -1538,31 +2278,57 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
       {/* 5. Daily Protective Azkar Checklist */}
       <div className={cn(
         "rounded-xl sm:rounded-2xl border transition-all overflow-hidden shadow-xs",
-        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200"
+        darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-slate-300 shadow-sm"
       )}>
-        <button
-          type="button"
-          onClick={() => setIsAzkarExpanded(!isAzkarExpanded)}
-          className="w-full p-3 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors text-left"
-        >
-          <div className="flex items-center gap-2">
-            <Award size={16} className="text-amber-400" />
-            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">
-              {isBn ? 'দৈনন্দিন মাসনুন আযকার চেকলিস্ট' : 'Daily Masnoon Adhkar Checklist'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+        <div className="p-3 sm:p-5 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setIsAzkarExpanded(!isAzkarExpanded)}
+            className="flex-1 flex items-center justify-between cursor-pointer text-left mr-2 min-w-0"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Award size={16} className={cn(darkMode ? "text-amber-400" : st.adhkarIcon, "shrink-0")} />
+              <h2 className={cn("text-sm sm:text-base font-black tracking-tight truncate", darkMode ? "text-white" : "text-gray-950")}>
+                {isBn ? 'দৈনন্দিন মাসনুন আযকার চেকলিস্ট' : 'Daily Masnoon Adhkar Checklist'}
+              </h2>
+            </div>
+            <span className={cn(
+              "text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-md border shrink-0 ml-2 hidden xs:inline-block",
+              darkMode ? "text-amber-400 bg-amber-500/10 border-amber-500/20" : st.adhkarBadge
+            )}>
               {formatNum(completedAdhkarCount)} / {formatNum(6)} {isBn ? 'সম্পূর্ণ' : 'Done'}
             </span>
-            <div className="p-1 rounded-lg text-neutral-400">
+          </button>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Sound Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleSound}
+              className={cn(
+                "p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center",
+                tasbeehSound 
+                  ? (darkMode ? "text-amber-400 bg-amber-500/10 border border-amber-500/20 shadow-xs" : "text-amber-800 bg-amber-100/90 border border-amber-300 shadow-xs") 
+                  : (darkMode ? "text-neutral-500 hover:text-neutral-400" : "text-slate-500 hover:text-slate-800 border border-transparent")
+              )}
+              title={tasbeehSound ? (isBn ? "সাউন্ড চালু (মিউট করতে ক্লিক করুন)" : "Sound ON (Click to mute)") : (isBn ? "সাউন্ড বন্ধ (চালু করতে ক্লিক করুন)" : "Sound OFF (Click to unmute)")}
+              aria-label={tasbeehSound ? "Sound ON" : "Sound OFF"}
+            >
+              {tasbeehSound ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAzkarExpanded(!isAzkarExpanded)}
+              className={cn("p-1.5 rounded-lg cursor-pointer", darkMode ? "text-neutral-400 hover:text-white" : "text-slate-700 hover:text-gray-950")}
+            >
               {isAzkarExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
+            </button>
           </div>
-        </button>
+        </div>
 
         {isAzkarExpanded && (
-          <div className="px-3 pb-3 sm:px-5 sm:pb-5 pt-1 border-t border-white/5">
+          <div className={cn("px-3 pb-3 sm:px-5 sm:pb-5 pt-1 border-t", darkMode ? "border-white/5" : "border-gray-100")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs">
               {[
                 { key: 'ayatulKursi', labelEn: 'Ayat-ul-Kursi after Farz Prayers', labelBn: 'ফরজ সালাতের পর আয়াতুল কুরসী' },
@@ -1579,18 +2345,20 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
                     type="button"
                     onClick={() => toggleAzkarCheck(item.key as keyof DailySalahRecord['azkarChecklist'])}
                     className={cn(
-                      "flex items-center justify-between p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer text-left",
+                      "flex items-center justify-between p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer text-left shadow-xs",
                       isChecked
-                        ? (darkMode ? "bg-amber-500/15 border-amber-500/30 text-amber-200" : "bg-amber-50 border-amber-300 text-amber-900")
-                        : (darkMode ? "bg-white/[0.02] border-white/5 text-neutral-400 hover:bg-white/5" : "bg-gray-50 border-gray-200 text-gray-700")
+                        ? (darkMode ? "bg-amber-500/15 border-amber-500/30 text-amber-200" : st.adhkarDone)
+                        : (darkMode ? "bg-white/[0.02] border-white/5 text-neutral-400 hover:bg-white/5" : st.adhkarIdle)
                     )}
                   >
-                    <span className="font-semibold text-xs pr-2">
+                    <span className="text-xs pr-2">
                       {isBn ? item.labelBn : item.labelEn}
                     </span>
                     <span className={cn(
                       "w-5 h-5 rounded-md flex items-center justify-center border shrink-0 transition-colors",
-                      isChecked ? "bg-amber-500 border-amber-500 text-white" : "border-neutral-500"
+                      isChecked 
+                        ? (darkMode ? "bg-amber-500 border-amber-500 text-white" : st.adhkarCheck) 
+                        : (darkMode ? "border-neutral-500" : "border-gray-400 bg-gray-50")
                     )}>
                       {isChecked && <Check size={12} className="stroke-[3]" />}
                     </span>

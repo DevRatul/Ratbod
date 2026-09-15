@@ -129,7 +129,29 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       }, { merge: true }).catch(() => {});
     }
   };
-  const [lang, setLang] = useState<'en' | 'bn'>('en');
+  const [lang, setLang] = useState<'en' | 'bn'>(() => {
+    try {
+      const saved = localStorage.getItem('ratool_lang') || localStorage.getItem('ratbod_lang');
+      if (saved === 'bn' || saved === 'en') return saved;
+    } catch (e) {}
+    return 'en';
+  });
+
+  const handleToggleLang = (newLang: 'en' | 'bn') => {
+    setLang(newLang);
+    try {
+      localStorage.setItem('ratool_lang', newLang);
+      localStorage.setItem('ratbod_lang', newLang);
+    } catch (e) {}
+    const user = authUser || auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid), {
+        lang: newLang,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+    }
+  };
+
   const t = translations[lang];
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
   const [gender, setGender] = useState<Gender>('male');
@@ -1364,7 +1386,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
-      <header className="sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300">
+      <header className={cn(
+        "sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300",
+        activeTab !== 'calculator' ? "hidden md:block" : "block"
+      )}>
         <div className={cn(
           "relative max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
           darkMode 
@@ -1561,7 +1586,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             </button>
           </nav>
           
-          <div className="flex items-center gap-1.5 sm:gap-3 relative z-10">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 relative z-10">
             <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} lang={lang} align="right" />
 
             {/* Profile Dropdown Container */}
@@ -1574,8 +1599,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all cursor-pointer overflow-hidden select-none",
                   darkMode ? "border-white/10 hover:border-white/30 bg-white/5" : "border-black/5 hover:border-black/20 bg-black/5"
                 )}
-                title="Profile"
-                aria-label="Profile"
+                title="Profile & Menu"
+                aria-label="Profile & Menu"
               >
                 {auth.currentUser?.photoURL ? (
                   <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -1600,7 +1625,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       exit={{ opacity: 0, y: 6, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       className={cn(
-                        "absolute right-0 top-10 sm:top-12 w-44 sm:w-56 rounded-xl sm:rounded-2xl shadow-2xl border overflow-hidden z-50 py-1",
+                        "absolute right-0 top-10 sm:top-12 w-48 sm:w-60 rounded-xl sm:rounded-2xl shadow-2xl border overflow-hidden z-50 py-1.5",
                         darkMode ? "bg-[#121212]/95 backdrop-blur-xl border-white/10 shadow-black/80" : "bg-white/95 backdrop-blur-xl border-black/10 shadow-gray-400/50"
                       )}
                     >
@@ -1613,7 +1638,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                           setIsDashboardOpen(true);
                         }}
                         className={cn(
-                          "w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
+                          "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
                         )}
                       >
@@ -1629,54 +1654,55 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                           setIsProfileOpen(true);
                         }}
                         className={cn(
-                          "w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
+                          "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
                         )}
                       >
                         <UserIcon size={14} className="sm:w-4 sm:h-4 shrink-0" />
-                        <span>Profile</span>
+                        <span>{lang === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
                       </button>
 
-                      {/* Compact Language Selection Row (English / Bangla toggle) */}
-                      <div className="px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between">
-                        <span className={cn("text-[11px] sm:text-xs font-bold flex items-center gap-1.5 sm:gap-2", darkMode ? "text-gray-300" : "text-gray-700")}>
-                          <Globe size={13} className="sm:w-3.5 sm:h-3.5 text-primary shrink-0" />
+                      {/* Language item in menu */}
+                      <div className={cn(
+                        "px-3.5 sm:px-4 py-2 flex items-center justify-between gap-2 text-xs sm:text-sm font-bold",
+                        darkMode ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        <div className="flex items-center gap-2.5 sm:gap-3">
+                          <Globe size={14} className="sm:w-4 sm:h-4 text-sky-500 shrink-0" />
                           <span>{lang === 'bn' ? 'ভাষা' : 'Language'}</span>
-                        </span>
+                        </div>
                         <div className={cn(
-                          "flex p-0.5 rounded-full transition-colors",
-                          darkMode ? "bg-white/10" : "bg-gray-100"
+                          "flex items-center p-0.5 rounded-lg border text-[11px] font-black",
+                          darkMode ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
                         )}>
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => setLang('en')}
+                            onClick={() => handleToggleLang('en')}
                             className={cn(
-                              "px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black transition-all cursor-pointer",
+                              "px-2 py-0.5 rounded-md transition-all cursor-pointer",
                               lang === 'en' 
-                                ? (darkMode ? "bg-white/20 text-white shadow-xs" : "bg-white shadow-sm text-gray-900") 
-                                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                                ? (darkMode ? "bg-white text-black font-black shadow-xs" : "bg-white text-gray-950 font-black shadow-xs")
+                                : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-950")
                             )}
-                            title="English"
                           >
                             EN
                           </button>
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => setLang('bn')}
+                            onClick={() => handleToggleLang('bn')}
                             className={cn(
-                              "px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black transition-all cursor-pointer",
+                              "px-2 py-0.5 rounded-md transition-all cursor-pointer",
                               lang === 'bn' 
-                                ? (darkMode ? "bg-white/20 text-white shadow-xs" : "bg-white shadow-sm text-gray-900") 
-                                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                                ? (darkMode ? "bg-white text-black font-black shadow-xs" : "bg-white text-gray-950 font-black shadow-xs")
+                                : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-950")
                             )}
-                            title="বাংলা"
                           >
                             বাং
                           </button>
                         </div>
                       </div>
 
-                      <div className={cn("h-px w-full my-0.5", darkMode ? "bg-white/10" : "bg-black/5")} />
+                      <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         id="profile_menu_signout"
                         type="button"
@@ -1685,12 +1711,12 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                           auth.signOut();
                         }}
                         className={cn(
-                          "w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
+                          "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
                           darkMode ? "hover:bg-red-500/10 text-red-400" : "hover:bg-red-50 text-red-600"
                         )}
                       >
                         <LogOut size={14} className="sm:w-4 sm:h-4 shrink-0" />
-                        <span>Sign out</span>
+                        <span>{lang === 'bn' ? 'সাইন আউট' : 'Sign out'}</span>
                       </button>
                     </motion.div>
                 )}
@@ -1702,7 +1728,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Breathing Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'breathing' ? "block" : "hidden"
       )}>
         <BreathingTimer darkMode={darkMode} lang={lang} />
@@ -1710,7 +1736,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -1718,7 +1744,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Logify Tab Content (includes Water section) */}
       <div className={cn(
-        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
         (activeTab === 'logify' || activeTab === 'water') ? "block" : "hidden"
       )}>
         <Logify 
@@ -1733,7 +1759,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} />

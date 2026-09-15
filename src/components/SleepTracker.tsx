@@ -27,7 +27,7 @@ import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import CircularSleepDial from './CircularSleepDial';
-import { triggerHaptic } from '../utils/haptics';
+import { triggerHaptic, initHapticAudio } from '../utils/haptics';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -233,6 +233,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleToggleBedAmPm = () => {
+    initHapticAudio();
     triggerHaptic('medium', true);
     const [h, m] = sleepBedTime.split(':').map(Number);
     const newH = ((h || 0) + 12) % 24;
@@ -242,6 +243,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleToggleWakeAmPm = () => {
+    initHapticAudio();
     triggerHaptic('medium', true);
     const [h, m] = sleepWakeTime.split(':').map(Number);
     const newH = ((h || 0) + 12) % 24;
@@ -270,14 +272,16 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleAdjustBed = (deltaMin: number) => {
-    triggerHaptic(Math.abs(deltaMin) >= 60 ? 'medium' : 'light', true);
+    initHapticAudio();
+    triggerHaptic(Math.abs(deltaMin) >= 60 ? 'medium' : 'notch', true);
     const updated = adjustMinutes(sleepBedTime, deltaMin);
     setSleepBedTime(updated);
     persistSleepData(updated, sleepWakeTime, sleepRecords);
   };
 
   const handleAdjustWake = (deltaMin: number) => {
-    triggerHaptic(Math.abs(deltaMin) >= 60 ? 'medium' : 'light', true);
+    initHapticAudio();
+    triggerHaptic(Math.abs(deltaMin) >= 60 ? 'medium' : 'notch', true);
     const updated = adjustMinutes(sleepWakeTime, deltaMin);
     setSleepWakeTime(updated);
     persistSleepData(sleepBedTime, updated, sleepRecords);
@@ -292,6 +296,8 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   const sleepDuration = calculateSleepDuration(sleepBedTime, sleepWakeTime);
 
   const handleLogSleepRecord = () => {
+    initHapticAudio();
+    triggerHaptic('heavy', true);
     const targetDate = selectedSleepDate || getLocalDateString(new Date());
     const newRecord: SleepRecord = {
       id: String(Date.now()),
@@ -570,7 +576,11 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
               )}>
                 <button
                   type="button"
-                  onClick={() => setSelectedSleepDate(todayStr)}
+                  onClick={() => {
+                    initHapticAudio();
+                    triggerHaptic('light', true);
+                    setSelectedSleepDate(todayStr);
+                  }}
                   className={cn(
                     "px-2 py-0.5 rounded-md transition-all cursor-pointer whitespace-nowrap text-[10.5px] sm:text-xs font-semibold",
                     selectedSleepDate === todayStr 
@@ -586,7 +596,11 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedSleepDate(yesterdayStr)}
+                  onClick={() => {
+                    initHapticAudio();
+                    triggerHaptic('light', true);
+                    setSelectedSleepDate(yesterdayStr);
+                  }}
                   className={cn(
                     "px-2 py-0.5 rounded-md transition-all cursor-pointer whitespace-nowrap text-[10.5px] sm:text-xs font-semibold",
                     selectedSleepDate === yesterdayStr 
@@ -663,6 +677,8 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
               <button
                 type="button"
                 onClick={() => {
+                  initHapticAudio();
+                  triggerHaptic('selection', true);
                   setSleepBedTime(existingRecordForSelectedDate.bedTime);
                   setSleepWakeTime(existingRecordForSelectedDate.wakeTime);
                 }}

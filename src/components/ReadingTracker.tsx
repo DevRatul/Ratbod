@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BookOpen, 
   Clock, 
@@ -27,7 +27,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 function cn(...inputs: ClassValue[]) {
@@ -272,6 +272,18 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     return [];
   });
 
+  // State refs to prevent race conditions or stale closure overwrites
+  const recordsRef = useRef<ReadingRecord[]>([]);
+  const booksRef = useRef<BookItem[]>([]);
+  const pageGoalRef = useRef<number>(pageGoal);
+  const selectedBookIdRef = useRef<string>(selectedBookId);
+  const isInitialLoadedRef = useRef<boolean>(false);
+
+  useEffect(() => { recordsRef.current = records; }, [records]);
+  useEffect(() => { booksRef.current = books; }, [books]);
+  useEffect(() => { pageGoalRef.current = pageGoal; }, [pageGoal]);
+  useEffect(() => { selectedBookIdRef.current = selectedBookId; }, [selectedBookId]);
+
   // Calculate today's pages & minutes from records
   const todayStr = getLocalDateString();
   const todayPages = records
@@ -287,15 +299,23 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   // Robust persistence helper: sanitizes all records to remove undefined properties (which crash Firestore setDoc)
   const persistData = (goal: number, updatedRecords: ReadingRecord[], updatedBooks: BookItem[], bookIdToSave?: string) => {
     try {
+      // Guard against race conditions overwriting records with empty array before initial load completes
+      if (!isInitialLoadedRef.current && updatedRecords.length === 0 && recordsRef.current.length > 0) {
+        updatedRecords = recordsRef.current;
+      }
+      if (!isInitialLoadedRef.current && updatedBooks.length === 0 && booksRef.current.length > 0) {
+        updatedBooks = booksRef.current;
+      }
+
       // 1. Sanitize to guarantee NO undefined properties are ever sent to Firestore or stored
-      const cleanRecords = updatedRecords.map(r => {
+      const cleanRecords = updatedRecords.map((r, idx) => {
         const item: any = {
-          id: String(r.id),
-          date: String(r.date),
+          id: String(r.id || `rec_${r.date || getLocalDateString()}_${Date.now()}_${idx}`),
+          date: String(r.date || getLocalDateString()),
           bookTitle: String(r.bookTitle || ''),
           pages: Number(r.pages) || 0,
           minutes: Number(r.minutes) || 0,
-          createdAt: Number(r.createdAt) || Date.now()
+          createdAt: Number(r.createdAt) || (Date.now() - idx * 1000)
         };
         if (r.bookId) item.bookId = String(r.bookId);
         if (r.fromPage !== undefined && r.fromPage !== null) item.fromPage = Number(r.fromPage);
@@ -321,7 +341,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
       const activeId = bookIdToSave || selectedBookId;
 
-      // 2. Cache locally to both standard keys
+      // 2. Cache locally to both standard keys immediately
       const recJson = JSON.stringify(cleanRecords);
       const bookJson = JSON.stringify(cleanBooks);
       localStorage.setItem('ratbod_reading_records', recJson);
@@ -335,7 +355,13 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         localStorage.setItem('ratool_reading_selected_book', activeId);
       }
 
-      // 3. Persist to Firestore appData/readingTracker
+      // Update refs
+      recordsRef.current = cleanRecords;
+      booksRef.current = cleanBooks;
+      pageGoalRef.current = Number(goal) || 20;
+      if (activeId) selectedBookIdRef.current = activeId;
+
+      // 3. Persist to Firestore: Both appData/readingTracker AND user root doc
       const user = auth.currentUser;
       if (user) {
         const payload = JSON.parse(JSON.stringify({
@@ -348,23 +374,83 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
         setDoc(doc(db, 'users', user.uid, 'appData', 'readingTracker'), payload, { merge: true })
           .then(() => {
-            console.log('[ReadingTracker] Saved to Firestore successfully! Records count:', cleanRecords.length);
+            console.log('[ReadingTracker] Saved to Firestore appData successfully! Records count:', cleanRecords.length);
           })
           .catch(err => {
-            console.error('[ReadingTracker] Firestore save failed:', err);
+            console.error('[ReadingTracker] Firestore save to appData failed:', err);
           });
+
+        // Also save to root user document for cross-compatibility and backup
+        setDoc(doc(db, 'users', user.uid), {
+          readingRecords: cleanRecords,
+          readingBooks: cleanBooks,
+          readingGoal: Number(goal) || 20,
+          selectedReadingBookId: activeId || null,
+          readingUpdatedAt: Date.now()
+        }, { merge: true }).catch(() => {});
       }
     } catch (e) {
       console.error('[ReadingTracker] Error persisting data:', e);
     }
   };
 
-  // Load from Firestore with smart merging and offline preservation
+  // Load from Firestore with smart merging, real-time sync, and offline preservation
   useEffect(() => {
-    const load = async (user = auth.currentUser) => {
-      if (!user) return;
+    let unsubscribeSnapshot: (() => void) | null = null;
+
+    const setupSync = async (user = auth.currentUser) => {
+      if (!user) {
+        isInitialLoadedRef.current = true;
+        return;
+      }
+
+      // Cleanup any previous snapshot listener
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'readingTracker'));
+        const trackerDocRef = doc(db, 'users', user.uid, 'appData', 'readingTracker');
+
+        // Check initial state from Firestore (both appData and root doc)
+        let remoteRecs: ReadingRecord[] = [];
+        let remoteBooks: BookItem[] = [];
+        let remoteGoal: number | null = null;
+        let remoteBookId: string | null = null;
+
+        try {
+          const snap = await getDoc(trackerDocRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data.records)) remoteRecs = data.records;
+            if (Array.isArray(data.books)) remoteBooks = data.books;
+            if (data.pageGoal) remoteGoal = Number(data.pageGoal);
+            if (data.selectedBookId) remoteBookId = data.selectedBookId;
+          }
+
+          // Check root user doc if appData had no records
+          if (remoteRecs.length === 0) {
+            const rootSnap = await getDoc(doc(db, 'users', user.uid));
+            if (rootSnap.exists()) {
+              const rd = rootSnap.data();
+              if (Array.isArray(rd.readingRecords) && rd.readingRecords.length > 0) {
+                remoteRecs = rd.readingRecords;
+              }
+              if (Array.isArray(rd.readingBooks) && rd.readingBooks.length > 0 && remoteBooks.length === 0) {
+                remoteBooks = rd.readingBooks;
+              }
+              if (remoteGoal === null && rd.readingGoal) {
+                remoteGoal = Number(rd.readingGoal);
+              }
+              if (!remoteBookId && rd.selectedReadingBookId) {
+                remoteBookId = rd.selectedReadingBookId;
+              }
+            }
+          }
+        } catch (readErr) {
+          console.error('[ReadingTracker] Initial read error:', readErr);
+        }
 
         // Retrieve local cache
         let localRecs: ReadingRecord[] = [];
@@ -379,83 +465,143 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           if (raw) localBooks = JSON.parse(raw);
         } catch (e) {}
 
-        if (snap.exists()) {
-          const data = snap.data();
-          const remoteRecs: ReadingRecord[] = Array.isArray(data.records) ? data.records : [];
-          const remoteBooks: BookItem[] = Array.isArray(data.books) ? data.books : [];
-
-          // Merge records by id (preserves locally saved records if remote had not received them yet)
-          const recordMap = new Map<string, ReadingRecord>();
-          localRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
-          remoteRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
-          const mergedRecs = Array.from(recordMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-          // Merge books by id
-          const bookMap = new Map<string, BookItem>();
-          localBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
-          remoteBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
-          let mergedBooks = Array.from(bookMap.values());
-          if (mergedBooks.length === 0) {
-            mergedBooks = [DEFAULT_BOOK];
+        // Smart merge: preserve all records from both local and remote without ever dropping
+        const recordMap = new Map<string, ReadingRecord>();
+        localRecs.forEach((r, idx) => {
+          if (r) {
+            const key = String(r.id || `loc_${r.date || ''}_${r.bookTitle || ''}_${r.pages || 0}_${r.createdAt || idx}`);
+            recordMap.set(key, { ...r, id: key });
           }
-
-          // Recalculate book reading stats against merged records
-          const syncedBooks = mergedBooks.map(b => {
-            const stats = getBookStats(b, mergedRecs);
-            return {
-              ...b,
-              currentPage: stats.totalRead,
-              status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
-            };
-          });
-
-          const chosenGoal = data.pageGoal ? Number(data.pageGoal) : (pageGoal || 20);
-          const chosenBookId = data.selectedBookId || (syncedBooks.length > 0 ? syncedBooks[0].id : 'book_sample_1');
-
-          setRecords(mergedRecs);
-          setBooks(syncedBooks);
-          setPageGoal(chosenGoal);
-          setSelectedBookId(chosenBookId);
-
-          // Update local cache
-          try {
-            localStorage.setItem('ratbod_reading_records', JSON.stringify(mergedRecs));
-            localStorage.setItem('ratool_reading_records', JSON.stringify(mergedRecs));
-            localStorage.setItem('ratbod_user_books', JSON.stringify(syncedBooks));
-            localStorage.setItem('ratool_user_books', JSON.stringify(syncedBooks));
-            localStorage.setItem('ratbod_reading_goal', String(chosenGoal));
-            localStorage.setItem('ratool_reading_goal', String(chosenGoal));
-            localStorage.setItem('ratbod_reading_selected_book', chosenBookId);
-            localStorage.setItem('ratool_reading_selected_book', chosenBookId);
-          } catch (e) {}
-
-          // If local had unsynced records/books that remote missed, sync back to Firestore immediately
-          if (localRecs.length > remoteRecs.length || localBooks.length > remoteBooks.length) {
-            persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId);
+        });
+        remoteRecs.forEach((r, idx) => {
+          if (r) {
+            const key = String(r.id || `rem_${r.date || ''}_${r.bookTitle || ''}_${r.pages || 0}_${r.createdAt || idx}`);
+            recordMap.set(key, { ...r, id: key });
           }
-        } else {
-          // Document does not exist yet on Firestore: seed it from local data so it's safely stored
-          const booksToSave = localBooks.length > 0 ? localBooks : [DEFAULT_BOOK];
-          persistData(pageGoal, localRecs, booksToSave, selectedBookId);
+        });
+        const mergedRecs = Array.from(recordMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        // Merge books
+        const bookMap = new Map<string, BookItem>();
+        localBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
+        remoteBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
+        let mergedBooks = Array.from(bookMap.values());
+        if (mergedBooks.length === 0) {
+          mergedBooks = [DEFAULT_BOOK];
         }
+
+        // Recalculate book stats based on merged records
+        const syncedBooks = mergedBooks.map(b => {
+          const stats = getBookStats(b, mergedRecs);
+          return {
+            ...b,
+            currentPage: stats.totalRead,
+            status: (stats.isCompleted ? 'completed' : 'reading') as 'completed' | 'reading'
+          };
+        });
+
+        const chosenGoal = remoteGoal !== null ? remoteGoal : (pageGoal || 20);
+        const chosenBookId = remoteBookId || selectedBookId || (syncedBooks.length > 0 ? syncedBooks[0].id : 'book_sample_1');
+
+        setRecords(mergedRecs);
+        setBooks(syncedBooks);
+        setPageGoal(chosenGoal);
+        setSelectedBookId(chosenBookId);
+
+        recordsRef.current = mergedRecs;
+        booksRef.current = syncedBooks;
+        pageGoalRef.current = chosenGoal;
+        selectedBookIdRef.current = chosenBookId;
+        isInitialLoadedRef.current = true;
+
+        // Update local storage with merged truth
+        try {
+          localStorage.setItem('ratbod_reading_records', JSON.stringify(mergedRecs));
+          localStorage.setItem('ratool_reading_records', JSON.stringify(mergedRecs));
+          localStorage.setItem('ratbod_user_books', JSON.stringify(syncedBooks));
+          localStorage.setItem('ratool_user_books', JSON.stringify(syncedBooks));
+          localStorage.setItem('ratbod_reading_goal', String(chosenGoal));
+          localStorage.setItem('ratool_reading_goal', String(chosenGoal));
+          localStorage.setItem('ratbod_reading_selected_book', chosenBookId);
+          localStorage.setItem('ratool_reading_selected_book', chosenBookId);
+        } catch (e) {}
+
+        // If local has newer records than remote, push to Firestore
+        if (localRecs.length > remoteRecs.length || localBooks.length > remoteBooks.length) {
+          persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId);
+        }
+
+        // Set up real-time listener for multi-tab or cross-device updates
+        unsubscribeSnapshot = onSnapshot(trackerDocRef, (docSnap) => {
+          if (!docSnap.exists()) return;
+          const liveData = docSnap.data();
+          if (!liveData) return;
+
+          const liveRecs: ReadingRecord[] = Array.isArray(liveData.records) ? liveData.records : [];
+          if (liveRecs.length > 0) {
+            setRecords(prev => {
+              const liveMap = new Map<string, ReadingRecord>();
+              prev.forEach((r, idx) => {
+                const k = String(r.id || `p_${r.date}_${idx}`);
+                liveMap.set(k, { ...r, id: k });
+              });
+              liveRecs.forEach((r, idx) => {
+                const k = String(r.id || `l_${r.date}_${idx}`);
+                liveMap.set(k, { ...r, id: k });
+              });
+              const combined = Array.from(liveMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+              recordsRef.current = combined;
+              try {
+                localStorage.setItem('ratbod_reading_records', JSON.stringify(combined));
+                localStorage.setItem('ratool_reading_records', JSON.stringify(combined));
+              } catch (e) {}
+              return combined;
+            });
+          }
+
+          const liveBooks: BookItem[] = Array.isArray(liveData.books) ? liveData.books : [];
+          if (liveBooks.length > 0) {
+            setBooks(liveBooks);
+            booksRef.current = liveBooks;
+            try {
+              localStorage.setItem('ratbod_user_books', JSON.stringify(liveBooks));
+              localStorage.setItem('ratool_user_books', JSON.stringify(liveBooks));
+            } catch (e) {}
+          }
+
+          if (liveData.pageGoal) {
+            setPageGoal(Number(liveData.pageGoal));
+            pageGoalRef.current = Number(liveData.pageGoal);
+          }
+        }, (err) => {
+          console.warn('[ReadingTracker] Snapshot listener notice:', err);
+        });
+
       } catch (e) {
-        console.error('[ReadingTracker] Error loading from Firestore:', e);
+        console.error('[ReadingTracker] Error in setupSync:', e);
+        isInitialLoadedRef.current = true;
       }
     };
-    load();
-    const unsub = onAuthStateChanged(auth, (u) => { if (u) load(u); });
-    return () => unsub();
+
+    setupSync();
+    const unsubAuth = onAuthStateChanged(auth, (u) => { setupSync(u); });
+    return () => {
+      unsubAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   }, []);
 
   // Switch active book and suggest intelligent starting page based on existing read history
   const handleSelectBook = (bookId: string) => {
     setSelectedBookId(bookId);
     if (bookId === 'custom') return;
-    const found = books.find(b => b.id === bookId);
+    const currentRecs = recordsRef.current.length > 0 ? recordsRef.current : records;
+    const currentBooks = booksRef.current.length > 0 ? booksRef.current : books;
+    const found = currentBooks.find(b => b.id === bookId);
     if (found) {
-      const stats = getBookStats(found, records);
+      const stats = getBookStats(found, currentRecs);
       // Find the most recent record for this book if available
-      const bookRecs = records.filter(r => r.bookId === bookId || r.bookTitle === found.title);
+      const bookRecs = currentRecs.filter(r => r.bookId === bookId || r.bookTitle === found.title);
       if (bookRecs.length > 0 && bookRecs[0].toPage && bookRecs[0].toPage < found.totalPages) {
         const nextStart = bookRecs[0].toPage + 1;
         setFromPageInput(String(nextStart));
@@ -470,7 +616,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       localStorage.setItem('ratbod_reading_selected_book', bookId);
       localStorage.setItem('ratool_reading_selected_book', bookId);
     } catch (e) {}
-    persistData(pageGoal, records, books, bookId);
+    persistData(pageGoal, currentRecs, currentBooks, bookId);
   };
 
   // Add new book
@@ -482,7 +628,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
     const startP = Math.min(totalP, Math.max(0, parseInt(newBookCurrentPage, 10) || 0));
     const newBook: BookItem = {
-      id: `book_${Date.now()}`,
+      id: `book_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       title,
       totalPages: totalP,
       currentPage: startP,
@@ -494,10 +640,12 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       newBook.author = newBookAuthor.trim();
     }
 
-    const updatedBooks = [newBook, ...books];
+    const currentRecs = recordsRef.current.length > 0 ? recordsRef.current : records;
+    const currentBooks = booksRef.current.length > 0 ? booksRef.current : books;
+    const updatedBooks = [newBook, ...currentBooks];
     setBooks(updatedBooks);
     setSelectedBookId(newBook.id);
-    persistData(pageGoal, records, updatedBooks, newBook.id);
+    persistData(pageGoal, currentRecs, updatedBooks, newBook.id);
 
     const nextStart = startP > 0 && startP < totalP ? startP + 1 : 1;
     setFromPageInput(String(nextStart));
@@ -512,9 +660,11 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   };
 
   const handleDeleteBook = (bookId: string) => {
-    const updatedBooks = books.filter(b => b.id !== bookId);
+    const currentRecs = recordsRef.current.length > 0 ? recordsRef.current : records;
+    const currentBooks = booksRef.current.length > 0 ? booksRef.current : books;
+    const updatedBooks = currentBooks.filter(b => b.id !== bookId);
     setBooks(updatedBooks);
-    persistData(pageGoal, records, updatedBooks);
+    persistData(pageGoal, currentRecs, updatedBooks);
     if (selectedBookId === bookId) {
       if (updatedBooks.length > 0) {
         handleSelectBook(updatedBooks[0].id);
@@ -581,8 +731,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       title = isBn ? 'দৈনিক বই পড়া' : 'Daily Reading';
     }
 
+    const uniqueRecId = `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const newRec: ReadingRecord = {
-      id: String(Date.now()),
+      id: uniqueRecId,
       date: selectedDate || getLocalDateString(),
       bookTitle: title,
       pages: p,
@@ -602,10 +753,12 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       newRec.note = noteInput.trim();
     }
 
-    const updatedRecords = [newRec, ...records].slice(0, 100);
+    const baseRecords = recordsRef.current.length > 0 ? recordsRef.current : records;
+    const updatedRecords = [newRec, ...baseRecords.filter(r => r.id !== uniqueRecId)].slice(0, 500);
 
     // Accurately recalculate all books based on the updated reading records
-    const updatedBooks = books.map(b => {
+    const baseBooks = booksRef.current.length > 0 ? booksRef.current : books;
+    const updatedBooks = baseBooks.map(b => {
       const stats = getBookStats(b, updatedRecords);
       return {
         ...b,
@@ -663,12 +816,15 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const handleConfirmDelete = () => {
     if (!deleteTarget) return;
 
+    const currentRecs = recordsRef.current.length > 0 ? recordsRef.current : records;
+    const currentBooks = booksRef.current.length > 0 ? booksRef.current : books;
+
     if (deleteTarget.type === 'record') {
       const targetId = deleteTarget.id;
-      const updatedRecords = records.filter(r => r.id !== targetId);
+      const updatedRecords = currentRecs.filter(r => r.id !== targetId);
 
       // Recalculate all books without the deleted record
-      const updatedBooks = books.map(b => {
+      const updatedBooks = currentBooks.map(b => {
         const stats = getBookStats(b, updatedRecords);
         return {
           ...b,
@@ -682,9 +838,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       persistData(pageGoal, updatedRecords, updatedBooks, selectedBookId);
     } else if (deleteTarget.type === 'book') {
       const targetId = deleteTarget.id;
-      const updatedBooks = books.filter(b => b.id !== targetId);
+      const updatedBooks = currentBooks.filter(b => b.id !== targetId);
       setBooks(updatedBooks);
-      persistData(pageGoal, records, updatedBooks);
+      persistData(pageGoal, currentRecs, updatedBooks);
 
       if (selectedBookId === targetId) {
         if (updatedBooks.length > 0) {

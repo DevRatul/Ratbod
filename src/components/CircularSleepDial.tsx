@@ -5,7 +5,7 @@
 
 import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { Bed, AlarmClock, Moon, Sparkles } from 'lucide-react';
-import { triggerHaptic } from '../utils/haptics';
+import { triggerHaptic, initHapticAudio } from '../utils/haptics';
 
 interface CircularSleepDialProps {
   bedTime: string; // "HH:MM" (24h storage format)
@@ -187,7 +187,8 @@ export default function CircularSleepDial({
       resolvedTarget = target;
     }
 
-    // Initial grab haptic
+    // Initial grab haptic and audio unlock
+    initHapticAudio();
     triggerHaptic('selection', true);
 
     setDragTarget(resolvedTarget);
@@ -229,15 +230,18 @@ export default function CircularSleepDial({
       dragStateRef.current.minuteAccumulator -= step;
 
       let isHourMark = false;
+      let isPrimeBoundary = false;
       if (dragTarget === 'bed') {
         const nextBed = ((dragStateRef.current.currentBedMinutes + step) % 1440 + 1440) % 1440;
         dragStateRef.current.currentBedMinutes = nextBed;
         isHourMark = nextBed % 60 === 0;
+        isPrimeBoundary = nextBed === 22 * 60 || nextBed === 2 * 60;
         onChange(minutesToTime(nextBed), minutesToTime(dragStateRef.current.currentWakeMinutes));
       } else if (dragTarget === 'wake') {
         const nextWake = ((dragStateRef.current.currentWakeMinutes + step) % 1440 + 1440) % 1440;
         dragStateRef.current.currentWakeMinutes = nextWake;
         isHourMark = nextWake % 60 === 0;
+        isPrimeBoundary = nextWake === 22 * 60 || nextWake === 2 * 60;
         onChange(minutesToTime(dragStateRef.current.currentBedMinutes), minutesToTime(nextWake));
       } else if (dragTarget === 'arc') {
         const nextBed = ((dragStateRef.current.currentBedMinutes + step) % 1440 + 1440) % 1440;
@@ -245,17 +249,24 @@ export default function CircularSleepDial({
         dragStateRef.current.currentBedMinutes = nextBed;
         dragStateRef.current.currentWakeMinutes = nextWake;
         isHourMark = nextBed % 60 === 0 || nextWake % 60 === 0;
+        isPrimeBoundary = nextBed === 22 * 60 || nextBed === 2 * 60 || nextWake === 22 * 60 || nextWake === 2 * 60;
         onChange(minutesToTime(nextBed), minutesToTime(nextWake));
       }
 
-      // Authentic gear notch haptic feedback on every 5-min step, with medium pulse on hour mark
-      triggerHaptic(isHourMark ? 'medium' : 'notch');
+      // Authentic gear notch haptic feedback on every 5-min step, with distinct pulse on hour/prime marks
+      if (isPrimeBoundary) {
+        triggerHaptic('heavy', true);
+      } else if (isHourMark) {
+        triggerHaptic('medium', true);
+      } else {
+        triggerHaptic('notch');
+      }
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     if (dragTarget) {
-      triggerHaptic('light');
+      triggerHaptic('light', true);
     }
     if (dragTarget && svgRef.current) {
       try {
@@ -384,6 +395,7 @@ export default function CircularSleepDial({
         ref={svgRef}
         viewBox="0 0 320 320"
         className="w-[270px] h-[270px] xs:w-[285px] xs:h-[285px] sm:w-[310px] sm:h-[310px] touch-none cursor-pointer"
+        onPointerDownCapture={initHapticAudio}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
