@@ -2322,7 +2322,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       <div 
         id="mobile_bottom_nav"
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 md:hidden w-full border-t backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-1.5 px-2",
+          "fixed bottom-0 left-0 right-0 z-50 md:hidden w-full border-t backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2",
           darkMode 
             ? "bg-[#141416]/90 border-white/[0.12] text-white shadow-[0_-4px_24px_rgba(0,0,0,0.5)]" 
             : "bg-[#ffffff]/90 border-black/[0.08] text-gray-900 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"

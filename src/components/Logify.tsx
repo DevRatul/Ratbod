@@ -249,7 +249,7 @@ export default function Logify({
         <div 
           id="logify_mobile_subnav"
           className={cn(
-            "pointer-events-auto w-full max-w-[315px] xs:max-w-[330px] grid grid-cols-5 py-1.5 px-1.5 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1",
+            "pointer-events-auto w-full max-w-[315px] xs:max-w-[330px] grid grid-cols-5 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-0.5",
             darkMode 
               ? "bg-[#1c1c1e]/80 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
               : "bg-[#f2f2f7]/85 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
@@ -266,7 +266,7 @@ export default function Logify({
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "relative flex items-center justify-center gap-1 py-2 px-0.5 rounded-full min-h-[32px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+                  "relative flex items-center justify-center gap-1 py-1.5 px-0.5 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
                   isSelected
                     ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
                     : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
