@@ -1367,9 +1367,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   // Mobile Liquid Drag & Swapping Navigation (iOS 27 Fluid Gestures)
   const MOBILE_TABS_CONFIG = useMemo(() => [
     { id: 'groceries' as TabType, nameEn: 'Groceries', nameBn: 'বাজার' },
-    { id: 'salah' as TabType, nameEn: 'Salah', nameBn: 'সালাত' },
-    { id: 'logify' as TabType, nameEn: 'Logify', nameBn: 'লগ' },
     { id: 'results' as TabType, nameEn: 'Habitor', nameBn: 'অভ্যাস' },
+    { id: 'logify' as TabType, nameEn: 'Logify', nameBn: 'লগ' },
+    { id: 'salah' as TabType, nameEn: 'Salah', nameBn: 'সালাত' },
     { id: 'calculator' as TabType, nameEn: 'Health', nameBn: 'স্বাস্থ্য' },
   ], []);
 
@@ -1525,7 +1525,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
-          {/* Desktop Navigation Links (Centered in header / full webpage width): 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
+          {/* Desktop Navigation Links (Centered in header / full webpage width): 1. Health, 2. Salah, 3. Logify, 4. Habitor, 5. Groceries */}
           <nav 
             aria-label="Main Navigation"
             className={cn(
@@ -1568,19 +1568,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <span className="relative z-10">{t.tabMeasure}</span>
             </button>
 
-            {/* 2. Habitor */}
+            {/* 2. Salah (repositioned with Habitor) */}
             <button
-              id="tab_results_desktop"
+              id="tab_salah_desktop"
               type="button"
-              onClick={() => handleMenuClick('results')}
+              onClick={() => handleMenuClick('salah')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                activeTab === 'results'
+                activeTab === 'salah'
                   ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              {activeTab === 'results' && (
+              {activeTab === 'salah' && (
                 <motion.div
                   layoutId="activeHeaderTabIndicator"
                   className={cn(
@@ -1597,8 +1597,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   }}
                 />
               )}
-              <Flame size={13} className="relative z-10 text-orange-500 shrink-0" />
-              <span className="relative z-10">{t.tabResults}</span>
+              <Compass size={13} className="relative z-10 text-emerald-500 shrink-0" />
+              <span className="relative z-10">{t.tabSalah}</span>
             </button>
 
             {/* 3. Logify (Third) */}
@@ -1634,19 +1634,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <span className="relative z-10">{t.tabLogify}</span>
             </button>
 
-            {/* 4. Salah (Fourth, replaced from Calm) */}
+            {/* 4. Habitor (repositioned with Salah) */}
             <button
-              id="tab_salah_desktop"
+              id="tab_results_desktop"
               type="button"
-              onClick={() => handleMenuClick('salah')}
+              onClick={() => handleMenuClick('results')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                activeTab === 'salah'
+                activeTab === 'results'
                   ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              {activeTab === 'salah' && (
+              {activeTab === 'results' && (
                 <motion.div
                   layoutId="activeHeaderTabIndicator"
                   className={cn(
@@ -1663,8 +1663,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   }}
                 />
               )}
-              <Compass size={13} className="relative z-10 text-emerald-500 shrink-0" />
-              <span className="relative z-10">{t.tabSalah}</span>
+              <Flame size={13} className="relative z-10 text-orange-500 shrink-0" />
+              <span className="relative z-10">{t.tabResults}</span>
             </button>
 
             {/* 5. Groceries (Fifth) */}
@@ -1776,6 +1776,57 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         <UserIcon size={14} className="sm:w-4 sm:h-4 shrink-0" />
                         <span>{lang === 'bn' ? 'প্রোফাইল' : 'Profile'}</span>
                       </button>
+
+                      {/* Language Toggle Option */}
+                      <div
+                        id="profile_menu_language"
+                        className={cn(
+                          "w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center justify-between transition-colors select-none",
+                          darkMode ? "text-white" : "text-gray-900"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3">
+                          <Globe size={14} className="sm:w-4 sm:h-4 text-blue-500 shrink-0" />
+                          <span>{lang === 'bn' ? 'ভাষা' : 'Language'}</span>
+                        </div>
+                        <div className={cn(
+                          "flex p-0.5 rounded-full",
+                          darkMode ? "bg-white/10" : "bg-black/5"
+                        )}>
+                          <button
+                            id="profile_menu_lang_en"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleLang('en');
+                            }}
+                            className={cn(
+                              "px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                              lang === 'en'
+                                ? (darkMode ? "bg-white/20 text-white shadow-sm" : "bg-white text-gray-900 shadow-sm")
+                                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-800")
+                            )}
+                          >
+                            EN
+                          </button>
+                          <button
+                            id="profile_menu_lang_bn"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleLang('bn');
+                            }}
+                            className={cn(
+                              "px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                              lang === 'bn'
+                                ? (darkMode ? "bg-white/20 text-white shadow-sm" : "bg-white text-gray-900 shadow-sm")
+                                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-800")
+                            )}
+                          >
+                            বাং
+                          </button>
+                        </div>
+                      </div>
 
                       <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
@@ -2267,168 +2318,255 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         }}
       />
     </div>
-      {/* Mobile Sticky Tab Navigation: 1. Health, 2. Habitor, 3. Logify, 4. Calm, 5. Groceries */}
+      {/* Mobile Sticky 5-Tab Navigation: Full-width bottom bar with inside capsule/pill buttons */}
       <div 
         id="mobile_bottom_nav"
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 md:hidden border-t backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
+          "fixed bottom-0 left-0 right-0 z-50 md:hidden w-full border-t backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-1.5 px-2",
           darkMode 
-            ? "bg-[#0F0F0F]/50 border-white/10 text-white shadow-2xl shadow-black/60" 
-            : "bg-white/55 border-black/5 text-gray-900 shadow-2xl shadow-gray-400/30",
-          "pt-2 pb-[11px] px-1.5"
+            ? "bg-[#141416]/90 border-white/[0.12] text-white shadow-[0_-4px_24px_rgba(0,0,0,0.5)]" 
+            : "bg-[#ffffff]/90 border-black/[0.08] text-gray-900 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
         )}
       >
-        <div className="flex items-center justify-around w-full max-w-lg mx-auto">
+        <div className="w-full max-w-md mx-auto grid grid-cols-5 gap-1 items-center">
           {/* 1. Groceries (Leftmost) */}
           <button 
             id="tab_groceries"
+            type="button"
             onClick={() => handleMenuClick('groceries')}
             className={cn(
-              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
-              activeTab === 'groceries' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              activeTab === 'groceries'
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
             {activeTab === 'groceries' && (
               <motion.div
-                layoutId="mobile_liquid_tab_active_pill"
+                layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-xl -z-10",
+                  "absolute inset-0 rounded-full",
                   darkMode 
-                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
-                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                    ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                    : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
                 )}
                 transition={{
                   type: "spring",
-                  stiffness: 450,
-                  damping: 30,
-                  mass: 0.6
+                  stiffness: 380,
+                  damping: 25,
+                  mass: 0.7
                 }}
               />
             )}
-            <ShoppingBag size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
+            <ShoppingBag 
+              size={13} 
+              className={cn(
+                "relative z-10 shrink-0 transition-all duration-200", 
+                activeTab === 'groceries' 
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  : "opacity-75"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              activeTab === 'groceries' 
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                : "font-semibold"
+            )}>
+              {lang === 'bn' ? 'বাজার' : 'Grocery'}
+            </span>
           </button>
 
-          {/* 2. Salah (Replaces Calm) */}
+          {/* 2. Habitor (repositioned with Salah) */}
           <button 
-            id="tab_salah"
-            onClick={() => handleMenuClick('salah')}
+            id="tab_results"
+            type="button"
+            onClick={() => handleMenuClick('results')}
             className={cn(
-              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
-              activeTab === 'salah' ? "text-emerald-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              activeTab === 'results' 
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
+                : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
-            {activeTab === 'salah' && (
+            {activeTab === 'results' && (
               <motion.div
-                layoutId="mobile_liquid_tab_active_pill"
+                layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-xl -z-10",
+                  "absolute inset-0 rounded-full",
                   darkMode 
-                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
-                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                    ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                    : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
                 )}
                 transition={{
                   type: "spring",
-                  stiffness: 450,
-                  damping: 30,
-                  mass: 0.6
+                  stiffness: 380,
+                  damping: 25,
+                  mass: 0.7
                 }}
               />
             )}
-            <Compass size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabSalah}</span>
+            <Flame 
+              size={13} 
+              className={cn(
+                "relative z-10 shrink-0 transition-all duration-200", 
+                activeTab === 'results' 
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  : "opacity-75"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              activeTab === 'results' 
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                : "font-semibold"
+            )}>
+              {lang === 'bn' ? 'অভ্যাস' : 'Habitor'}
+            </span>
           </button>
 
           {/* 3. Logify (Center) */}
           <button 
             id="tab_logify"
+            type="button"
             onClick={() => handleMenuClick('logify')}
             className={cn(
-              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
+              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               (activeTab === 'logify' || activeTab === 'water') 
-                ? (darkMode ? "text-blue-400 scale-105 font-bold" : "text-blue-500 scale-105 font-bold") 
-                : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
+                : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
             {(activeTab === 'logify' || activeTab === 'water') && (
               <motion.div
-                layoutId="mobile_liquid_tab_active_pill"
+                layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-xl -z-10",
+                  "absolute inset-0 rounded-full",
                   darkMode 
-                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
-                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                    ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                    : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
                 )}
                 transition={{
                   type: "spring",
-                  stiffness: 450,
-                  damping: 30,
-                  mass: 0.6
+                  stiffness: 380,
+                  damping: 25,
+                  mass: 0.7
                 }}
               />
             )}
-            <ClipboardList size={18} className={cn((activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "opacity-80")} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabLogify}</span>
+            <ClipboardList 
+              size={13} 
+              className={cn(
+                "relative z-10 shrink-0 transition-all duration-200", 
+                (activeTab === 'logify' || activeTab === 'water') 
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  : "opacity-75"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              (activeTab === 'logify' || activeTab === 'water') 
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                : "font-semibold"
+            )}>
+              {lang === 'bn' ? 'লগ' : 'Logify'}
+            </span>
           </button>
 
-          {/* 4. Habitor */}
+          {/* 4. Salah (repositioned with Habitor) */}
           <button 
-            id="tab_results"
-            onClick={() => handleMenuClick('results')}
+            id="tab_salah"
+            type="button"
+            onClick={() => handleMenuClick('salah')}
             className={cn(
-              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all relative select-none min-w-0 cursor-pointer rounded-xl",
-              activeTab === 'results' ? "text-orange-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              activeTab === 'salah'
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
-            {activeTab === 'results' && (
+            {activeTab === 'salah' && (
               <motion.div
-                layoutId="mobile_liquid_tab_active_pill"
+                layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-xl -z-10",
+                  "absolute inset-0 rounded-full",
                   darkMode 
-                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
-                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                    ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                    : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
                 )}
                 transition={{
                   type: "spring",
-                  stiffness: 450,
-                  damping: 30,
-                  mass: 0.6
+                  stiffness: 380,
+                  damping: 25,
+                  mass: 0.7
                 }}
               />
             )}
-            <Flame size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabResults}</span>
+            <Compass 
+              size={13} 
+              className={cn(
+                "relative z-10 shrink-0 transition-all duration-200", 
+                activeTab === 'salah' 
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  : "opacity-75"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              activeTab === 'salah' 
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                : "font-semibold"
+            )}>
+              {lang === 'bn' ? 'সালাত' : 'Salah'}
+            </span>
           </button>
 
           {/* 5. Health (Rightmost) */}
           <button 
             id="tab_calculator"
+            type="button"
             onClick={() => handleMenuClick('calculator')}
             className={cn(
-              "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all cursor-pointer select-none min-w-0 rounded-xl",
-              activeTab === 'calculator' ? "text-primary scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              activeTab === 'calculator' 
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
+                : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
             {activeTab === 'calculator' && (
               <motion.div
-                layoutId="mobile_liquid_tab_active_pill"
+                layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-xl -z-10",
+                  "absolute inset-0 rounded-full",
                   darkMode 
-                    ? "bg-white/[0.16] backdrop-blur-xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]" 
-                    : "bg-black/[0.08] backdrop-blur-xl border border-black/10 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+                    ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                    : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
                 )}
                 transition={{
                   type: "spring",
-                  stiffness: 450,
-                  damping: 30,
-                  mass: 0.6
+                  stiffness: 380,
+                  damping: 25,
+                  mass: 0.7
                 }}
               />
             )}
-            <Heart size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabMeasure}</span>
+            <Heart 
+              size={13} 
+              className={cn(
+                "relative z-10 shrink-0 transition-all duration-200", 
+                activeTab === 'calculator' 
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  : "opacity-75"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              activeTab === 'calculator' 
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                : "font-semibold"
+            )}>
+              {lang === 'bn' ? 'স্বাস্থ্য' : 'Health'}
+            </span>
           </button>
         </div>
       </div>

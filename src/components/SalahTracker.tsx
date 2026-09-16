@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { 
   Compass, 
   Sunrise, 
@@ -452,9 +453,41 @@ export interface DailySalahRecord {
   updatedAt: number;
 }
 
+export type SalahSubTab = 'zikar' | 'salah' | 'adhkar';
+
+export interface SalahTabConfig {
+  id: SalahSubTab;
+  labelEn: string;
+  labelBn: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}
+
+export const SALAH_TABS: SalahTabConfig[] = [
+  {
+    id: 'zikar',
+    labelEn: 'Zikar',
+    labelBn: 'যিকির',
+    icon: Sparkles
+  },
+  {
+    id: 'salah',
+    labelEn: 'Salah',
+    labelBn: 'সালাত',
+    icon: Compass
+  },
+  {
+    id: 'adhkar',
+    labelEn: 'Adhkar',
+    labelBn: 'আযকার',
+    icon: Award
+  }
+];
+
 interface SalahTrackerProps {
   darkMode: boolean;
   lang?: 'en' | 'bn' | string;
+  activeSubTab?: SalahSubTab;
+  onSubTabChange?: (tab: SalahSubTab) => void;
 }
 
 interface DhikrPreset {
@@ -731,8 +764,60 @@ async function playResetSound() {
   } catch (e) {}
 }
 
-export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProps) {
+export default function SalahTracker({ 
+  darkMode, 
+  lang = 'en',
+  activeSubTab: propActiveSubTab,
+  onSubTabChange
+}: SalahTrackerProps) {
   const isBn = lang === 'bn';
+
+  const [internalActiveSubTab, setInternalActiveSubTab] = useState<SalahSubTab>(() => {
+    try {
+      const saved = localStorage.getItem('ratool_salah_subtab');
+      if (saved && ['zikar', 'salah', 'adhkar'].includes(saved)) {
+        return saved as SalahSubTab;
+      }
+    } catch (e) {}
+    return 'salah';
+  });
+
+  const activeSubTab = propActiveSubTab || internalActiveSubTab;
+
+  const handleSubTabChange = (newTab: SalahSubTab) => {
+    setInternalActiveSubTab(newTab);
+    try {
+      localStorage.setItem('ratool_salah_subtab', newTab);
+    } catch (e) {}
+    if (onSubTabChange) {
+      onSubTabChange(newTab);
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
+  const [mobileNavHeight, setMobileNavHeight] = useState(58);
+
+  useEffect(() => {
+    const updateNavHeight = () => {
+      const navEl = document.getElementById('mobile_bottom_nav');
+      if (navEl) {
+        setMobileNavHeight(navEl.offsetHeight || 58);
+      }
+    };
+    updateNavHeight();
+    window.addEventListener('resize', updateNavHeight);
+    const navEl = document.getElementById('mobile_bottom_nav');
+    const observer = typeof ResizeObserver !== 'undefined' && navEl ? new ResizeObserver(updateNavHeight) : null;
+    if (observer && navEl) {
+      observer.observe(navEl);
+    }
+    return () => {
+      window.removeEventListener('resize', updateNavHeight);
+      observer?.disconnect();
+    };
+  }, []);
 
   const formatNum = (num: number | string) => {
     if (!isBn) return String(num);
@@ -1159,19 +1244,10 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
   const activeDhikrCount = currentRecord.dhikrCounts?.[activeTasbeehDhikr] || 0;
   const tasbeehProgress = Math.min(100, Math.round((activeDhikrCount / (tasbeehTarget || 33)) * 100));
 
-  // Collapsible section states for compact mobile experience (auto-expand on desktop)
-  const [isNafalExpanded, setIsNafalExpanded] = useState(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) return true;
-    return false;
-  });
-  const [isTasbeehExpanded, setIsTasbeehExpanded] = useState(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) return true;
-    return false;
-  });
-  const [isAzkarExpanded, setIsAzkarExpanded] = useState(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) return true;
-    return false;
-  });
+  // Collapsible section states
+  const [isNafalExpanded, setIsNafalExpanded] = useState<boolean>(true);
+  const [isTasbeehExpanded, setIsTasbeehExpanded] = useState<boolean>(true);
+  const [isAzkarExpanded, setIsAzkarExpanded] = useState<boolean>(true);
 
   const completedAdhkarCount = useMemo(() => {
     if (!currentRecord.azkarChecklist) return 0;
@@ -1270,9 +1346,82 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
     }
   ];
 
+  const renderDateAndThemeControls = () => (
+    <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+      {/* Quick Theme Switcher */}
+      <div className={cn(
+        "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
+        darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
+      )}>
+        <Palette size={13} className={cn("ml-1 shrink-0", darkMode ? "text-neutral-400" : "text-gray-500")} />
+        {(['clarity', 'emerald', 'indigo', 'sand'] as SalahTheme[]).map(thKey => (
+          <button
+            key={thKey}
+            type="button"
+            onClick={() => handleThemeChange(thKey)}
+            className={cn(
+              "px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1",
+              salahTheme === thKey
+                ? (darkMode ? "bg-white/20 text-white shadow-xs" : `${SALAH_THEMES[thKey].dotColor} text-white shadow-xs font-black`)
+                : (darkMode ? "text-neutral-400 hover:text-white" : "text-slate-800 hover:text-slate-950 hover:bg-black/5 font-semibold")
+            )}
+            title={isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}
+          >
+            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", salahTheme === thKey ? "bg-white" : SALAH_THEMES[thKey].dotColor)} />
+            <span className="hidden xs:inline">{isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Quick Date Switcher */}
+      <div className={cn(
+        "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
+        darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
+      )}>
+        <button
+          onClick={handlePrevDay}
+          className={cn(
+            "p-1 rounded-lg transition-colors cursor-pointer",
+            darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
+          )}
+          title="Previous Day"
+        >
+          <ChevronLeft size={15} />
+        </button>
+        <div className="flex items-center gap-1 px-1.5 text-[11px] sm:text-xs font-bold">
+          <Calendar size={12} className={cn(darkMode ? "text-emerald-500" : st.iconText)} />
+          <span>{formattedDisplayDate}</span>
+        </div>
+        <button
+          onClick={handleNextDay}
+          className={cn(
+            "p-1 rounded-lg transition-colors cursor-pointer",
+            darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
+          )}
+          title="Next Day"
+        >
+          <ChevronRight size={15} />
+        </button>
+        {selectedDate !== getLocalDateString() && (
+          <button
+            onClick={handleToday}
+            className={cn("ml-1 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md transition-all cursor-pointer shadow-xs", darkMode ? "bg-emerald-600 text-white hover:bg-emerald-700" : st.todayBtn)}
+          >
+            {isBn ? 'আজ' : 'Today'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-3 sm:space-y-5">
-      {/* 1. Header Banner with Date & Progress */}
+    <div className="w-full max-w-4xl mx-auto relative">
+      <div className="flex flex-col md:flex-row items-start gap-3 md:gap-3.5 lg:gap-4 w-full">
+        {/* Tab Content Area: 3 sub nav menu pages */}
+        <div id={`salah_content_${activeSubTab}`} className="flex-1 min-w-0 w-full pb-16 md:pb-0 md:pr-32 xl:pr-0 space-y-3 sm:space-y-5">
+          {/* Sub Tab: Salah */}
+          <div className={cn("space-y-3 sm:space-y-5 w-full", activeSubTab === 'salah' ? "block" : "hidden")}>
+            {/* 1. Header Banner with Date & Progress */}
       <div className={cn(
         "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-sm",
         darkMode 
@@ -1305,71 +1454,7 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-            {/* Quick Theme Switcher */}
-            <div className={cn(
-              "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
-              darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
-            )}>
-              <Palette size={13} className={cn("ml-1 shrink-0", darkMode ? "text-neutral-400" : "text-gray-500")} />
-              {(['clarity', 'emerald', 'indigo', 'sand'] as SalahTheme[]).map(thKey => (
-                <button
-                  key={thKey}
-                  type="button"
-                  onClick={() => handleThemeChange(thKey)}
-                  className={cn(
-                    "px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1",
-                    salahTheme === thKey
-                      ? (darkMode ? "bg-white/20 text-white shadow-xs" : `${SALAH_THEMES[thKey].dotColor} text-white shadow-xs font-black`)
-                      : (darkMode ? "text-neutral-400 hover:text-white" : "text-slate-800 hover:text-slate-950 hover:bg-black/5 font-semibold")
-                  )}
-                  title={isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}
-                >
-                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", salahTheme === thKey ? "bg-white" : SALAH_THEMES[thKey].dotColor)} />
-                  <span className="hidden xs:inline">{isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Quick Date Switcher */}
-            <div className={cn(
-              "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
-              darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
-            )}>
-              <button
-                onClick={handlePrevDay}
-                className={cn(
-                  "p-1 rounded-lg transition-colors cursor-pointer",
-                  darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
-                )}
-                title="Previous Day"
-              >
-                <ChevronLeft size={15} />
-              </button>
-              <div className="flex items-center gap-1 px-1.5 text-[11px] sm:text-xs font-bold">
-                <Calendar size={12} className={cn(darkMode ? "text-emerald-500" : st.iconText)} />
-                <span>{formattedDisplayDate}</span>
-              </div>
-              <button
-                onClick={handleNextDay}
-                className={cn(
-                  "p-1 rounded-lg transition-colors cursor-pointer",
-                  darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
-                )}
-                title="Next Day"
-              >
-                <ChevronRight size={15} />
-              </button>
-              {selectedDate !== getLocalDateString() && (
-                <button
-                  onClick={handleToday}
-                  className={cn("ml-1 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md transition-all cursor-pointer shadow-xs", darkMode ? "bg-emerald-600 text-white hover:bg-emerald-700" : st.todayBtn)}
-                >
-                  {isBn ? 'আজ' : 'Today'}
-                </button>
-              )}
-            </div>
-          </div>
+          {renderDateAndThemeControls()}
         </div>
 
         {/* Stats Strip: 4 stats in a single compact row */}
@@ -1982,6 +2067,77 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
           </div>
         )}
       </div>
+    </div>
+
+    {/* Sub Tab: Zikar */}
+    <div className={cn("space-y-3 sm:space-y-5 w-full", activeSubTab === 'zikar' ? "block" : "hidden")}>
+      {/* Zikar Header Banner with Date & Progress */}
+      <div className={cn(
+        "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-sm",
+        darkMode 
+          ? "bg-gradient-to-br from-[#12181b] to-[#161a1e] border-cyan-500/20 text-white" 
+          : st.bannerBg
+      )}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className={cn(
+                "w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center",
+                darkMode ? "bg-cyan-500/20 text-cyan-400" : st.iconBox
+              )}>
+                <Sparkles size={16} className={cn("animate-pulse", darkMode ? "text-cyan-400" : st.iconText)} />
+              </div>
+              <h1 className={cn("text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5", darkMode ? "text-white" : st.bannerTitle)}>
+                {isBn ? 'যিকির ও ডিজিটাল তাসবীহ' : 'Zikar & Digital Tasbeeh'}
+                <span className={cn(
+                  "text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold",
+                  darkMode ? "bg-cyan-500/20 text-cyan-400" : st.badge
+                )}>
+                  {isBn ? 'তাসবীহ' : 'Tasbeeh'}
+                </span>
+              </h1>
+            </div>
+            <p className={cn("text-xs hidden sm:block", darkMode ? "text-neutral-400" : st.bannerSubtitle)}>
+              {isBn 
+                ? 'দৈনন্দিন তাসবীহ, তাহলীল ও নিজস্ব যিকির গণনা ও আমল করুন।' 
+                : 'Count daily tasbeeh, tahleel, and custom dhikr with peace of mind.'}
+            </p>
+          </div>
+
+          {renderDateAndThemeControls()}
+        </div>
+
+        {/* Stats Strip for Zikar */}
+        <div className={cn("grid grid-cols-3 gap-1.5 sm:gap-3 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-cyan-500/15" : st.statsBorder)}>
+          <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-cyan-500/10" : st.statCard)}>
+            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-cyan-500/20 text-cyan-400" : "bg-cyan-100 text-cyan-900")}>
+              <Heart size={14} />
+            </div>
+            <div className="min-w-0">
+              <span className={cn("block text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>{isBn ? 'আজকের মোট যিকির' : 'Total Dhikr Today'}</span>
+              <span className={cn("font-black text-xs sm:text-sm font-mono block truncate", darkMode ? "text-cyan-400" : "text-cyan-950")}>{formatNum(totalDhikrToday)}</span>
+            </div>
+          </div>
+          <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-cyan-500/10" : st.statCard)}>
+            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-900")}>
+              <Sparkles size={14} />
+            </div>
+            <div className="min-w-0">
+              <span className={cn("block text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>{isBn ? 'বর্তমান টার্গেট' : 'Current Target'}</span>
+              <span className={cn("font-black text-xs sm:text-sm font-mono block truncate", darkMode ? "text-emerald-400" : "text-emerald-950")}>{formatNum(activeDhikrCount)} / {formatNum(tasbeehTarget)}</span>
+            </div>
+          </div>
+          <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-cyan-500/10" : st.statCard)}>
+            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-900")}>
+              <Volume2 size={14} />
+            </div>
+            <div className="min-w-0">
+              <span className={cn("block text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>{isBn ? 'সাউন্ড ফিডব্যাক' : 'Sound Feedback'}</span>
+              <span className={cn("font-black text-xs sm:text-sm block truncate", darkMode ? "text-amber-400" : "text-amber-900")}>{tasbeehSound ? (isBn ? 'চালু' : 'ON') : (isBn ? 'বন্ধ' : 'OFF')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* 4. Digital Tasbeeh & Zikar Azkar Section */}
       <div className={cn(
@@ -2302,6 +2458,77 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
           </div>
         )}
       </div>
+    </div>
+
+    {/* Sub Tab: Adhkar */}
+    <div className={cn("space-y-3 sm:space-y-5 w-full", activeSubTab === 'adhkar' ? "block" : "hidden")}>
+      {/* Adhkar Header Banner with Date & Progress */}
+      <div className={cn(
+        "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-sm",
+        darkMode 
+          ? "bg-gradient-to-br from-[#1b1912] to-[#1a1714] border-amber-500/20 text-white" 
+          : st.bannerBg
+      )}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className={cn(
+                "w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center",
+                darkMode ? "bg-amber-500/20 text-amber-400" : st.iconBox
+              )}>
+                <Award size={16} className={cn("animate-pulse", darkMode ? "text-amber-400" : st.iconText)} />
+              </div>
+              <h1 className={cn("text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5", darkMode ? "text-white" : st.bannerTitle)}>
+                {isBn ? 'দৈনন্দিন মাসনুন আযকার' : 'Daily Masnoon Adhkar'}
+                <span className={cn(
+                  "text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold",
+                  darkMode ? "bg-amber-500/20 text-amber-400" : st.badge
+                )}>
+                  {isBn ? 'চেকলিস্ট' : 'Checklist'}
+                </span>
+              </h1>
+            </div>
+            <p className={cn("text-xs hidden sm:block", darkMode ? "text-neutral-400" : st.bannerSubtitle)}>
+              {isBn 
+                ? 'সকাল, সন্ধ্যা ও ফরজ সালাত পরবর্তী মাসনুন সুরক্ষামূলক আযকার নিয়মিত আদায় করুন।' 
+                : 'Recite authentic morning, evening, and post-prayer protective masnoon adhkar.'}
+            </p>
+          </div>
+
+          {renderDateAndThemeControls()}
+        </div>
+
+        {/* Stats Strip for Adhkar */}
+        <div className={cn("grid grid-cols-3 gap-1.5 sm:gap-3 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-amber-500/15" : st.statsBorder)}>
+          <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-amber-500/10" : st.statCard)}>
+            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-900")}>
+              <CheckCircle2 size={14} />
+            </div>
+            <div className="min-w-0">
+              <span className={cn("block text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>{isBn ? 'সম্পন্ন আযকার' : 'Completed Adhkar'}</span>
+              <span className={cn("font-black text-xs sm:text-sm font-mono block truncate", darkMode ? "text-amber-400" : "text-amber-950")}>{formatNum(completedAdhkarCount)} / {formatNum(6)}</span>
+            </div>
+          </div>
+          <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-amber-500/10" : st.statCard)}>
+            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-900")}>
+              <Award size={14} />
+            </div>
+            <div className="min-w-0">
+              <span className={cn("block text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>{isBn ? 'অগ্রগতি' : 'Progress'}</span>
+              <span className={cn("font-black text-xs sm:text-sm font-mono block truncate", darkMode ? "text-emerald-400" : "text-emerald-950")}>{Math.round((completedAdhkarCount / 6) * 100)}%</span>
+            </div>
+          </div>
+          <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-amber-500/10" : st.statCard)}>
+            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-100 text-teal-900")}>
+              <Calendar size={14} />
+            </div>
+            <div className="min-w-0">
+              <span className={cn("block text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>{isBn ? 'আমলের তারিখ' : 'Routine'}</span>
+              <span className={cn("font-bold text-xs sm:text-sm block truncate", darkMode ? "text-teal-400" : "text-teal-900")}>{selectedDate === getLocalDateString() ? (isBn ? 'আজ' : 'Today') : selectedDate}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* 5. Daily Protective Azkar Checklist */}
       <div className={cn(
@@ -2398,5 +2625,148 @@ export default function SalahTracker({ darkMode, lang = 'en' }: SalahTrackerProp
         )}
       </div>
     </div>
+  </div>
+
+  {/* Desktop Sub Navigation: Fixed vertical pill on right side */}
+  <aside className="hidden md:flex flex-col shrink-0 fixed right-3 lg:right-5 xl:right-7 top-1/2 -translate-y-1/2 z-30 pointer-events-auto">
+    <nav 
+      aria-label="Salah Desktop Navigation"
+      className={cn(
+        "flex flex-col gap-1 text-[11px] font-bold p-1 rounded-2xl border backdrop-blur-2xl backdrop-saturate-180 transition-all w-28",
+        darkMode 
+          ? "bg-[#1c1c1e]/75 border-white/[0.14] text-white shadow-[0_12px_36px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+          : "bg-[#f2f2f7]/80 border-black/[0.08] text-gray-900 shadow-[0_12px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
+      )}
+    >
+      {SALAH_TABS.map((tab) => {
+        const Icon = tab.icon;
+        const isSelected = activeSubTab === tab.id;
+
+        return (
+          <button
+            key={tab.id}
+            id={`salah_tab_desktop_${tab.id}`}
+            type="button"
+            onClick={() => handleSubTabChange(tab.id)}
+            className={cn(
+              "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 select-none text-left active:scale-[0.96]",
+              isSelected
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                : (darkMode ? "text-neutral-400 hover:text-white hover:bg-white/[0.06]" : "text-neutral-600 hover:text-neutral-900 hover:bg-black/[0.04]")
+            )}
+          >
+            {isSelected && (
+              <motion.div
+                layoutId="activeSalahSubTabIndicatorDesktop"
+                className={cn(
+                  "absolute inset-0 rounded-xl",
+                  darkMode 
+                    ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_18px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                    : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_3px_12px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 25,
+                  mass: 0.7
+                }}
+              />
+            )}
+            <Icon 
+              size={14} 
+              className={cn(
+                "relative z-10 shrink-0 transition-all duration-200", 
+                isSelected 
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]")
+                  : "opacity-75"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 truncate tracking-tight transition-colors duration-200",
+              isSelected 
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900")
+                : "font-medium"
+            )}>
+              {isBn ? tab.labelBn : tab.labelEn}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  </aside>
+</div>
+
+{/* Mobile 3-Tab Navigation: Floating capsule docked right above bottom menu */}
+<div 
+  id="salah_mobile_subnav_wrapper"
+  style={{ bottom: `${mobileNavHeight + 6}px` }}
+  className="fixed left-0 right-0 z-40 md:hidden flex justify-center px-4 pointer-events-none transition-all duration-300"
+>
+  <div 
+    id="salah_mobile_subnav"
+    className={cn(
+      "pointer-events-auto w-full max-w-[260px] xs:max-w-[280px] grid grid-cols-3 py-1.5 px-1.5 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1",
+      darkMode 
+        ? "bg-[#1c1c1e]/80 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+        : "bg-[#f2f2f7]/85 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
+    )}
+  >
+    {SALAH_TABS.map((tab) => {
+      const Icon = tab.icon;
+      const isSelected = activeSubTab === tab.id;
+
+      return (
+        <button
+          key={tab.id}
+          id={`salah_tab_${tab.id}`}
+          type="button"
+          onClick={() => handleSubTabChange(tab.id)}
+          className={cn(
+            "relative flex items-center justify-center gap-1.5 py-2 px-1 rounded-full min-h-[32px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+            isSelected
+              ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+              : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
+          )}
+        >
+          {isSelected && (
+            <motion.div
+              layoutId="activeSalahSubTabIndicatorMobile"
+              className={cn(
+                "absolute inset-0 rounded-full",
+                darkMode 
+                  ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                  : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+              )}
+              transition={{
+                type: "spring",
+                stiffness: 380,
+                damping: 25,
+                mass: 0.7
+              }}
+            />
+          )}
+          <Icon 
+            size={13} 
+            className={cn(
+              "relative z-10 shrink-0 transition-all duration-200", 
+              isSelected 
+                ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                : "opacity-75"
+            )} 
+          />
+          <span className={cn(
+            "relative z-10 truncate tracking-tight leading-none text-[11px] transition-all duration-200", 
+            isSelected 
+              ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+              : "font-semibold"
+          )}>
+            {isBn ? tab.labelBn : tab.labelEn}
+          </span>
+        </button>
+      );
+    })}
+  </div>
+</div>
+</div>
   );
 }
