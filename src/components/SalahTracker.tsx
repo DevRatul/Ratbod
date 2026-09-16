@@ -642,37 +642,31 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Tactile wooden bead clack sound on each tasbeeh bead tap
+ * Fast crisp tactile timepiece notch tick sound for Tasbeeh tap,
+ * identical to the rotary sleep dial timepiece tick sound.
  */
 async function playTasbeehClick() {
   try {
     const ctx = await getSalahAudioContext();
     if (!ctx) return;
-    const now = ctx.currentTime + 0.005;
+    const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
-    const oscClick = ctx.createOscillator();
     const gain = ctx.createGain();
 
+    // Fast high-pitch clock click impulse matching the sleep clock dial
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(680, now);
-    osc.frequency.exponentialRampToValueAtTime(190, now + 0.06);
+    osc.frequency.setValueAtTime(2100, now);
+    osc.frequency.exponentialRampToValueAtTime(2100 * 0.4, now + 0.015);
 
-    oscClick.type = 'sine';
-    oscClick.frequency.setValueAtTime(1450, now);
-    oscClick.frequency.exponentialRampToValueAtTime(420, now + 0.03);
-
-    gain.gain.setValueAtTime(0.4, now);
-    gain.gain.linearRampToValueAtTime(0.001, now + 0.07);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
 
     osc.connect(gain);
-    oscClick.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    oscClick.start(now);
-    osc.stop(now + 0.08);
-    oscClick.stop(now + 0.08);
+    osc.stop(now + 0.016);
   } catch (e) {}
 }
 
@@ -1179,7 +1173,7 @@ export default function SalahTracker({
 
     const isTargetReached = (tasbeehTarget > 0 && nextCount % tasbeehTarget === 0);
 
-    // Audio feedback
+    // Audio feedback (sound of rotary sleep clock timepiece)
     if (tasbeehSound) {
       if (isTargetReached) {
         playTargetReachedSound();
@@ -1187,23 +1181,11 @@ export default function SalahTracker({
         playTasbeehClick();
       }
     }
-
-    // Haptic feedback
-    if (tasbeehVibrate && typeof navigator !== 'undefined' && navigator.vibrate) {
-      if (isTargetReached) {
-        navigator.vibrate([35, 50, 65]);
-      } else {
-        navigator.vibrate(15);
-      }
-    }
   };
 
   const handleTasbeehReset = (dhikrId: string) => {
     if (tasbeehSound) {
       playResetSound();
-    }
-    if (tasbeehVibrate && typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(25);
     }
     const updated = JSON.parse(JSON.stringify(currentRecord)) as DailySalahRecord;
     if (!updated.dhikrCounts) updated.dhikrCounts = {};
@@ -1346,71 +1328,56 @@ export default function SalahTracker({
     }
   ];
 
-  const renderDateAndThemeControls = () => (
-    <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-      {/* Quick Theme Switcher */}
-      <div className={cn(
-        "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
-        darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
-      )}>
-        <Palette size={13} className={cn("ml-1 shrink-0", darkMode ? "text-neutral-400" : "text-gray-500")} />
-        {(['clarity', 'emerald', 'indigo', 'sand'] as SalahTheme[]).map(thKey => (
-          <button
-            key={thKey}
-            type="button"
-            onClick={() => handleThemeChange(thKey)}
-            className={cn(
-              "px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1",
-              salahTheme === thKey
-                ? (darkMode ? "bg-white/20 text-white shadow-xs" : `${SALAH_THEMES[thKey].dotColor} text-white shadow-xs font-black`)
-                : (darkMode ? "text-neutral-400 hover:text-white" : "text-slate-800 hover:text-slate-950 hover:bg-black/5 font-semibold")
-            )}
-            title={isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}
-          >
-            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", salahTheme === thKey ? "bg-white" : SALAH_THEMES[thKey].dotColor)} />
-            <span className="hidden xs:inline">{isBn ? SALAH_THEMES[thKey].nameBn : SALAH_THEMES[thKey].nameEn}</span>
-          </button>
-        ))}
-      </div>
+  // Current week date range with week number (e.g., 14–20 Sep • Week 38)
+  const currentWeekInfo = useMemo(() => {
+    try {
+      const now = new Date();
+      // Calculate start of current week (Monday)
+      const day = now.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1) - day;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
 
-      {/* Quick Date Switcher */}
-      <div className={cn(
-        "flex items-center gap-1 p-1 rounded-xl border text-xs transition-all",
-        darkMode ? "bg-white/5 border-white/10 text-neutral-200" : st.dateBox
-      )}>
-        <button
-          onClick={handlePrevDay}
-          className={cn(
-            "p-1 rounded-lg transition-colors cursor-pointer",
-            darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
-          )}
-          title="Previous Day"
-        >
-          <ChevronLeft size={15} />
-        </button>
-        <div className="flex items-center gap-1 px-1.5 text-[11px] sm:text-xs font-bold">
-          <Calendar size={12} className={cn(darkMode ? "text-emerald-500" : st.iconText)} />
-          <span>{formattedDisplayDate}</span>
-        </div>
-        <button
-          onClick={handleNextDay}
-          className={cn(
-            "p-1 rounded-lg transition-colors cursor-pointer",
-            darkMode ? "text-neutral-400 hover:text-white hover:bg-white/10" : st.dateHover
-          )}
-          title="Next Day"
-        >
-          <ChevronRight size={15} />
-        </button>
-        {selectedDate !== getLocalDateString() && (
-          <button
-            onClick={handleToday}
-            className={cn("ml-1 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md transition-all cursor-pointer shadow-xs", darkMode ? "bg-emerald-600 text-white hover:bg-emerald-700" : st.todayBtn)}
-          >
-            {isBn ? 'আজ' : 'Today'}
-          </button>
-        )}
-      </div>
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+
+      // ISO week number calculation
+      const target = new Date(now.valueOf());
+      const dayNr = (now.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      const weekNumber = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+
+      const monDay = formatNum(monday.getDate());
+      const sunDay = formatNum(sunday.getDate());
+      const monthName = isBn
+        ? monday.toLocaleDateString('bn-BD', { month: 'short' })
+        : monday.toLocaleDateString('en-US', { month: 'short' });
+      const sunMonthName = isBn
+        ? sunday.toLocaleDateString('bn-BD', { month: 'short' })
+        : sunday.toLocaleDateString('en-US', { month: 'short' });
+
+      const dateRange = monday.getMonth() === sunday.getMonth()
+        ? `${monDay}–${sunDay} ${monthName}`
+        : `${monDay} ${monthName} – ${sunDay} ${sunMonthName}`;
+
+      const weekLabel = isBn ? `সপ্তাহ ${formatNum(weekNumber)}` : `Week ${weekNumber}`;
+      return `${dateRange} • ${weekLabel}`;
+    } catch (e) {
+      return isBn ? 'চলতি সপ্তাহ' : 'Current Week';
+    }
+  }, [isBn]);
+
+  const renderDateAndThemeControls = () => (
+    <div className="flex items-center gap-1.5 self-start sm:self-auto py-0.5 px-0 text-[11px] sm:text-xs font-bold">
+      <Calendar size={13} className={cn(darkMode ? "text-emerald-400" : st.iconText, "shrink-0")} />
+      <span className={cn("whitespace-nowrap font-bold", darkMode ? "text-neutral-300" : "text-slate-800")}>
+        {currentWeekInfo}
+      </span>
     </div>
   );
 
@@ -1438,7 +1405,7 @@ export default function SalahTracker({
                 <Compass size={16} className={cn("animate-pulse", darkMode ? "text-emerald-500" : st.iconText)} />
               </div>
               <h1 className={cn("text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5", darkMode ? "text-white" : st.bannerTitle)}>
-                {isBn ? 'সালাত ও ইবাদত ট্র্যাকার' : 'Salah & Ibadat Tracker'}
+                {isBn ? 'সালাত ট্র্যাকার' : 'Salah Tracker'}
                 <span className={cn(
                   "text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold",
                   darkMode ? "bg-emerald-500/20 text-emerald-400" : st.badge
@@ -1457,85 +1424,89 @@ export default function SalahTracker({
           {renderDateAndThemeControls()}
         </div>
 
-        {/* Stats Strip: 4 stats in a single compact row */}
-        <div className={cn("grid grid-cols-4 gap-1 sm:gap-2.5 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
+        {/* Stats Strip: 4 larger, easily readable cards (Fard, Streak, Nafl, Dhikr) */}
+        <div className={cn("grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
+          {/* 1. Fard */}
           <div className={cn(
-            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
+            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
           )}>
             <div className={cn(
-              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black text-[11px] sm:text-sm shrink-0",
+              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs",
               farzCount === 5 
                 ? (darkMode ? "bg-emerald-600 text-white shadow-xs" : st.farzStatDone)
                 : (darkMode ? "bg-emerald-500/20 text-emerald-400" : st.farzStatPending)
             )}>
               {formatNum(farzCount)}/৫
             </div>
-            <div className="min-w-0 w-full">
-              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
+            <div className="min-w-0 flex-1">
+              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
                 {isBn ? 'ফরজ সালাত' : 'Fard'}
               </span>
-              <span className={cn("font-black text-[10px] sm:text-xs truncate block", darkMode ? "text-white" : st.farzStatText)}>
+              <span className={cn("font-black text-xs sm:text-sm truncate block mt-0.5", darkMode ? "text-white" : st.farzStatText)}>
                 {farzCount === 5 ? (isBn ? '৫/৫ ★' : '5/5 ★') : `${formatNum(farzCount)}/5`}
               </span>
             </div>
           </div>
 
+          {/* 2. Streak */}
           <div className={cn(
-            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
+            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
           )}>
             <div className={cn(
-              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black shrink-0",
+              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-xs",
               darkMode ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-900 font-bold"
             )}>
-              <Flame size={13} className="sm:w-4 sm:h-4 text-amber-600 dark:text-amber-500" />
+              <Flame size={18} className="text-amber-600 dark:text-amber-500" />
             </div>
-            <div className="min-w-0 w-full">
-              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
+            <div className="min-w-0 flex-1">
+              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
                 {isBn ? 'ধারাবাহিক' : 'Streak'}
               </span>
-              <span className={cn("font-black text-[10px] sm:text-xs truncate block", darkMode ? "text-amber-400" : "text-amber-900 font-black")}>
-                {formatNum(currentStreak)}{isBn ? ' দিন' : 'd'}
+              <span className={cn("font-black text-xs sm:text-sm truncate block mt-0.5", darkMode ? "text-amber-400" : "text-amber-900 font-black")}>
+                {formatNum(currentStreak)}{isBn ? ' দিন' : ' Days'}
               </span>
             </div>
           </div>
 
+          {/* 3. Nafl */}
           <div className={cn(
-            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
+            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
           )}>
             <div className={cn(
-              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black shrink-0",
+              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-xs",
               darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-100 text-teal-900 font-bold"
             )}>
-              <Sparkles size={13} className="sm:w-4 sm:h-4 text-teal-600 dark:text-teal-400" />
+              <Sparkles size={18} className="text-teal-600 dark:text-teal-400" />
             </div>
-            <div className="min-w-0 w-full">
-              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
+            <div className="min-w-0 flex-1">
+              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
                 {isBn ? 'নফল রাকাত' : 'Nafl'}
               </span>
-              <span className={cn("font-black text-[10px] sm:text-xs truncate block", darkMode ? "text-teal-400" : "text-teal-900 font-black")}>
-                {formatNum(totalNaflRakahs)}{isBn ? ' রা' : 'R'}
+              <span className={cn("font-black text-xs sm:text-sm truncate block mt-0.5", darkMode ? "text-teal-400" : "text-teal-900 font-black")}>
+                {formatNum(totalNaflRakahs)}{isBn ? ' রাকাত' : ' Rakahs'}
               </span>
             </div>
           </div>
 
+          {/* 4. Dhikr */}
           <div className={cn(
-            "flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border min-w-0 transition-all",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
+            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
           )}>
             <div className={cn(
-              "w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center font-black shrink-0",
+              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-xs",
               darkMode ? "bg-cyan-500/20 text-cyan-400" : "bg-cyan-100 text-cyan-900 font-bold"
             )}>
-              <Heart size={13} className="sm:w-4 sm:h-4 text-cyan-600 dark:text-cyan-400" />
+              <Heart size={18} className="text-cyan-600 dark:text-cyan-400" />
             </div>
-            <div className="min-w-0 w-full">
-              <span className={cn("block text-[8px] sm:text-[10px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800 font-bold")}>
+            <div className="min-w-0 flex-1">
+              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
                 {isBn ? 'যিকির' : 'Dhikr'}
               </span>
-              <span className={cn("font-black text-[10px] sm:text-xs font-mono truncate block", darkMode ? "text-cyan-400" : "text-cyan-950 font-black")}>
+              <span className={cn("font-black text-xs sm:text-sm font-mono truncate block mt-0.5", darkMode ? "text-cyan-400" : "text-cyan-950 font-black")}>
                 {formatNum(totalDhikrToday)}
               </span>
             </div>
@@ -2179,22 +2150,6 @@ export default function SalahTracker({
               aria-label={tasbeehSound ? "Sound ON" : "Sound OFF"}
             >
               {tasbeehSound ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            </button>
-
-            {/* Haptic / Vibration Toggle */}
-            <button
-              type="button"
-              onClick={handleToggleVibrate}
-              className={cn(
-                "p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center",
-                tasbeehVibrate 
-                  ? (darkMode ? "text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 shadow-xs" : "text-emerald-800 bg-emerald-100/90 border border-emerald-300 shadow-xs") 
-                  : (darkMode ? "text-neutral-500 hover:text-neutral-400" : "text-slate-500 hover:text-slate-800 border border-transparent")
-              )}
-              title={tasbeehVibrate ? (isBn ? "ভাইব্রেশন চালু" : "Vibration ON") : (isBn ? "ভাইব্রেশন বন্ধ" : "Vibration OFF")}
-              aria-label={tasbeehVibrate ? "Vibration ON" : "Vibration OFF"}
-            >
-              <Smartphone size={15} />
             </button>
 
             <button

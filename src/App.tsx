@@ -1361,7 +1361,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       e.preventDefault();
       e.stopPropagation();
     }
-    handleHealthMenuClick();
+    window.location.reload();
   };
 
   // Mobile Liquid Drag & Swapping Navigation (iOS 27 Fluid Gestures)
@@ -2322,7 +2322,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       <div 
         id="mobile_bottom_nav"
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 md:hidden w-full border-t backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2",
+          "fixed bottom-0 left-0 right-0 z-50 md:hidden w-full border-t backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1 px-1.5",
           darkMode 
             ? "bg-[#141416]/90 border-white/[0.12] text-white shadow-[0_-4px_24px_rgba(0,0,0,0.5)]" 
             : "bg-[#ffffff]/90 border-black/[0.08] text-gray-900 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
@@ -2335,7 +2335,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             type="button"
             onClick={() => handleMenuClick('groceries')}
             className={cn(
-              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'groceries'
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2345,7 +2345,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-full",
+                  "absolute inset-0 rounded-xl",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2359,7 +2359,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <ShoppingBag 
-              size={13} 
+              size={16} 
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'groceries' 
@@ -2368,7 +2368,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               )} 
             />
             <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
               activeTab === 'groceries' 
                 ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                 : "font-semibold"
@@ -2383,7 +2383,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             type="button"
             onClick={() => handleMenuClick('results')}
             className={cn(
-              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'results' 
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2393,7 +2393,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-full",
+                  "absolute inset-0 rounded-xl",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2407,7 +2407,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Flame 
-              size={13} 
+              size={16} 
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'results' 
@@ -2416,7 +2416,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               )} 
             />
             <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
               activeTab === 'results' 
                 ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                 : "font-semibold"
@@ -2431,7 +2431,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             type="button"
             onClick={() => handleMenuClick('logify')}
             className={cn(
-              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               (activeTab === 'logify' || activeTab === 'water') 
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2441,7 +2441,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-full",
+                  "absolute inset-0 rounded-xl",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2455,7 +2455,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <ClipboardList 
-              size={13} 
+              size={16} 
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 (activeTab === 'logify' || activeTab === 'water') 
@@ -2464,7 +2464,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               )} 
             />
             <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
               (activeTab === 'logify' || activeTab === 'water') 
                 ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                 : "font-semibold"
@@ -2479,7 +2479,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             type="button"
             onClick={() => handleMenuClick('salah')}
             className={cn(
-              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'salah'
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2489,7 +2489,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-full",
+                  "absolute inset-0 rounded-xl",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2503,7 +2503,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Compass 
-              size={13} 
+              size={16} 
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'salah' 
@@ -2512,7 +2512,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               )} 
             />
             <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
               activeTab === 'salah' 
                 ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                 : "font-semibold"
@@ -2527,7 +2527,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             type="button"
             onClick={() => handleMenuClick('calculator')}
             className={cn(
-              "relative flex items-center justify-center gap-1 py-2 px-1 rounded-full min-h-[34px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'calculator' 
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2537,7 +2537,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
                 className={cn(
-                  "absolute inset-0 rounded-full",
+                  "absolute inset-0 rounded-xl",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2551,7 +2551,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Heart 
-              size={13} 
+              size={16} 
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'calculator' 
@@ -2560,7 +2560,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               )} 
             />
             <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
               activeTab === 'calculator' 
                 ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                 : "font-semibold"
