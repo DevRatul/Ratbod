@@ -32,7 +32,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface LandingPageProps {
-  onNavigateTab?: (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing' | 'logify') => void;
+  onNavigateTab?: (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing' | 'logify' | 'salah') => void;
   onLogin?: () => void;
   darkMode?: boolean;
   setDarkMode?: (val: boolean) => void;
@@ -67,7 +67,7 @@ export default function LandingPage({
     }
   };
 
-  const handleNavigate = (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing' | 'logify') => {
+  const handleNavigate = (tab: 'calculator' | 'results' | 'groceries' | 'water' | 'goals' | 'breathing' | 'logify' | 'salah') => {
     const targetTab = tab === 'water' ? 'logify' : tab;
     try {
       localStorage.setItem('ratool_active_tab', targetTab);

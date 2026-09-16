@@ -42,7 +42,8 @@ import {
   ClipboardList,
   Globe,
   LayoutDashboard,
-  ChevronLeft
+  ChevronLeft,
+  Compass
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -66,9 +67,9 @@ import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/fires
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import GroceryCalculator from './components/GroceryCalculator';
-import BreathingTimer from './components/BreathingTimer';
+import SalahTracker from './components/SalahTracker';
 import Habitor from './components/Habitor';
-import Logify from './components/Logify';
+import Logify, { type LogifyTab } from './components/Logify';
 import Goals from './components/Goals';
 import History from './components/History';
 import QuickSteps from './components/QuickSteps';
@@ -186,20 +187,20 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       return null;
     }
   });
-  const VALID_TABS = ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'breathing', 'logify'] as const;
+  const VALID_TABS = ['home', 'calculator', 'results', 'groceries', 'water', 'goals', 'salah', 'breathing', 'logify'] as const;
   type TabType = typeof VALID_TABS[number];
   const isTabSyncingFromRemote = useRef(false);
   const lastSyncedTabRef = useRef<string | null>(null);
 
-  const VALID_SUB_TABS = ['steps', 'reading', 'water', 'salah', 'sleep'] as const;
-  type SubNavTab = typeof VALID_SUB_TABS[number];
+  const VALID_SUB_TABS: readonly LogifyTab[] = ['steps', 'reading', 'water', 'sleep', 'calm'] as const;
+  type SubNavTab = LogifyTab;
   const isSubTabSyncingFromRemote = useRef(false);
-  const [activeSubTab, setActiveSubTab] = useState<SubNavTab>(() => {
+  const [activeSubTab, setActiveSubTab] = useState<LogifyTab>(() => {
     try {
       const saved = localStorage.getItem('ratool_logify_subtab');
-      if (saved === 'writing') return 'salah';
+      if (saved === 'breathing' || saved === 'calm' || saved === 'salah') return 'calm';
       if (saved && (VALID_SUB_TABS as readonly string[]).includes(saved)) {
-        return saved as SubNavTab;
+        return saved as LogifyTab;
       }
       return 'steps';
     } catch (e) {
@@ -212,6 +213,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     try {
       const saved = localStorage.getItem('ratool_active_tab') || localStorage.getItem('ratbod_active_tab');
       if (saved === 'water') return 'logify';
+      if (saved === 'breathing') return 'salah';
       if (saved && (VALID_TABS as readonly string[]).includes(saved)) {
         return saved as TabType;
       }
@@ -398,30 +400,32 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         }
 
         // Real-time synchronization of active menu tab
-        if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
+        const remoteMenuTab = data.lastMenuTab === 'breathing' ? 'salah' : data.lastMenuTab;
+        if (remoteMenuTab && (VALID_TABS as readonly string[]).includes(remoteMenuTab)) {
           setActiveTab((currentTab) => {
-            if (currentTab !== data.lastMenuTab) {
+            if (currentTab !== remoteMenuTab) {
               isTabSyncingFromRemote.current = true;
-              lastSyncedTabRef.current = data.lastMenuTab;
+              lastSyncedTabRef.current = remoteMenuTab;
               try {
-                localStorage.setItem('ratool_active_tab', data.lastMenuTab);
-                localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+                localStorage.setItem('ratool_active_tab', remoteMenuTab);
+                localStorage.setItem('ratbod_active_tab', remoteMenuTab);
               } catch (e) {}
-              return data.lastMenuTab;
+              return remoteMenuTab;
             }
             return currentTab;
           });
         }
 
         // Real-time synchronization of active sub nav tab across devices
-        if (data.lastSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(data.lastSubNavTab)) {
+        const remoteSubNavTab = (data.lastSubNavTab === 'breathing' || data.lastSubNavTab === 'salah') ? 'calm' : data.lastSubNavTab;
+        if (remoteSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(remoteSubNavTab)) {
           setActiveSubTab((currentSubTab) => {
-            if (currentSubTab !== data.lastSubNavTab) {
+            if (currentSubTab !== remoteSubNavTab) {
               isSubTabSyncingFromRemote.current = true;
               try {
-                localStorage.setItem('ratool_logify_subtab', data.lastSubNavTab);
+                localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
               } catch (e) {}
-              return data.lastSubNavTab;
+              return remoteSubNavTab as LogifyTab;
             }
             return currentSubTab;
           });
@@ -480,29 +484,31 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 }, 400);
               }
             }
-            if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
+            const remoteMenuTab = data.lastMenuTab === 'breathing' ? 'salah' : data.lastMenuTab;
+            if (remoteMenuTab && (VALID_TABS as readonly string[]).includes(remoteMenuTab)) {
               setActiveTab((currentTab) => {
-                if (currentTab !== data.lastMenuTab) {
+                if (currentTab !== remoteMenuTab) {
                   isTabSyncingFromRemote.current = true;
-                  lastSyncedTabRef.current = data.lastMenuTab;
+                  lastSyncedTabRef.current = remoteMenuTab;
                   try {
-                    localStorage.setItem('ratool_active_tab', data.lastMenuTab);
-                    localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+                    localStorage.setItem('ratool_active_tab', remoteMenuTab);
+                    localStorage.setItem('ratbod_active_tab', remoteMenuTab);
                   } catch (e) {}
-                  return data.lastMenuTab;
+                  return remoteMenuTab;
                 }
                 return currentTab;
               });
             }
 
-            if (data.lastSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(data.lastSubNavTab)) {
+            const remoteSubNavTab = (data.lastSubNavTab === 'breathing' || data.lastSubNavTab === 'salah') ? 'calm' : data.lastSubNavTab;
+            if (remoteSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(remoteSubNavTab)) {
               setActiveSubTab((currentSubTab) => {
-                if (currentSubTab !== data.lastSubNavTab) {
+                if (currentSubTab !== remoteSubNavTab) {
                   isSubTabSyncingFromRemote.current = true;
                   try {
-                    localStorage.setItem('ratool_logify_subtab', data.lastSubNavTab);
+                    localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
                   } catch (e) {}
-                  return data.lastSubNavTab;
+                  return remoteSubNavTab as LogifyTab;
                 }
                 return currentSubTab;
               });
@@ -588,22 +594,24 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             if (data.lang !== undefined) setLang(data.lang || 'en');
 
             // Restore last visited menu tab across all devices of the same user
-            if (data.lastMenuTab && (VALID_TABS as readonly string[]).includes(data.lastMenuTab)) {
+            const remoteMenuTab = data.lastMenuTab === 'breathing' ? 'salah' : data.lastMenuTab;
+            if (remoteMenuTab && (VALID_TABS as readonly string[]).includes(remoteMenuTab)) {
               isTabSyncingFromRemote.current = true;
-              lastSyncedTabRef.current = data.lastMenuTab;
-              setActiveTab(data.lastMenuTab);
+              lastSyncedTabRef.current = remoteMenuTab;
+              setActiveTab(remoteMenuTab);
               try {
-                localStorage.setItem('ratool_active_tab', data.lastMenuTab);
-                localStorage.setItem('ratbod_active_tab', data.lastMenuTab);
+                localStorage.setItem('ratool_active_tab', remoteMenuTab);
+                localStorage.setItem('ratbod_active_tab', remoteMenuTab);
               } catch (e) {}
             }
 
             // Restore last visited sub nav tab across all devices of the same user
-            if (data.lastSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(data.lastSubNavTab)) {
+            const remoteSubNavTab = (data.lastSubNavTab === 'breathing' || data.lastSubNavTab === 'salah') ? 'calm' : data.lastSubNavTab;
+            if (remoteSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(remoteSubNavTab)) {
               isSubTabSyncingFromRemote.current = true;
-              setActiveSubTab(data.lastSubNavTab);
+              setActiveSubTab(remoteSubNavTab as LogifyTab);
               try {
-                localStorage.setItem('ratool_logify_subtab', data.lastSubNavTab);
+                localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
               } catch (e) {}
             }
 
@@ -1321,6 +1329,14 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const handleMenuClick = (tab: TabType) => {
     if (tab === 'calculator') {
       handleHealthMenuClick();
+    } else if ((tab as string) === 'breathing') {
+      setActiveTab('logify');
+      setActiveSubTab('calm');
+      try {
+        localStorage.setItem('ratool_active_tab', 'logify');
+        localStorage.setItem('ratbod_active_tab', 'logify');
+        localStorage.setItem('ratool_logify_subtab', 'calm');
+      } catch (e) {}
     } else {
       setActiveTab(tab);
       try {
@@ -1351,7 +1367,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   // Mobile Liquid Drag & Swapping Navigation (iOS 27 Fluid Gestures)
   const MOBILE_TABS_CONFIG = useMemo(() => [
     { id: 'groceries' as TabType, nameEn: 'Groceries', nameBn: 'বাজার' },
-    { id: 'breathing' as TabType, nameEn: 'Calm', nameBn: 'শ্বাস' },
+    { id: 'salah' as TabType, nameEn: 'Salah', nameBn: 'সালাত' },
     { id: 'logify' as TabType, nameEn: 'Logify', nameBn: 'লগ' },
     { id: 'results' as TabType, nameEn: 'Habitor', nameBn: 'অভ্যাস' },
     { id: 'calculator' as TabType, nameEn: 'Health', nameBn: 'স্বাস্থ্য' },
@@ -1618,19 +1634,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <span className="relative z-10">{t.tabLogify}</span>
             </button>
 
-            {/* 4. Calm (Fourth, renamed from breath/mindfulness) */}
+            {/* 4. Salah (Fourth, replaced from Calm) */}
             <button
-              id="tab_breathing_desktop"
+              id="tab_salah_desktop"
               type="button"
-              onClick={() => handleMenuClick('breathing')}
+              onClick={() => handleMenuClick('salah')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                activeTab === 'breathing'
+                activeTab === 'salah'
                   ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              {activeTab === 'breathing' && (
+              {activeTab === 'salah' && (
                 <motion.div
                   layoutId="activeHeaderTabIndicator"
                   className={cn(
@@ -1647,8 +1663,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   }}
                 />
               )}
-              <Wind size={13} className="relative z-10 animate-pulse text-teal-400 shrink-0" />
-              <span className="relative z-10">{t.tabBreathe}</span>
+              <Compass size={13} className="relative z-10 text-emerald-500 shrink-0" />
+              <span className="relative z-10">{t.tabSalah}</span>
             </button>
 
             {/* 5. Groceries (Fifth) */}
@@ -1815,12 +1831,12 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         </div>
       )}
 
-      {/* Breathing Tab Content */}
+      {/* Salah Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
-        activeTab === 'breathing' ? "block" : "hidden"
+        "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[20px] sm:pb-12",
+        activeTab === 'salah' ? "block" : "hidden"
       )}>
-        <BreathingTimer darkMode={darkMode} lang={lang} />
+        <SalahTracker darkMode={darkMode} lang={lang} />
       </div>
 
       {/* Groceries Tab Content */}
@@ -1856,7 +1872,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       <main className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12 space-y-8 overflow-x-hidden",
-        (activeTab === 'results' || activeTab === 'breathing' || activeTab === 'groceries' || activeTab === 'water' || activeTab === 'logify') ? "hidden" : "block"
+        (activeTab === 'results' || activeTab === 'salah' || activeTab === 'groceries' || activeTab === 'water' || activeTab === 'logify' || activeTab === 'breathing') ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 !mb-[16px]">
@@ -2293,16 +2309,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabHistory}</span>
           </button>
 
-          {/* 2. Calm */}
+          {/* 2. Salah (Replaces Calm) */}
           <button 
-            id="tab_breathing"
-            onClick={() => handleMenuClick('breathing')}
+            id="tab_salah"
+            onClick={() => handleMenuClick('salah')}
             className={cn(
               "relative flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 transition-all select-none min-w-0 cursor-pointer rounded-xl",
-              activeTab === 'breathing' ? "text-teal-400 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+              activeTab === 'salah' ? "text-emerald-500 scale-105 font-bold" : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
             )}
           >
-            {activeTab === 'breathing' && (
+            {activeTab === 'salah' && (
               <motion.div
                 layoutId="mobile_liquid_tab_active_pill"
                 className={cn(
@@ -2319,8 +2335,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 }}
               />
             )}
-            <Wind size={18} />
-            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabBreathe}</span>
+            <Compass size={18} />
+            <span className="text-[10px] font-bold mt-0.5 tracking-tight truncate max-w-full">{t.tabSalah}</span>
           </button>
 
           {/* 3. Logify (Center) */}

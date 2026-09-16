@@ -26,6 +26,7 @@ export const translations = {
     tabWater: "Water",
     tabLogify: "Logify",
     tabBreathe: "Calm",
+    tabSalah: "Salah",
 
     // Fields & Labels
     gender: "Gender",
@@ -161,6 +162,7 @@ export const translations = {
     tabWater: "পানি",
     tabLogify: "লগিফাই",
     tabBreathe: "শান্ত হোন",
+    tabSalah: "সালাত",
 
     // Fields & Labels
     gender: "লিঙ্গ",

@@ -5,20 +5,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Droplet, Moon, Footprints, BookOpen, Compass } from 'lucide-react';
+import { Droplet, Moon, Footprints, BookOpen, Wind } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import WaterTracker from './WaterTracker';
 import SleepTracker from './SleepTracker';
 import StepsTracker from './StepsTracker';
 import ReadingTracker from './ReadingTracker';
-import SalahTracker from './SalahTracker';
+import BreathingTimer from './BreathingTimer';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export type LogifyTab = 'steps' | 'reading' | 'water' | 'salah' | 'sleep';
+export type LogifyTab = 'steps' | 'reading' | 'water' | 'sleep' | 'calm';
 
 interface LogifyProps {
   darkMode: boolean;
@@ -64,20 +64,20 @@ const TABS: TabConfig[] = [
     icon: Droplet
   },
   {
-    id: 'salah',
-    labelEn: 'Salah',
-    labelEnShort: 'Salah',
-    labelBn: 'সালাত',
-    labelBnShort: 'নামাজ',
-    icon: Compass
-  },
-  {
     id: 'sleep',
     labelEn: 'Sleep',
     labelEnShort: 'Sleep',
     labelBn: 'ঘুম',
     labelBnShort: 'ঘুম',
     icon: Moon
+  },
+  {
+    id: 'calm',
+    labelEn: 'Calm',
+    labelEnShort: 'Calm',
+    labelBn: 'শ্বাস',
+    labelBnShort: 'শ্বাস',
+    icon: Wind
   }
 ];
 
@@ -89,10 +89,10 @@ export default function Logify({
 }: LogifyProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<LogifyTab>(() => {
     try {
-      const saved = localStorage.getItem('ratool_logify_subtab') as LogifyTab;
-      if (saved === ('writing' as any)) return 'salah';
-      if (saved && ['steps', 'reading', 'water', 'salah', 'sleep'].includes(saved)) {
-        return saved;
+      const saved = localStorage.getItem('ratool_logify_subtab');
+      if (saved === 'breathing' || saved === 'calm') return 'calm';
+      if (saved && ['steps', 'reading', 'water', 'sleep', 'calm'].includes(saved)) {
+        return saved as LogifyTab;
       }
     } catch (e) {}
     return 'steps';
@@ -162,12 +162,12 @@ export default function Logify({
             <WaterTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
 
-          <div className={activeTab === 'salah' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
-            <SalahTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
-          </div>
-
           <div className={activeTab === 'sleep' ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
             <SleepTracker darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
+          </div>
+
+          <div className={(activeTab === 'calm' || (activeTab as string) === 'breathing') ? 'block pb-[20px] w-full max-w-4xl mx-auto' : 'hidden'}>
+            <BreathingTimer darkMode={darkMode} lang={lang === 'bn' ? 'bn' : 'en'} />
           </div>
         </div>
 
