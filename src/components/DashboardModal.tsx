@@ -539,64 +539,99 @@ export default function DashboardModal({
       {/* Quick At-a-Glance Strip (5 compact badges) */}
       <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
         {/* Weight */}
-        <div className={cn(
-          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-        )}>
-          <Scale size={12} className="text-orange-400 mb-0.5" />
-          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ওজন' : 'Weight'}</span>
-          <span className="text-xs sm:text-sm font-black text-orange-400">
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('calculator') : onClose()}
+          className={cn(
+            "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer active:scale-95",
+            darkMode 
+              ? "bg-white/[0.02] hover:bg-white/[0.06] border-white/5" 
+              : "bg-white hover:bg-gray-50 border-gray-200/80 shadow-2xs"
+          )}
+          title={isBn ? 'ওজন' : 'Weight'}
+        >
+          <Scale size={12} className={cn("mb-0.5", darkMode ? "text-orange-400" : "text-gray-600")} />
+          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ওজন' : 'Weight'}</span>
+          <span className={cn("text-xs sm:text-sm font-black", darkMode ? "text-orange-400" : "text-gray-900")}>
             {weightMetrics.isLoss ? '-' : weightMetrics.isGain ? '+' : ''}{formatNum(Math.abs(weightMetrics.deltaDisplay))} {weightMetrics.unitLabel}
           </span>
-        </div>
+        </button>
 
         {/* Water */}
-        <div className={cn(
-          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-        )}>
-          <Droplets size={12} className="text-cyan-400 mb-0.5" />
-          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পানি' : 'Water'}</span>
-          <span className="text-xs sm:text-sm font-black text-cyan-400">
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'water') : onClose()}
+          className={cn(
+            "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer active:scale-95",
+            darkMode 
+              ? "bg-white/[0.02] hover:bg-white/[0.06] border-white/5" 
+              : "bg-white hover:bg-gray-50 border-gray-200/80 shadow-2xs"
+          )}
+          title={isBn ? 'পানি' : 'Water'}
+        >
+          <Droplets size={12} className={cn("mb-0.5", darkMode ? "text-cyan-400" : "text-gray-600")} />
+          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পানি' : 'Water'}</span>
+          <span className={cn("text-xs sm:text-sm font-black", darkMode ? "text-cyan-400" : "text-gray-900")}>
             {formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস' : 'gls'}
           </span>
-        </div>
+        </button>
 
         {/* Sleep */}
-        <div className={cn(
-          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-        )}>
-          <Moon size={12} className="text-indigo-400 mb-0.5" />
-          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ঘুম' : 'Sleep'}</span>
-          <span className="text-xs sm:text-sm font-black text-indigo-400">
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'sleep') : onClose()}
+          className={cn(
+            "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer active:scale-95",
+            darkMode 
+              ? "bg-white/[0.02] hover:bg-white/[0.06] border-white/5" 
+              : "bg-white hover:bg-gray-50 border-gray-200/80 shadow-2xs"
+          )}
+          title={isBn ? 'ঘুম' : 'Sleep'}
+        >
+          <Moon size={12} className={cn("mb-0.5", darkMode ? "text-indigo-400" : "text-gray-600")} />
+          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ঘুম' : 'Sleep'}</span>
+          <span className={cn("text-xs sm:text-sm font-black", darkMode ? "text-indigo-400" : "text-gray-900")}>
             {formatNum(sleepMetrics.avgHours)} {isBn ? 'ঘণ্টা' : 'h'}
           </span>
-        </div>
+        </button>
 
         {/* Steps */}
-        <div className={cn(
-          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-        )}>
-          <Footprints size={12} className="text-emerald-400 mb-0.5" />
-          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'হাঁটা' : 'Steps'}</span>
-          <span className="text-xs sm:text-sm font-black text-emerald-400">
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'steps') : onClose()}
+          className={cn(
+            "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer active:scale-95",
+            darkMode 
+              ? "bg-white/[0.02] hover:bg-white/[0.06] border-white/5" 
+              : "bg-white hover:bg-gray-50 border-gray-200/80 shadow-2xs"
+          )}
+          title={isBn ? 'হাঁটা' : 'Steps'}
+        >
+          <Footprints size={12} className={cn("mb-0.5", darkMode ? "text-emerald-400" : "text-gray-600")} />
+          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'হাঁটা' : 'Steps'}</span>
+          <span className={cn("text-xs sm:text-sm font-black", darkMode ? "text-emerald-400" : "text-gray-900")}>
             {formatNum(stepMetrics.avgSteps >= 1000 ? Math.round(stepMetrics.avgSteps / 1000) + 'k' : stepMetrics.avgSteps)}
           </span>
-        </div>
+        </button>
 
         {/* Reading */}
-        <div className={cn(
-          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-        )}>
-          <BookOpen size={12} className="text-amber-400 mb-0.5" />
-          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পড়া' : 'Read'}</span>
-          <span className="text-xs sm:text-sm font-black text-amber-400">
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'reading') : onClose()}
+          className={cn(
+            "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer active:scale-95",
+            darkMode 
+              ? "bg-white/[0.02] hover:bg-white/[0.06] border-white/5" 
+              : "bg-white hover:bg-gray-50 border-gray-200/80 shadow-2xs"
+          )}
+          title={isBn ? 'পড়া' : 'Read'}
+        >
+          <BookOpen size={12} className={cn("mb-0.5", darkMode ? "text-amber-400" : "text-gray-600")} />
+          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পড়া' : 'Read'}</span>
+          <span className={cn("text-xs sm:text-sm font-black", darkMode ? "text-amber-400" : "text-gray-900")}>
             {formatNum(readingMetrics.avgPagesPerDay)} {isBn ? 'পৃষ্ঠা' : 'p'}
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Row 1: Weight & Water side by side on desktop */}
@@ -604,37 +639,54 @@ export default function DashboardModal({
         {/* Weight Tracking Card */}
         <div className={cn(
           "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+          darkMode 
+            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
         )}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400">
+              <div className={cn(
+                "p-1.5 rounded-lg border",
+                darkMode 
+                  ? "bg-orange-500/10 text-orange-400 border-orange-500/20" 
+                  : "bg-gray-100 text-gray-700 border-gray-200/70"
+              )}>
                 <Scale size={14} />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'ওজনের পরিবর্তন' : 'Weight Progress'}</h3>
-                <p className="text-[10px] text-gray-400">{isBn ? 'সর্বশেষ রেকর্ড ও লক্ষ্য' : 'Latest record & target'}</p>
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{isBn ? 'ওজনের পরিবর্তন' : 'Weight Progress'}</h3>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">{isBn ? 'সর্বশেষ রেকর্ড ও লক্ষ্য' : 'Latest record & target'}</p>
               </div>
             </div>
             <button
+              id="overview_weight_log_btn"
               type="button"
               onClick={() => onNavigateTab ? onNavigateTab('calculator') : onClose()}
-              className="text-[10px] font-bold text-primary flex items-center gap-0.5 hover:underline cursor-pointer"
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
+                darkMode 
+                  ? "bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10" 
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200/80"
+              )}
+              title={isBn ? 'ওজন লগ করুন' : 'Log Weight'}
             >
               <span>{isBn ? 'লগ' : 'Log'}</span>
-              <ArrowRight size={10} />
+              <ArrowRight size={11} className="text-gray-400" />
             </button>
           </div>
 
           <div className="flex items-baseline justify-between my-1">
             <div>
-              <span className="text-xl sm:text-2xl font-black">{formatNum(weightMetrics.latestDisplay)}</span>
-              <span className="text-xs font-bold text-gray-400 ml-1">{weightMetrics.unitLabel}</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{formatNum(weightMetrics.latestDisplay)}</span>
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 ml-1">{weightMetrics.unitLabel}</span>
             </div>
             <div className={cn(
-              "px-2 py-0.5 rounded-lg text-xs font-black flex items-center gap-1",
-              weightMetrics.isLoss ? "bg-emerald-500/15 text-emerald-400" :
-              weightMetrics.isGain ? "bg-amber-500/15 text-amber-400" : "bg-gray-500/15 text-gray-400"
+              "px-2 py-0.5 rounded-lg text-xs font-black flex items-center gap-1 border",
+              weightMetrics.isLoss 
+                ? (darkMode ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200/70") 
+                : weightMetrics.isGain 
+                  ? (darkMode ? "bg-amber-500/15 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200/70") 
+                  : (darkMode ? "bg-gray-500/15 text-gray-400 border-gray-500/20" : "bg-gray-100 text-gray-700 border-gray-200/70")
             )}>
               {weightMetrics.isLoss && <TrendingDown size={12} />}
               {weightMetrics.isGain && <TrendingUp size={12} />}
@@ -644,15 +696,15 @@ export default function DashboardModal({
           </div>
 
           {weightMetrics.targetDisplay ? (
-            <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
-              <span className="text-gray-400 flex items-center gap-1">
-                <Target size={11} className="text-primary" />
+            <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-white/10 flex items-center justify-between text-[11px]">
+              <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Target size={11} className="text-gray-500 dark:text-primary" />
                 {isBn ? 'লক্ষ্যমাত্রা:' : 'Goal Target:'}
               </span>
-              <span className="font-bold text-primary">{formatNum(weightMetrics.targetDisplay)} {weightMetrics.unitLabel}</span>
+              <span className="font-bold text-gray-900 dark:text-primary">{formatNum(weightMetrics.targetDisplay)} {weightMetrics.unitLabel}</span>
             </div>
           ) : (
-            <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 text-[10px] text-gray-400">
+            <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-white/10 text-[10px] text-gray-400">
               {isBn ? 'লক্ষ্য সেট করা হয়নি' : 'No target weight set yet'}
             </div>
           )}
@@ -661,41 +713,60 @@ export default function DashboardModal({
         {/* Water Intake Card */}
         <div className={cn(
           "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+          darkMode 
+            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
         )}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
+              <div className={cn(
+                "p-1.5 rounded-lg border",
+                darkMode 
+                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" 
+                  : "bg-gray-100 text-gray-700 border-gray-200/70"
+              )}>
                 <Droplets size={14} />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'পানি পানের অগ্রগতি' : 'Hydration Intake'}</h3>
-                <p className="text-[10px] text-gray-400">{isBn ? 'দৈনিক লক্ষ্য ও পূর্ণতার হার' : 'Daily target & completion'}</p>
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{isBn ? 'পানি পানের অগ্রগতি' : 'Hydration Intake'}</h3>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">{isBn ? 'দৈনিক লক্ষ্য ও পূর্ণতার হার' : 'Daily target & completion'}</p>
               </div>
             </div>
             <button
+              id="overview_water_log_btn"
               type="button"
               onClick={() => onNavigateTab ? onNavigateTab('logify', 'water') : onClose()}
-              className="text-[10px] font-bold text-cyan-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
+                darkMode 
+                  ? "bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10" 
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200/80"
+              )}
+              title={isBn ? 'পানি পান লগ করুন' : 'Log Water'}
             >
               <span>{isBn ? 'লগ' : 'Log'}</span>
-              <ArrowRight size={10} />
+              <ArrowRight size={11} className="text-gray-400" />
             </button>
           </div>
 
           <div className="flex items-baseline justify-between my-1">
             <div>
-              <span className="text-xl sm:text-2xl font-black text-cyan-400">{formatNum(waterMetrics.totalGlasses)}</span>
-              <span className="text-xs font-bold text-gray-400 ml-1">{isBn ? 'গ্লাস (মোট)' : 'glasses total'}</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{formatNum(waterMetrics.totalGlasses)}</span>
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 ml-1">{isBn ? 'গ্লাস (মোট)' : 'glasses total'}</span>
             </div>
-            <div className="px-2 py-0.5 rounded-lg text-xs font-black bg-cyan-500/15 text-cyan-400">
+            <div className={cn(
+              "px-2 py-0.5 rounded-lg text-xs font-black border",
+              darkMode 
+                ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/20" 
+                : "bg-gray-100 text-gray-700 border-gray-200/70"
+            )}>
               {formatNum(waterMetrics.completionRate, 0)}% {isBn ? 'লক্ষ্য পূরণ' : 'of goal'}
             </div>
           </div>
 
-          <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
-            <span className="text-gray-400">{isBn ? 'দৈনিক গড়:' : 'Daily Average:'}</span>
-            <span className="font-bold text-cyan-400">{formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস/দিন' : 'gls/day'}</span>
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-white/10 flex items-center justify-between text-[11px]">
+            <span className="text-gray-500 dark:text-gray-400">{isBn ? 'দৈনিক গড়:' : 'Daily Average:'}</span>
+            <span className="font-bold text-gray-900 dark:text-cyan-400">{formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস/দিন' : 'gls/day'}</span>
           </div>
         </div>
       </div>
@@ -705,82 +776,120 @@ export default function DashboardModal({
         {/* Sleep Quality & Hours Card */}
         <div className={cn(
           "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+          darkMode 
+            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
         )}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+              <div className={cn(
+                "p-1.5 rounded-lg border",
+                darkMode 
+                  ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" 
+                  : "bg-gray-100 text-gray-700 border-gray-200/70"
+              )}>
                 <Moon size={14} />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'ঘুম ট্র্যাকিং' : 'Sleep Tracking'}</h3>
-                <p className="text-[10px] text-gray-400">{isBn ? 'গড় ঘুম ও রেকর্ডের সংখ্যা' : 'Average sleep & logs'}</p>
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{isBn ? 'ঘুম ট্র্যাকিং' : 'Sleep Tracking'}</h3>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">{isBn ? 'গড় ঘুম ও রেকর্ডের সংখ্যা' : 'Average sleep & logs'}</p>
               </div>
             </div>
             <button
+              id="overview_sleep_log_btn"
               type="button"
               onClick={() => onNavigateTab ? onNavigateTab('logify', 'sleep') : onClose()}
-              className="text-[10px] font-bold text-indigo-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
+                darkMode 
+                  ? "bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10" 
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200/80"
+              )}
+              title={isBn ? 'ঘুম লগ করুন' : 'Log Sleep'}
             >
               <span>{isBn ? 'লগ' : 'Log'}</span>
-              <ArrowRight size={10} />
+              <ArrowRight size={11} className="text-gray-400" />
             </button>
           </div>
 
           <div className="flex items-baseline justify-between my-1">
             <div>
-              <span className="text-xl sm:text-2xl font-black text-indigo-400">{formatNum(sleepMetrics.avgHours)}</span>
-              <span className="text-xs font-bold text-gray-400 ml-1">{isBn ? 'ঘণ্টা/রাত' : 'hrs/night'}</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{formatNum(sleepMetrics.avgHours)}</span>
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 ml-1">{isBn ? 'ঘণ্টা/রাত' : 'hrs/night'}</span>
             </div>
-            <div className="px-2 py-0.5 rounded-lg text-xs font-black bg-indigo-500/15 text-indigo-400">
+            <div className={cn(
+              "px-2 py-0.5 rounded-lg text-xs font-black border",
+              darkMode 
+                ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/20" 
+                : "bg-gray-100 text-gray-700 border-gray-200/70"
+            )}>
               {formatNum(sleepMetrics.totalLogs)} {isBn ? 'দিন রেকর্ড' : 'nights logged'}
             </div>
           </div>
 
-          <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
-            <span className="text-gray-400">{isBn ? 'মোট বিশ্রামের সময়:' : 'Total Rest Time:'}</span>
-            <span className="font-bold text-indigo-400">{formatNum(sleepMetrics.totalHours)} {isBn ? 'ঘণ্টা' : 'hours'}</span>
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-white/10 flex items-center justify-between text-[11px]">
+            <span className="text-gray-500 dark:text-gray-400">{isBn ? 'মোট বিশ্রামের সময়:' : 'Total Rest Time:'}</span>
+            <span className="font-bold text-gray-900 dark:text-indigo-400">{formatNum(sleepMetrics.totalHours)} {isBn ? 'ঘণ্টা' : 'hours'}</span>
           </div>
         </div>
 
         {/* Steps Card */}
         <div className={cn(
           "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+          darkMode 
+            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
         )}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+              <div className={cn(
+                "p-1.5 rounded-lg border",
+                darkMode 
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                  : "bg-gray-100 text-gray-700 border-gray-200/70"
+              )}>
                 <Footprints size={14} />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'হাঁটার হিসাব' : 'Steps & Activity'}</h3>
-                <p className="text-[10px] text-gray-400">{isBn ? 'মোট কদম ও দূরত্ব' : 'Total steps & distance'}</p>
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{isBn ? 'হাঁটার হিসাব' : 'Steps & Activity'}</h3>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">{isBn ? 'মোট কদম ও দূরত্ব' : 'Total steps & distance'}</p>
               </div>
             </div>
             <button
+              id="overview_steps_log_btn"
               type="button"
               onClick={() => onNavigateTab ? onNavigateTab('logify', 'steps') : onClose()}
-              className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
+                darkMode 
+                  ? "bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10" 
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200/80"
+              )}
+              title={isBn ? 'কদম লগ করুন' : 'Log Steps'}
             >
               <span>{isBn ? 'লগ' : 'Log'}</span>
-              <ArrowRight size={10} />
+              <ArrowRight size={11} className="text-gray-400" />
             </button>
           </div>
 
           <div className="flex items-baseline justify-between my-1">
             <div>
-              <span className="text-xl sm:text-2xl font-black text-emerald-400">{formatNum(stepMetrics.totalSteps)}</span>
-              <span className="text-xs font-bold text-gray-400 ml-1">{isBn ? 'কদম' : 'steps'}</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{formatNum(stepMetrics.totalSteps)}</span>
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 ml-1">{isBn ? 'কদম' : 'steps'}</span>
             </div>
-            <div className="px-2 py-0.5 rounded-lg text-xs font-black bg-emerald-500/15 text-emerald-400">
+            <div className={cn(
+              "px-2 py-0.5 rounded-lg text-xs font-black border",
+              darkMode 
+                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" 
+                : "bg-gray-100 text-gray-700 border-gray-200/70"
+            )}>
               ~{formatNum(stepMetrics.totalKm)} {isBn ? 'কিমি' : 'km'}
             </div>
           </div>
 
-          <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
-            <span className="text-gray-400">{isBn ? 'দৈনিক গড় কদম:' : 'Daily Average:'}</span>
-            <span className="font-bold text-emerald-400">{formatNum(stepMetrics.avgSteps)} {isBn ? 'কদম/দিন' : 'steps/day'}</span>
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-white/10 flex items-center justify-between text-[11px]">
+            <span className="text-gray-500 dark:text-gray-400">{isBn ? 'দৈনিক গড় কদম:' : 'Daily Average:'}</span>
+            <span className="font-bold text-gray-900 dark:text-emerald-400">{formatNum(stepMetrics.avgSteps)} {isBn ? 'কদম/দিন' : 'steps/day'}</span>
           </div>
         </div>
       </div>
@@ -788,57 +897,74 @@ export default function DashboardModal({
       {/* Row 3: Reading Tracker Summary Card */}
       <div className={cn(
         "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all",
-        darkMode ? "bg-white/[0.02] border-white/10" : "bg-gray-50/70 border-black/5"
+        darkMode 
+          ? "bg-white/[0.02] border-white/10" 
+          : "bg-white border-gray-200/80 shadow-2xs"
       )}>
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+            <div className={cn(
+              "p-1.5 rounded-lg border",
+              darkMode 
+                ? "bg-amber-500/10 text-amber-400 border-amber-500/20" 
+                : "bg-gray-100 text-gray-700 border-gray-200/70"
+            )}>
               <BookOpen size={14} />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'বই পড়ার সারাংশ' : 'Reading Insights'}</h3>
-              <p className="text-[10px] text-gray-400">{isBn ? 'মোট পৃষ্ঠা, পড়ার সময় ও সক্রিয় বই' : 'Pages, reading minutes & library'}</p>
+              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{isBn ? 'বই পড়ার সারাংশ' : 'Reading Insights'}</h3>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">{isBn ? 'মোট পৃষ্ঠা, পড়ার সময় ও সক্রিয় বই' : 'Pages, reading minutes & library'}</p>
             </div>
           </div>
           <button
+            id="overview_reading_log_btn"
             type="button"
             onClick={() => onNavigateTab ? onNavigateTab('logify', 'reading') : onClose()}
-            className="text-[10px] font-bold text-amber-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
+              darkMode 
+                ? "bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10" 
+                : "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200/80"
+            )}
+            title={isBn ? 'পড়া লগ করুন' : 'Log Reading'}
           >
             <span>{isBn ? 'লগ' : 'Log'}</span>
-            <ArrowRight size={10} />
+            <ArrowRight size={11} className="text-gray-400" />
           </button>
         </div>
 
         <div className="grid grid-cols-3 gap-2 py-1 text-center">
-          <div className={cn("p-2 rounded-xl", darkMode ? "bg-white/5" : "bg-white shadow-xs")}>
-            <span className="text-[10px] text-gray-400 block">{isBn ? 'মোট পৃষ্ঠা' : 'Pages Read'}</span>
-            <span className="text-base sm:text-lg font-black text-amber-400">{formatNum(readingMetrics.totalPages)}</span>
+          <div className={cn("p-2 rounded-xl border", darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200/70 shadow-2xs")}>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 block">{isBn ? 'মোট পৃষ্ঠা' : 'Pages Read'}</span>
+            <span className={cn("text-base sm:text-lg font-black", darkMode ? "text-amber-400" : "text-gray-900")}>{formatNum(readingMetrics.totalPages)}</span>
           </div>
-          <div className={cn("p-2 rounded-xl", darkMode ? "bg-white/5" : "bg-white shadow-xs")}>
-            <span className="text-[10px] text-gray-400 block">{isBn ? 'মোট সময়' : 'Minutes'}</span>
-            <span className="text-base sm:text-lg font-black text-amber-400">{formatNum(readingMetrics.totalMinutes)} {isBn ? 'মি.' : 'm'}</span>
+          <div className={cn("p-2 rounded-xl border", darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200/70 shadow-2xs")}>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 block">{isBn ? 'মোট সময়' : 'Minutes'}</span>
+            <span className={cn("text-base sm:text-lg font-black", darkMode ? "text-amber-400" : "text-gray-900")}>{formatNum(readingMetrics.totalMinutes)} {isBn ? 'মি.' : 'm'}</span>
           </div>
-          <div className={cn("p-2 rounded-xl", darkMode ? "bg-white/5" : "bg-white shadow-xs")}>
-            <span className="text-[10px] text-gray-400 block">{isBn ? 'পড়ার সেশন' : 'Sessions'}</span>
-            <span className="text-base sm:text-lg font-black text-amber-400">{formatNum(readingMetrics.totalSessions)}</span>
+          <div className={cn("p-2 rounded-xl border", darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200/70 shadow-2xs")}>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 block">{isBn ? 'পড়ার সেশন' : 'Sessions'}</span>
+            <span className={cn("text-base sm:text-lg font-black", darkMode ? "text-amber-400" : "text-gray-900")}>{formatNum(readingMetrics.totalSessions)}</span>
           </div>
         </div>
 
         {savedBooks.length > 0 ? (
-          <div className="mt-2.5 pt-2 border-t border-dashed border-gray-500/20 flex flex-wrap gap-1.5 items-center">
-            <span className="text-[10px] text-gray-400 mr-1">{isBn ? 'লাইব্রেরি বই:' : 'Library books:'}</span>
+          <div className="mt-2.5 pt-2 border-t border-dashed border-gray-200 dark:border-white/10 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 mr-1">{isBn ? 'লাইব্রেরি বই:' : 'Library books:'}</span>
             {savedBooks.slice(0, 3).map((book: any, idx: number) => (
               <div 
                 key={idx}
                 className={cn(
                   "px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border",
-                  darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
+                  darkMode ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-800"
                 )}
               >
-                <BookOpen size={10} className="text-amber-400 shrink-0" />
+                <BookOpen size={10} className={cn("shrink-0", darkMode ? "text-amber-400" : "text-gray-500")} />
                 <span className="truncate max-w-[130px] sm:max-w-[200px]">{book.title}</span>
-                <span className="px-1 py-0.2 rounded-md bg-amber-500/20 text-amber-300 font-mono text-[9px]">
+                <span className={cn(
+                  "px-1 py-0.2 rounded-md font-mono text-[9px]",
+                  darkMode ? "bg-amber-500/20 text-amber-300" : "bg-gray-200/80 text-gray-700"
+                )}>
                   {formatNum(book.pages)}{book.totalPages ? ` / ${formatNum(book.totalPages)}p` : 'p'}
                 </span>
               </div>
@@ -861,27 +987,27 @@ export default function DashboardModal({
           "w-full max-w-4xl mx-auto flex flex-col rounded-2xl sm:rounded-3xl border shadow-sm overflow-hidden",
           darkMode 
             ? "bg-[#0F0F0F] border-white/10 text-white shadow-black/40" 
-            : "bg-white border-black/10 text-gray-900 shadow-gray-200/50"
+            : "bg-white border-gray-200/90 text-gray-900 shadow-sm shadow-gray-200/40"
         )}
       >
         <div className={cn(
           "flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 border-b shrink-0",
-          darkMode ? "border-white/10 bg-white/[0.02]" : "border-black/5 bg-gray-50/50"
+          darkMode ? "border-white/10 bg-white/[0.02]" : "border-gray-100 bg-gray-50/70"
         )}>
           <div className="flex items-center gap-2">
             <div className={cn(
               "w-7 h-7 rounded-lg flex items-center justify-center border",
               darkMode 
                 ? "bg-primary/20 border-primary/30 text-primary" 
-                : "bg-primary/10 border-primary/20 text-primary"
+                : "bg-gray-100 border-gray-200 text-gray-800"
             )}>
               <LayoutDashboard size={15} />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black tracking-tight leading-tight">
-                {isBn ? 'হোম ড্যাশবোর্ড' : 'Home Dashboard'}
+                {isBn ? 'ওভারভিউ' : 'Overview'}
               </h2>
-              <p className="text-[10px] text-gray-400 font-medium leading-none hidden xs:block">
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-none hidden xs:block">
                 {isBn ? 'সাপ্তাহিক, মাসিক ও বার্ষিক সারাংশ' : 'Weekly, monthly & yearly summary'}
               </p>
             </div>
@@ -890,7 +1016,7 @@ export default function DashboardModal({
           <div className="flex items-center gap-2">
             <div className={cn(
               "flex p-0.5 rounded-xl border",
-              darkMode ? "bg-black/40 border-white/10" : "bg-gray-100/80 border-black/5"
+              darkMode ? "bg-black/40 border-white/10" : "bg-gray-100 border-gray-200/80"
             )}>
               {(['weekly', 'monthly', 'yearly'] as Timeframe[]).map((t) => {
                 const isSelected = timeframe === t;
@@ -908,7 +1034,7 @@ export default function DashboardModal({
                       "relative px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer select-none",
                       isSelected
                         ? (darkMode ? "text-white font-black" : "text-gray-900 font-black")
-                        : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                        : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-900")
                     )}
                   >
                     {isSelected && (
@@ -918,7 +1044,7 @@ export default function DashboardModal({
                           "absolute inset-0 rounded-lg",
                           darkMode 
                             ? "bg-white/15 border border-white/20 shadow-xs" 
-                            : "bg-white shadow-xs border border-black/5"
+                            : "bg-white shadow-2xs border border-gray-200/80"
                         )}
                         transition={{ type: "spring", stiffness: 400, damping: 28 }}
                       />
@@ -956,29 +1082,29 @@ export default function DashboardModal({
           "w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden backdrop-blur-2xl",
           darkMode 
             ? "bg-[#121212]/95 border-white/10 text-white shadow-black/80" 
-            : "bg-white/95 border-black/10 text-gray-900 shadow-gray-400/40"
+            : "bg-white/95 border-gray-200/90 text-gray-900 shadow-gray-400/30"
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header: Title, Timeframe Pills & Close button */}
         <div className={cn(
           "flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 border-b shrink-0",
-          darkMode ? "border-white/10 bg-white/[0.02]" : "border-black/5 bg-gray-50/50"
+          darkMode ? "border-white/10 bg-white/[0.02]" : "border-gray-100 bg-gray-50/70"
         )}>
           <div className="flex items-center gap-2">
             <div className={cn(
               "w-7 h-7 rounded-lg flex items-center justify-center border",
               darkMode 
                 ? "bg-primary/20 border-primary/30 text-primary" 
-                : "bg-primary/10 border-primary/20 text-primary"
+                : "bg-gray-100 border-gray-200 text-gray-800"
             )}>
               <LayoutDashboard size={15} />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black tracking-tight leading-tight">
-                {isBn ? 'অ্যাক্টিভিটি ড্যাশবোর্ড' : 'Activity Dashboard'}
+                {isBn ? 'ওভারভিউ' : 'Overview'}
               </h2>
-              <p className="text-[10px] text-gray-400 font-medium leading-none hidden xs:block">
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-none hidden xs:block">
                 {isBn ? 'সাপ্তাহিক, মাসিক ও বার্ষিক সারাংশ' : 'Weekly, monthly & yearly summary'}
               </p>
             </div>
@@ -988,7 +1114,7 @@ export default function DashboardModal({
           <div className="flex items-center gap-2">
             <div className={cn(
               "flex p-0.5 rounded-xl border",
-              darkMode ? "bg-black/40 border-white/10" : "bg-gray-100/80 border-black/5"
+              darkMode ? "bg-black/40 border-white/10" : "bg-gray-100 border-gray-200/80"
             )}>
               {(['weekly', 'monthly', 'yearly'] as Timeframe[]).map((t) => {
                 const isSelected = timeframe === t;
@@ -1006,7 +1132,7 @@ export default function DashboardModal({
                       "relative px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer select-none",
                       isSelected
                         ? (darkMode ? "text-white font-black" : "text-gray-900 font-black")
-                        : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                        : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-900")
                     )}
                   >
                     {isSelected && (
@@ -1016,7 +1142,7 @@ export default function DashboardModal({
                           "absolute inset-0 rounded-lg",
                           darkMode 
                             ? "bg-white/15 border border-white/20 shadow-xs" 
-                            : "bg-white shadow-xs border border-black/5"
+                            : "bg-white shadow-2xs border border-gray-200/80"
                         )}
                         transition={{ type: "spring", stiffness: 400, damping: 28 }}
                       />
@@ -1036,7 +1162,7 @@ export default function DashboardModal({
                 "p-1.5 rounded-xl border transition-colors cursor-pointer",
                 darkMode 
                   ? "border-white/10 hover:bg-white/10 text-gray-400 hover:text-white" 
-                  : "border-black/5 hover:bg-black/5 text-gray-500 hover:text-gray-800"
+                  : "border-gray-200 hover:bg-gray-100 text-gray-500 hover:text-gray-900"
               )}
               aria-label="Close Dashboard"
             >

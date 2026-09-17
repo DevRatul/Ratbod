@@ -247,46 +247,32 @@ export default function ProfileModal({
             </button>
 
             {/* Week Start Day Setting */}
-            <div className="mt-2.5 pt-2.5 border-t border-white/10 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar size={15} className="text-emerald-500 shrink-0" />
-                  <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
-                    Week Start Day
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold text-primary">
-                  {weekStartDay === 6 ? 'Saturday (Default)' : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][weekStartDay]}
+            <div className="mt-2.5 pt-2.5 border-t border-white/10 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Calendar size={15} className="text-emerald-500 shrink-0" />
+                <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
+                  Week Start Day
                 </span>
               </div>
-              <div className={cn(
-                "grid grid-cols-7 gap-1 p-1 rounded-xl border",
-                darkMode ? "bg-white/5 border-white/5" : "bg-black/5 border-black/5"
-              )}>
-                {[
-                  { day: 6, label: 'Sat' },
-                  { day: 0, label: 'Sun' },
-                  { day: 1, label: 'Mon' },
-                  { day: 2, label: 'Tue' },
-                  { day: 3, label: 'Wed' },
-                  { day: 4, label: 'Thu' },
-                  { day: 5, label: 'Fri' }
-                ].map((item) => (
-                  <button
-                    key={item.day}
-                    type="button"
-                    onClick={() => onSetWeekStartDay?.(item.day)}
-                    className={cn(
-                      "py-1.5 rounded-lg text-[10px] font-black text-center transition-all cursor-pointer",
-                      weekStartDay === item.day
-                        ? "bg-primary text-white shadow-xs font-bold"
-                        : (darkMode ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-600 hover:text-gray-900 hover:bg-black/5")
-                    )}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+              <select
+                id="profile_week_start_select"
+                value={weekStartDay}
+                onChange={(e) => onSetWeekStartDay?.(Number(e.target.value))}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary transition-all",
+                  darkMode 
+                    ? "bg-[#18181b] border-white/10 text-white" 
+                    : "bg-white border-gray-200 text-gray-900 shadow-2xs"
+                )}
+              >
+                <option value={6}>Saturday</option>
+                <option value={0}>Sunday</option>
+                <option value={1}>Monday</option>
+                <option value={2}>Tuesday</option>
+                <option value={3}>Wednesday</option>
+                <option value={4}>Thursday</option>
+                <option value={5}>Friday</option>
+              </select>
             </div>
           </div>
 

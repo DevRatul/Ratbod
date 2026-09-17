@@ -199,7 +199,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
     <div className="space-y-4 max-w-4xl mx-auto w-full pb-0">
       {/* Main Steps Dashboard Card */}
       <div className={cn(
-        "p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all shadow-xs",
+        "w-full p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all shadow-xs",
         darkMode 
           ? "bg-[#0f1712] border-emerald-500/25 shadow-emerald-950/20 text-white" 
           : "bg-white border-emerald-100 shadow-emerald-500/5 text-gray-900"
@@ -255,8 +255,8 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
             </span>
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full max-w-xl sm:max-w-2xl mt-3 space-y-1">
+          {/* Progress Bar - Full Width matching other sub nav menu sections */}
+          <div className="w-full mt-3 space-y-1">
             <div className="w-full h-2.5 rounded-full bg-gray-200/70 dark:bg-white/10 overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full transition-all duration-300"
@@ -269,8 +269,8 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
             </div>
           </div>
 
-          {/* Metric Stats Pill: Distance & Calories */}
-          <div className="grid grid-cols-2 gap-3 w-full max-w-xl sm:max-w-2xl mt-4">
+          {/* Metric Stats Pill: Distance & Calories - Full Width matching other sub nav menu sections */}
+          <div className="grid grid-cols-2 gap-3 w-full mt-4">
             <div className={cn(
               "p-2.5 rounded-xl border flex items-center justify-center gap-2",
               darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-200"
@@ -386,7 +386,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
 
       {/* Steps History List */}
       <div className={cn(
-        "p-4 rounded-2xl border space-y-3",
+        "w-full p-4 rounded-2xl border space-y-3",
         darkMode ? "bg-[#0f1712] border-white/5" : "bg-white border-gray-200"
       )}>
         <div className="flex items-center justify-between">

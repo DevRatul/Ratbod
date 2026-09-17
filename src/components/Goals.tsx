@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Target, Trophy, Calendar, ArrowRight, Save, RefreshCw, TrendingDown, TrendingUp, Minus, ChevronDown, ChevronUp, Footprints } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Target, Trophy, Calendar, ArrowRight, Save, RefreshCw, TrendingDown, TrendingUp, Minus, Footprints, Edit2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
@@ -36,7 +36,6 @@ interface GoalsProps {
 export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, onGoalUpdate, lang = 'en' }: GoalsProps) {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -166,50 +165,40 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
 
   return (
     <div className={cn(
-      "w-full rounded-3xl transition-all overflow-hidden",
-      (isEditing || isExpanded) && !isEditing ? (darkMode ? "bg-[#0A0A0A]" : "bg-white") : "",
-      !isEditing && !isExpanded ? (darkMode ? "bg-[#0F0F0F] border border-white/10 p-4 sm:p-6" : "bg-white border border-black/5 p-4 sm:p-6") : (isEditing ? "" : "p-4 sm:p-6 border " + (darkMode ? "border-white/10" : "border-black/5"))
+      "w-full rounded-3xl transition-all p-4 sm:p-6 border",
+      darkMode ? "bg-[#0F0F0F] border-white/10 shadow-lg shadow-black/50" : "bg-white border-gray-200 shadow-md shadow-gray-200/50"
     )}>
-      {!isEditing && (
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between cursor-pointer group"
-        >
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-              <Target size={18} />
-            </div>
-            <h3 className={cn("text-sm font-black tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
-              {lang === 'bn' ? 'আপনার স্বাস্থ্য লক্ষ্য' : 'Your Health Goals'}
-            </h3>
-          </div>
-          <div className={cn("p-1.5 rounded-full transition-colors", darkMode ? "group-hover:bg-white/10" : "group-hover:bg-black/5")}>
-            {isExpanded ? <ChevronUp size={20} className={darkMode ? "text-gray-400" : "text-gray-500"} /> : <ChevronDown size={20} className={darkMode ? "text-gray-400" : "text-gray-500"} />}
-          </div>
-        </button>
-      )}
-
-      {isEditing && (
-        <div className="flex items-center gap-2 mb-6">
-          <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+      {/* Header with Title and Top Right Edit Button */}
+      <div className="w-full flex items-center justify-between gap-2 mb-6">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
             <Target size={18} />
           </div>
-          <h3 className={cn("text-sm font-black tracking-tight", darkMode ? "text-white" : "text-gray-900")}>
+          <h3 className={cn("text-sm font-black tracking-tight truncate", darkMode ? "text-white" : "text-gray-900")}>
             {lang === 'bn' ? 'আপনার স্বাস্থ্য লক্ষ্য' : 'Your Health Goals'}
           </h3>
         </div>
-      )}
 
-      <AnimatePresence initial={false}>
-        {(isExpanded || isEditing) && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className={cn("overflow-hidden", !isEditing ? "pt-6" : "")}
+        {!isEditing && goal && (
+          <button
+            id="health_goals_edit_btn_top"
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className={cn(
+              "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95",
+              darkMode 
+                ? "bg-white/10 hover:bg-white/15 text-white border border-white/10" 
+                : "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200/80"
+            )}
+            title={lang === 'bn' ? 'লক্ষ্য পরিবর্তন করুন' : 'Edit Goals'}
           >
-            {isEditing ? (
+            <Edit2 size={12} className="text-primary" />
+            <span>{lang === 'bn' ? 'এডিট' : 'Edit Goal'}</span>
+          </button>
+        )}
+      </div>
+
+      {isEditing ? (
         <motion.form 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -421,16 +410,6 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
             </p>
           </div>
           </div>
-          
-          <button
-            onClick={() => setIsEditing(true)}
-            className={cn(
-              "w-full px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2",
-              darkMode ? "bg-white/5 text-white hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            )}
-          >
-            {lang === 'bn' ? 'লক্ষ্য পরিবর্তন করুন' : 'Edit Goals'}
-          </button>
         </div>
       ) : (
         <div className={cn(
@@ -453,9 +432,6 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           </button>
         </div>
       )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

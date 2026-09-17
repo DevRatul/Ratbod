@@ -200,13 +200,37 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     createdAt: 1704067200000
   };
 
+  // Permanently deleted book IDs tracker to ensure deleted books NEVER reappear on date change or reload
+  const [deletedBookIds, setDeletedBookIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_deleted_book_ids') || localStorage.getItem('ratool_deleted_book_ids');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return new Set<string>(parsed);
+      }
+    } catch (e) {}
+    return new Set<string>();
+  });
+  const deletedBookIdsRef = useRef<Set<string>>(deletedBookIds);
+  useEffect(() => {
+    deletedBookIdsRef.current = deletedBookIds;
+  }, [deletedBookIds]);
+
   // State: Saved Books Library
   const [books, setBooks] = useState<BookItem[]>(() => {
     try {
+      const delRaw = localStorage.getItem('ratbod_deleted_book_ids') || localStorage.getItem('ratool_deleted_book_ids');
+      const delSet = new Set<string>(delRaw ? JSON.parse(delRaw) : []);
       const saved = localStorage.getItem('ratbod_user_books') || localStorage.getItem('ratool_user_books');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          const validBooks = parsed.filter((b: BookItem) => b && b.id && !delSet.has(b.id));
+          return validBooks;
+        }
+      }
+      if (delSet.has(DEFAULT_BOOK.id)) {
+        return [];
       }
     } catch (e) {}
     return [DEFAULT_BOOK];
@@ -234,8 +258,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   // State: Active Book selection
   const [selectedBookId, setSelectedBookId] = useState<string>(() => {
     try {
+      const delRaw = localStorage.getItem('ratbod_deleted_book_ids') || localStorage.getItem('ratool_deleted_book_ids');
+      const delSet = new Set<string>(delRaw ? JSON.parse(delRaw) : []);
       const saved = localStorage.getItem('ratbod_reading_selected_book') || localStorage.getItem('ratool_reading_selected_book');
-      if (saved) return saved;
+      if (saved && !delSet.has(saved)) return saved;
     } catch (e) {}
     return 'book_sample_1';
   });
@@ -246,7 +272,6 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const [fromPageInput, setFromPageInput] = useState<string>('1');
   const [toPageInput, setToPageInput] = useState<string>('20');
   const [directPagesInput, setDirectPagesInput] = useState<string>('20');
-  const [minutesInput, setMinutesInput] = useState<string>('25');
   const [showNoteField, setShowNoteField] = useState<boolean>(false);
   const [noteInput, setNoteInput] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
@@ -285,28 +310,25 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   useEffect(() => { pageGoalRef.current = pageGoal; }, [pageGoal]);
   useEffect(() => { selectedBookIdRef.current = selectedBookId; }, [selectedBookId]);
 
-  // Calculate today's pages & minutes from records
+  // Calculate today's pages from records
   const todayStr = getLocalDateString();
   const todayPages = records
     .filter(r => r.date === todayStr)
     .reduce((acc, r) => acc + (r.pages || 0), 0);
-  const todayMinutes = records
-    .filter(r => r.date === todayStr)
-    .reduce((acc, r) => acc + (r.minutes || 0), 0);
 
   // Active Book object
   const activeBook = books.find(b => b.id === selectedBookId) || (books.length > 0 ? books[0] : null);
 
   // Robust persistence helper: sanitizes all records to remove undefined properties (which crash Firestore setDoc)
-  const persistData = (goal: number, updatedRecords: ReadingRecord[], updatedBooks: BookItem[], bookIdToSave?: string) => {
+  const persistData = (
+    goal: number, 
+    updatedRecords: ReadingRecord[], 
+    updatedBooks: BookItem[], 
+    bookIdToSave?: string,
+    currentDeletedIds?: Set<string>
+  ) => {
     try {
-      // Guard against race conditions overwriting records with empty array before initial load completes
-      if (!isInitialLoadedRef.current && updatedRecords.length === 0 && recordsRef.current.length > 0) {
-        updatedRecords = recordsRef.current;
-      }
-      if (!isInitialLoadedRef.current && updatedBooks.length === 0 && booksRef.current.length > 0) {
-        updatedBooks = booksRef.current;
-      }
+      const activeDel = currentDeletedIds || deletedBookIdsRef.current;
 
       // 1. Sanitize to guarantee NO undefined properties are ever sent to Firestore or stored
       const cleanRecords = updatedRecords.map((r, idx) => {
@@ -315,7 +337,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           date: String(r.date || getLocalDateString()),
           bookTitle: String(r.bookTitle || ''),
           pages: Number(r.pages) || 0,
-          minutes: Number(r.minutes) || 0,
+          minutes: 0,
           createdAt: Number(r.createdAt) || (Date.now() - idx * 1000)
         };
         if (r.bookId) item.bookId = String(r.bookId);
@@ -325,22 +347,33 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         return item as ReadingRecord;
       });
 
-      const cleanBooks = updatedBooks.map(b => {
-        const item: any = {
-          id: String(b.id),
-          title: String(b.title || ''),
-          totalPages: Number(b.totalPages) || 0,
-          currentPage: Number(b.currentPage) || 0,
-          status: b.status || 'reading',
-          createdAt: Number(b.createdAt) || Date.now()
-        };
-        if (b.author && b.author.trim()) item.author = b.author.trim();
-        if (b.initialPages !== undefined && b.initialPages !== null) item.initialPages = Number(b.initialPages);
-        if (b.coverColor) item.coverColor = String(b.coverColor);
-        return item as BookItem;
-      });
+      // Filter out any deleted books permanently
+      const cleanBooks = updatedBooks
+        .filter(b => b && b.id && !activeDel.has(b.id))
+        .map(b => {
+          const item: any = {
+            id: String(b.id),
+            title: String(b.title || ''),
+            totalPages: Number(b.totalPages) || 0,
+            currentPage: Number(b.currentPage) || 0,
+            status: b.status || 'reading',
+            createdAt: Number(b.createdAt) || Date.now()
+          };
+          if (b.author && b.author.trim()) item.author = b.author.trim();
+          if (b.initialPages !== undefined && b.initialPages !== null) item.initialPages = Number(b.initialPages);
+          if (b.coverColor) item.coverColor = String(b.coverColor);
+          return item as BookItem;
+        });
 
-      const activeId = bookIdToSave || selectedBookId;
+      let activeId = bookIdToSave || selectedBookId;
+      if (activeId && activeDel.has(activeId)) {
+        activeId = cleanBooks.length > 0 ? cleanBooks[0].id : 'custom';
+      }
+
+      const delList = Array.from(activeDel);
+      const delJson = JSON.stringify(delList);
+      localStorage.setItem('ratbod_deleted_book_ids', delJson);
+      localStorage.setItem('ratool_deleted_book_ids', delJson);
 
       // 2. Cache locally to both standard keys immediately
       const recJson = JSON.stringify(cleanRecords);
@@ -369,14 +402,12 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           pageGoal: Number(goal) || 20,
           records: cleanRecords,
           books: cleanBooks,
+          deletedBookIds: delList,
           selectedBookId: activeId || null,
           updatedAt: Date.now()
         }));
 
         setDoc(doc(db, 'users', user.uid, 'appData', 'readingTracker'), payload, { merge: true })
-          .then(() => {
-            console.log('[ReadingTracker] Saved to Firestore appData successfully! Records count:', cleanRecords.length);
-          })
           .catch(err => {
             console.error('[ReadingTracker] Firestore save to appData failed:', err);
           });
@@ -385,6 +416,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         setDoc(doc(db, 'users', user.uid), {
           readingRecords: cleanRecords,
           readingBooks: cleanBooks,
+          readingDeletedBookIds: delList,
           readingGoal: Number(goal) || 20,
           selectedReadingBookId: activeId || null,
           readingUpdatedAt: Date.now()
@@ -420,6 +452,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         // Check initial state from Firestore (both appData and root doc)
         let remoteRecs: ReadingRecord[] = [];
         let remoteBooks: BookItem[] = [];
+        let remoteDeleted: string[] = [];
         let remoteGoal: number | null = null;
         let remoteBookId: string | null = null;
 
@@ -429,6 +462,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
             const data = snap.data();
             if (Array.isArray(data.records)) remoteRecs = data.records;
             if (Array.isArray(data.books)) remoteBooks = data.books;
+            if (Array.isArray(data.deletedBookIds)) remoteDeleted = data.deletedBookIds;
             if (data.pageGoal) remoteGoal = Number(data.pageGoal);
             if (data.selectedBookId) remoteBookId = data.selectedBookId;
           }
@@ -443,6 +477,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
               }
               if (Array.isArray(rd.readingBooks) && rd.readingBooks.length > 0 && remoteBooks.length === 0) {
                 remoteBooks = rd.readingBooks;
+              }
+              if (Array.isArray(rd.readingDeletedBookIds) && rd.readingDeletedBookIds.length > 0) {
+                remoteDeleted = [...remoteDeleted, ...rd.readingDeletedBookIds];
               }
               if (remoteGoal === null && rd.readingGoal) {
                 remoteGoal = Number(rd.readingGoal);
@@ -469,6 +506,25 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           if (raw) localBooks = JSON.parse(raw);
         } catch (e) {}
 
+        let localDeleted: string[] = [];
+        try {
+          const raw = localStorage.getItem('ratbod_deleted_book_ids') || localStorage.getItem('ratool_deleted_book_ids');
+          if (raw) localDeleted = JSON.parse(raw);
+        } catch (e) {}
+
+        // Merge deleted books list permanently
+        const mergedDeleted = new Set<string>([
+          ...localDeleted,
+          ...Array.from(deletedBookIdsRef.current),
+          ...remoteDeleted
+        ]);
+        setDeletedBookIds(mergedDeleted);
+        deletedBookIdsRef.current = mergedDeleted;
+
+        // Filter out deleted books from both local and remote
+        localBooks = localBooks.filter(b => b && b.id && !mergedDeleted.has(b.id));
+        remoteBooks = remoteBooks.filter(b => b && b.id && !mergedDeleted.has(b.id));
+
         // Smart merge: preserve all records from both local and remote without ever dropping
         const recordMap = new Map<string, ReadingRecord>();
         localRecs.forEach((r, idx) => {
@@ -487,10 +543,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
         // Merge books
         const bookMap = new Map<string, BookItem>();
-        localBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
-        remoteBooks.forEach(b => { if (b && b.id) bookMap.set(String(b.id), b); });
+        localBooks.forEach(b => { if (b && b.id && !mergedDeleted.has(b.id)) bookMap.set(String(b.id), b); });
+        remoteBooks.forEach(b => { if (b && b.id && !mergedDeleted.has(b.id)) bookMap.set(String(b.id), b); });
         let mergedBooks = Array.from(bookMap.values());
-        if (mergedBooks.length === 0) {
+        if (mergedBooks.length === 0 && !mergedDeleted.has(DEFAULT_BOOK.id) && mergedDeleted.size === 0) {
           mergedBooks = [DEFAULT_BOOK];
         }
 
@@ -505,7 +561,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         });
 
         const chosenGoal = remoteGoal !== null ? remoteGoal : (pageGoal || 20);
-        const chosenBookId = remoteBookId || selectedBookId || (syncedBooks.length > 0 ? syncedBooks[0].id : 'book_sample_1');
+        let chosenBookId = remoteBookId || selectedBookId;
+        if (!chosenBookId || mergedDeleted.has(chosenBookId) || !syncedBooks.some(b => b.id === chosenBookId)) {
+          chosenBookId = syncedBooks.length > 0 ? syncedBooks[0].id : 'custom';
+        }
 
         setRecords(mergedRecs);
         setBooks(syncedBooks);
@@ -524,22 +583,28 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           localStorage.setItem('ratool_reading_records', JSON.stringify(mergedRecs));
           localStorage.setItem('ratbod_user_books', JSON.stringify(syncedBooks));
           localStorage.setItem('ratool_user_books', JSON.stringify(syncedBooks));
+          localStorage.setItem('ratbod_deleted_book_ids', JSON.stringify(Array.from(mergedDeleted)));
+          localStorage.setItem('ratool_deleted_book_ids', JSON.stringify(Array.from(mergedDeleted)));
           localStorage.setItem('ratbod_reading_goal', String(chosenGoal));
           localStorage.setItem('ratool_reading_goal', String(chosenGoal));
           localStorage.setItem('ratbod_reading_selected_book', chosenBookId);
           localStorage.setItem('ratool_reading_selected_book', chosenBookId);
         } catch (e) {}
 
-        // If local has newer records than remote, push to Firestore
-        if (localRecs.length > remoteRecs.length || localBooks.length > remoteBooks.length) {
-          persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId);
-        }
+        // Persist clean merged truth
+        persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId, mergedDeleted);
 
         // Set up real-time listener for multi-tab or cross-device updates
         unsubscribeSnapshot = onSnapshot(trackerDocRef, (docSnap) => {
           if (!docSnap.exists()) return;
           const liveData = docSnap.data();
           if (!liveData) return;
+
+          let liveDeleted: string[] = [];
+          if (Array.isArray(liveData.deletedBookIds)) liveDeleted = liveData.deletedBookIds;
+          const currentDel = new Set<string>([...Array.from(deletedBookIdsRef.current), ...liveDeleted]);
+          setDeletedBookIds(currentDel);
+          deletedBookIdsRef.current = currentDel;
 
           const liveRecs: ReadingRecord[] = Array.isArray(liveData.records) ? liveData.records : [];
           if (liveRecs.length > 0) {
@@ -563,8 +628,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
             });
           }
 
-          const liveBooks: BookItem[] = Array.isArray(liveData.books) ? liveData.books : [];
-          if (liveBooks.length > 0) {
+          if (Array.isArray(liveData.books)) {
+            const liveBooks = liveData.books.filter((b: BookItem) => b && b.id && !currentDel.has(b.id));
             setBooks(liveBooks);
             booksRef.current = liveBooks;
             try {
@@ -594,6 +659,21 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
   }, []);
+
+  // When date changes, verify selected book is still valid and not deleted
+  useEffect(() => {
+    if (selectedBookId && selectedBookId !== 'custom') {
+      const isDeleted = deletedBookIdsRef.current.has(selectedBookId);
+      const exists = booksRef.current.some(b => b.id === selectedBookId);
+      if (isDeleted || !exists) {
+        if (booksRef.current.length > 0) {
+          setSelectedBookId(booksRef.current[0].id);
+        } else {
+          setSelectedBookId('custom');
+        }
+      }
+    }
+  }, [selectedDate]);
 
   // Switch active book and suggest intelligent starting page based on existing read history
   const handleSelectBook = (bookId: string) => {
@@ -664,17 +744,24 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   };
 
   const handleDeleteBook = (bookId: string) => {
+    const nextDeleted = new Set([...Array.from(deletedBookIdsRef.current), bookId]);
+    setDeletedBookIds(nextDeleted);
+    deletedBookIdsRef.current = nextDeleted;
+
     const currentRecs = recordsRef.current.length > 0 ? recordsRef.current : records;
     const currentBooks = booksRef.current.length > 0 ? booksRef.current : books;
     const updatedBooks = currentBooks.filter(b => b.id !== bookId);
     setBooks(updatedBooks);
-    persistData(pageGoal, currentRecs, updatedBooks);
+
+    let nextSelected = selectedBookId;
     if (selectedBookId === bookId) {
-      if (updatedBooks.length > 0) {
-        handleSelectBook(updatedBooks[0].id);
-      } else {
-        setSelectedBookId('custom');
-      }
+      nextSelected = updatedBooks.length > 0 ? updatedBooks[0].id : 'custom';
+      setSelectedBookId(nextSelected);
+    }
+    persistData(pageGoal, currentRecs, updatedBooks, nextSelected, nextDeleted);
+
+    if (selectedBookId === bookId && updatedBooks.length > 0) {
+      handleSelectBook(updatedBooks[0].id);
     }
   };
 
@@ -700,7 +787,6 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
   // Session logger submit: handles reading anywhere in the book (start, middle, or ending part)
   const handleLogSession = () => {
-    const m = parseInt(minutesInput, 10) || 0;
     let p = 0;
     let fromNum: number | undefined = undefined;
     let toNum: number | undefined = undefined;
@@ -723,7 +809,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       toNum = end;
     } else {
       p = parseInt(directPagesInput, 10) || 0;
-      if (p <= 0 && m <= 0) return;
+      if (p <= 0) return;
     }
 
     let title = '';
@@ -741,7 +827,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       date: selectedDate || getLocalDateString(),
       bookTitle: title,
       pages: p,
-      minutes: m,
+      minutes: 0,
       createdAt: Date.now()
     };
     if (selectedBookId !== 'custom') {
@@ -843,16 +929,22 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       persistData(pageGoal, updatedRecords, updatedBooks, selectedBookId);
     } else if (deleteTarget.type === 'book') {
       const targetId = deleteTarget.id;
+      const nextDeleted = new Set([...Array.from(deletedBookIdsRef.current), targetId]);
+      setDeletedBookIds(nextDeleted);
+      deletedBookIdsRef.current = nextDeleted;
+
       const updatedBooks = currentBooks.filter(b => b.id !== targetId);
       setBooks(updatedBooks);
-      persistData(pageGoal, currentRecs, updatedBooks);
 
+      let nextSelected = selectedBookId;
       if (selectedBookId === targetId) {
-        if (updatedBooks.length > 0) {
-          handleSelectBook(updatedBooks[0].id);
-        } else {
-          setSelectedBookId('custom');
-        }
+        nextSelected = updatedBooks.length > 0 ? updatedBooks[0].id : 'custom';
+        setSelectedBookId(nextSelected);
+      }
+      persistData(pageGoal, currentRecs, updatedBooks, nextSelected, nextDeleted);
+
+      if (selectedBookId === targetId && updatedBooks.length > 0) {
+        handleSelectBook(updatedBooks[0].id);
       }
     }
 
@@ -885,15 +977,6 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Minutes pill */}
-            <span className={cn(
-              "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold font-mono",
-              darkMode ? "bg-white/5 text-gray-300 border border-white/10" : "bg-slate-100 text-slate-700 border border-slate-200/70"
-            )}>
-              <Clock size={12} className="text-amber-500" />
-              <span>{formatNum(todayMinutes)}m</span>
-            </span>
-
             {/* Goal pill with quick adjustment */}
             {isEditingGoal ? (
               <div className="flex items-center gap-1">
@@ -928,15 +1011,15 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 onClick={() => setIsEditingGoal(true)}
                 title={isBn ? 'দৈনিক লক্ষ্য পরিবর্তন করুন' : 'Click to adjust daily goal'}
                 className={cn(
-                  "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold font-mono transition-all cursor-pointer",
+                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold font-mono transition-all cursor-pointer",
                   darkMode 
                     ? "bg-white/5 text-indigo-300 border border-white/10 hover:bg-white/10" 
                     : "bg-indigo-50 text-indigo-700 border border-indigo-200/60 hover:bg-indigo-100"
                 )}
               >
-                <Target size={11} className="text-indigo-500" />
+                <Target size={12} className="text-indigo-500" />
                 <span>{formatNum(pageGoal)}p</span>
-                <Edit3 size={10} className="opacity-60 ml-0.5" />
+                <Edit3 size={11} className="opacity-60 ml-0.5" />
               </button>
             )}
           </div>
@@ -1184,42 +1267,22 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           </div>
         )}
 
-        {/* Time spent & Date Row */}
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
-          <div>
-            <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1 flex items-center gap-1">
-              <Clock size={9} className="text-amber-500 shrink-0 sm:w-[11px] sm:h-[11px]" />
-              <span>{isBn ? 'পড়ার সময় (মিনিট)' : 'Time (minutes)'}</span>
-            </label>
-            <input
-              id="reading_duration_input"
-              type="number"
-              min="1"
-              value={minutesInput}
-              onChange={(e) => setMinutesInput(e.target.value)}
-              className={cn(
-                "w-full px-1.5 sm:px-3 py-0.5 sm:py-1.5 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
-              )}
-            />
-          </div>
-
-          <div>
-            <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1 flex items-center gap-1">
-              <Calendar size={9} className="text-gray-400 shrink-0 sm:w-[11px] sm:h-[11px]" />
-              <span>{isBn ? 'তারিখ' : 'Date'}</span>
-            </label>
-            <input
-              id="reading_date_picker"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className={cn(
-                "w-full px-1 sm:px-2 py-0.5 sm:py-1.5 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[9.5px] sm:text-xs font-mono font-medium border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 [color-scheme:light] dark:[color-scheme:dark] max-w-full leading-none",
-                darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
-              )}
-            />
-          </div>
+        {/* Date Row (No Time option) */}
+        <div className="pt-1 border-t border-slate-100 dark:border-white/5">
+          <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1 flex items-center gap-1">
+            <Calendar size={9} className="text-gray-400 shrink-0 sm:w-[11px] sm:h-[11px]" />
+            <span>{isBn ? 'পড়ার তারিখ' : 'Reading Date'}</span>
+          </label>
+          <input
+            id="reading_date_picker"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className={cn(
+              "w-full px-2 sm:px-3 py-0.5 sm:py-1.5 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[9.5px] sm:text-xs font-mono font-medium border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 [color-scheme:light] dark:[color-scheme:dark] max-w-full leading-none",
+              darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
+            )}
+          />
         </div>
 
         {/* Optional Note Field Toggle */}
@@ -1351,7 +1414,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    {formatNum(rec.pages)}p • {formatNum(rec.minutes)}m
+                    {formatNum(rec.pages)} {isBn ? 'পৃষ্ঠা' : 'pages'}
                   </span>
                   <button
                     type="button"

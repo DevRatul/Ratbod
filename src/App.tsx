@@ -44,7 +44,11 @@ import {
   LayoutDashboard,
   ChevronLeft,
   Compass,
-  Home
+  Home,
+  Twitter,
+  Instagram,
+  AtSign,
+  MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -1418,6 +1422,43 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     window.location.reload();
   };
 
+  const handleSocialShare = async (platform: 'x' | 'instagram' | 'threads' | 'whatsapp') => {
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://ratool.app';
+    const text = lang === 'bn' 
+      ? 'রাতুল (RaTooL) - স্বাস্থ্য, অভ্যাস এবং সালাত ট্র্যাকার দেখুন: ' 
+      : 'Check out RaTooL - All-in-One Health, Habit & Salah Tracker: ';
+
+    if (platform === 'x') {
+      const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(currentUrl)}`;
+      window.open(xUrl, '_blank', 'noopener,noreferrer');
+    } else if (platform === 'whatsapp') {
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + currentUrl)}`;
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    } else if (platform === 'threads') {
+      const threadsUrl = `https://www.threads.net/intent/post?text=${encodeURIComponent(text + currentUrl)}`;
+      window.open(threadsUrl, '_blank', 'noopener,noreferrer');
+    } else if (platform === 'instagram') {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            title: 'RaTooL',
+            text: text,
+            url: currentUrl,
+          });
+          return;
+        } catch (e) {
+          // Fall through
+        }
+      }
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(currentUrl);
+        }
+      } catch (e) {}
+      window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
+    }
+  };
+
   // Mobile Liquid Drag & Swapping Navigation (iOS 27 Fluid Gestures)
   const MOBILE_TABS_CONFIG = useMemo(() => [
     { id: 'home' as TabType, nameEn: 'Home', nameBn: 'হোম' },
@@ -1784,23 +1825,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         darkMode ? "bg-[#121212]/95 backdrop-blur-xl border-white/10 shadow-black/80" : "bg-white/95 backdrop-blur-xl border-black/10 shadow-gray-400/50"
                       )}
                     >
-                      {/* Home / Dashboard (In profile menu) */}
-                      <button
-                        id="profile_menu_dashboard"
-                        type="button"
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          handleMenuClick('home');
-                        }}
-                        className={cn(
-                          "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
-                          darkMode ? "hover:bg-white/5 text-white" : "hover:bg-gray-50 text-gray-900"
-                        )}
-                      >
-                        <LayoutDashboard size={14} className="sm:w-4 sm:h-4 text-primary shrink-0" />
-                        <span>{lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}</span>
-                      </button>
-
                       <button
                         id="profile_menu_profile"
                         type="button"
@@ -1869,64 +1893,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       </div>
 
                       <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
-
-                      {/* Week Start Day Option */}
-                      <div
-                        id="profile_menu_week_start"
-                        className={cn(
-                          "w-full px-3.5 sm:px-4 py-2 text-xs font-bold flex flex-col gap-1.5 transition-colors select-none",
-                          darkMode ? "text-white" : "text-gray-900"
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5 sm:gap-3">
-                            <Calendar size={14} className="sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
-                            <span>{lang === 'bn' ? 'সপ্তাহ শুরু' : 'Week Start'}</span>
-                          </div>
-                          <span className="text-[10px] font-black text-primary uppercase">
-                            {weekStartDay === 6 ? (lang === 'bn' ? 'শনি (ডিফল্ট)' : 'Sat (Default)') : (
-                              lang === 'bn'
-                                ? ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'][weekStartDay]
-                                : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekStartDay]
-                            )}
-                          </span>
-                        </div>
-                        <div className={cn(
-                          "grid grid-cols-7 gap-1 p-1 rounded-lg",
-                          darkMode ? "bg-white/5 border border-white/5" : "bg-black/5 border border-black/5"
-                        )}>
-                          {[
-                            { day: 6, en: 'Sat', bn: 'শনি' },
-                            { day: 0, en: 'Sun', bn: 'রবি' },
-                            { day: 1, en: 'Mon', bn: 'সোম' },
-                            { day: 2, en: 'Tue', bn: 'মঙ্গল' },
-                            { day: 3, en: 'Wed', bn: 'বুধ' },
-                            { day: 4, en: 'Thu', bn: 'বৃহঃ' },
-                            { day: 5, en: 'Fri', bn: 'শুক্র' }
-                          ].map((item) => (
-                            <button
-                              key={item.day}
-                              id={`profile_menu_week_start_${item.en.toLowerCase()}`}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetWeekStartDay(item.day);
-                              }}
-                              className={cn(
-                                "py-1 rounded text-[9px] font-black text-center transition-all cursor-pointer",
-                                weekStartDay === item.day
-                                  ? "bg-primary text-white shadow-xs font-bold"
-                                  : (darkMode ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-600 hover:text-gray-900 hover:bg-black/5")
-                              )}
-                              title={`${item.en}${item.day === 6 ? ' (Default)' : ''}`}
-                            >
-                              {lang === 'bn' ? item.bn : item.en}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         id="profile_menu_signout"
                         type="button"
@@ -1941,24 +1907,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       >
                         <LogOut size={14} className="sm:w-4 sm:h-4 shrink-0" />
                         <span>{lang === 'bn' ? 'সাইন আউট' : 'Sign out'}</span>
-                      </button>
-
-                      <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
-                      {/* Grocery (Moved to last position in profile menu) */}
-                      <button
-                        id="profile_menu_groceries"
-                        type="button"
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          handleMenuClick('groceries');
-                        }}
-                        className={cn(
-                          "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
-                          darkMode ? "hover:bg-white/5 text-orange-400 hover:text-orange-300" : "hover:bg-orange-50/60 text-orange-600 hover:text-orange-700"
-                        )}
-                      >
-                        <ShoppingBag size={14} className="sm:w-4 sm:h-4 text-orange-500 shrink-0" />
-                        <span>{lang === 'bn' ? 'বাজার তালিকা' : 'Grocery'}</span>
                       </button>
                     </motion.div>
                 )}
@@ -2039,7 +1987,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Home Tab Content (Activity Dashboard rendered inline) */}
       <div className={cn(
-        "max-w-5xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl mx-auto px-3 sm:px-6 pt-2 md:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'home' ? "block" : "hidden"
       )}>
         <DashboardModal
@@ -2056,8 +2004,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           onNavigateTab={(tab, subTab) => {
             handleMenuClick(tab as TabType);
             if (subTab) {
+              setActiveSubTab(subTab as LogifyTab);
               try {
                 localStorage.setItem('ratool_logify_subtab', subTab);
+                localStorage.setItem('ratbod_logify_subtab', subTab);
               } catch (e) {}
             }
           }}
@@ -2065,7 +2015,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       </div>
 
       <main className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12 space-y-8 overflow-x-hidden",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12 space-y-8 overflow-x-hidden",
         activeTab !== 'calculator' ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
@@ -2389,19 +2339,106 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             {activeTab === 'home' && (
               <div className="flex flex-col items-center justify-center gap-3 text-center w-full">
                 {/* Policy Links */}
-                <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
-                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
-                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
-                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
+                <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-gray-900 dark:hover:text-white transition-colors">Privacy Policy</a>
+                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-gray-900 dark:hover:text-white transition-colors">Terms of Service</a>
+                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-gray-900 dark:hover:text-white transition-colors">Contact Support</a>
                 </div>
 
                 {/* Copyright */}
                 <p className={cn(
-                  "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
-                  darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
+                  "text-[9px] font-extrabold uppercase tracking-widest transition-colors",
+                  darkMode ? "text-gray-500" : "text-gray-400"
                 )}>
                   © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
                 </p>
+
+                {/* Social / Utility Icons: Grocery & Social Share Icons */}
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    id="home_footer_grocery_btn"
+                    type="button"
+                    onClick={() => handleMenuClick('groceries')}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95",
+                      darkMode 
+                        ? "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 shadow-xs" 
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 shadow-2xs"
+                    )}
+                    title={lang === 'bn' ? 'বাজার তালিকা' : 'Grocery'}
+                    aria-label="Grocery"
+                  >
+                    <ShoppingBag size={13} />
+                  </button>
+
+                  {/* X (Twitter) */}
+                  <button
+                    id="home_footer_share_x"
+                    type="button"
+                    onClick={() => handleSocialShare('x')}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95",
+                      darkMode 
+                        ? "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 shadow-xs" 
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 shadow-2xs"
+                    )}
+                    title={lang === 'bn' ? 'এক্স (X)-এ শেয়ার করুন' : 'Share on X'}
+                    aria-label="Share on X"
+                  >
+                    <Twitter size={13} />
+                  </button>
+
+                  {/* Instagram */}
+                  <button
+                    id="home_footer_share_instagram"
+                    type="button"
+                    onClick={() => handleSocialShare('instagram')}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95",
+                      darkMode 
+                        ? "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 shadow-xs" 
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 shadow-2xs"
+                    )}
+                    title={lang === 'bn' ? 'ইনস্টাগ্রামে শেয়ার করুন' : 'Share on Instagram'}
+                    aria-label="Share on Instagram"
+                  >
+                    <Instagram size={13} />
+                  </button>
+
+                  {/* Threads */}
+                  <button
+                    id="home_footer_share_threads"
+                    type="button"
+                    onClick={() => handleSocialShare('threads')}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95",
+                      darkMode 
+                        ? "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 shadow-xs" 
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 shadow-2xs"
+                    )}
+                    title={lang === 'bn' ? 'থ্রেডসে শেয়ার করুন' : 'Share on Threads'}
+                    aria-label="Share on Threads"
+                  >
+                    <AtSign size={13} />
+                  </button>
+
+                  {/* WhatsApp */}
+                  <button
+                    id="home_footer_share_whatsapp"
+                    type="button"
+                    onClick={() => handleSocialShare('whatsapp')}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95",
+                      darkMode 
+                        ? "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 shadow-xs" 
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 shadow-2xs"
+                    )}
+                    title={lang === 'bn' ? 'হোয়াটসঅ্যাপে শেয়ার করুন' : 'Share on WhatsApp'}
+                    aria-label="Share on WhatsApp"
+                  >
+                    <MessageCircle size={13} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -2466,8 +2503,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           setIsDashboardOpen(false);
           handleMenuClick(tab as TabType);
           if (subTab) {
+            setActiveSubTab(subTab as LogifyTab);
             try {
               localStorage.setItem('ratool_logify_subtab', subTab);
+              localStorage.setItem('ratbod_logify_subtab', subTab);
             } catch (e) {}
           }
         }}
