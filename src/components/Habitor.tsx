@@ -78,6 +78,7 @@ export interface HabitItem {
 export interface HabitorProps {
   darkMode: boolean;
   lang: 'en' | 'bn';
+  weekStartDay?: number; // 0=Sun, 1=Mon, ..., 6=Sat. Default: 6 (Saturday)
 }
 
 // Default initial habits matching screenshot
@@ -197,64 +198,76 @@ function getDhakaLogicalDateKey(now = new Date()): { dateKey: string; isPastSuns
 }
 
 /**
- * Calculates Week Number where Saturday is the first day of the week.
+ * Base Day Arrays (Sunday = 0, Monday = 1, ..., Saturday = 6)
  */
-function getSaturdayWeekNumber(d: Date): number {
+export const ALL_DAY_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+export const ALL_DAY_NAMES_BN = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'];
+export const ALL_DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+export const ALL_DAY_LETTERS_BN = ['র', 'সো', 'ম', 'বু', 'বৃ', 'শু', 'শ'];
+export const ALL_FULL_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const ALL_FULL_NAMES_BN = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+
+/**
+ * Calculates Week Number where weekStartDay (default 6 = Saturday) is the first day of the week.
+ */
+export function getWeekNumber(d: Date, weekStartDay: number = 6): number {
   const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const jan1 = new Date(target.getFullYear(), 0, 1);
-  const jan1SatIndex = (jan1.getDay() + 1) % 7; 
+  const jan1StartIndex = (jan1.getDay() - weekStartDay + 7) % 7; 
   const dayOfYear = Math.floor((target.getTime() - jan1.getTime()) / 86400000);
-  return Math.floor((dayOfYear + jan1SatIndex) / 7) + 1;
+  return Math.floor((dayOfYear + jan1StartIndex) / 7) + 1;
+}
+
+// Backward compatibility alias
+function getSaturdayWeekNumber(d: Date): number {
+  return getWeekNumber(d, 6);
 }
 
 /**
- * Builds Saturday-to-Friday week array around the current logical date
+ * Builds 7-day week array around the current logical date starting from weekStartDay (default 6 = Saturday)
  */
-function getSaturdayToFridayWeek(logicalDateStr: string, todayDateKey?: string) {
+export function getWeekDaysForDate(logicalDateStr: string, weekStartDay: number = 6, todayDateKey?: string) {
   const [y, m, d] = logicalDateStr.split('-').map(Number);
   const refDate = new Date(y, m - 1, d);
   
   // Day of week: 0 = Sun, 1 = Mon, ..., 6 = Sat
   const dayOfWeek = refDate.getDay();
   
-  // Distance back to Saturday
-  const diffToSat = dayOfWeek === 6 ? 0 : -(dayOfWeek + 1);
+  // Distance back to weekStartDay
+  const diffToStart = (dayOfWeek - weekStartDay + 7) % 7;
   
-  const satDate = new Date(refDate);
-  satDate.setDate(refDate.getDate() + diffToSat);
+  const startDate = new Date(refDate);
+  startDate.setDate(refDate.getDate() - diffToStart);
   
-  const dayNames = ['SAT', 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI'];
-  const dayNamesBn = ['শনি', 'রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র'];
-  const dayLettersEn = ['S', 'S', 'M', 'T', 'W', 'T', 'F'];
-  const dayLettersBn = ['শ', 'র', 'সো', 'ম', 'বু', 'বৃ', 'শু'];
-  const dayFullNamesEn = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const dayFullNamesBn = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
   const weekDays = [];
   
   for (let i = 0; i < 7; i++) {
-    const day = new Date(satDate);
-    day.setDate(satDate.getDate() + i);
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
     
     const yyyy = day.getFullYear();
     const mm = String(day.getMonth() + 1).padStart(2, '0');
     const dd = String(day.getDate()).padStart(2, '0');
     const key = `${yyyy}-${mm}-${dd}`;
     
+    const dayIdx = (weekStartDay + i) % 7;
+
     weekDays.push({
-      dayName: dayNames[i],
-      dayNameBn: dayNamesBn[i],
-      letter: dayLettersEn[i],
-      letterBn: dayLettersBn[i],
-      fullName: dayFullNamesEn[i],
-      fullNameBn: dayFullNamesBn[i],
+      dayName: ALL_DAY_NAMES[dayIdx],
+      dayNameBn: ALL_DAY_NAMES_BN[dayIdx],
+      letter: ALL_DAY_LETTERS[dayIdx],
+      letterBn: ALL_DAY_LETTERS_BN[dayIdx],
+      fullName: ALL_FULL_NAMES[dayIdx],
+      fullNameBn: ALL_FULL_NAMES_BN[dayIdx],
       dateNum: day.getDate(),
       dateKey: key,
       isToday: key === (todayDateKey || logicalDateStr),
-      fullDate: day
+      fullDate: day,
+      dayIndex: dayIdx
     });
   }
   
-  const weekNum = getSaturdayWeekNumber(refDate);
+  const weekNum = getWeekNumber(refDate, weekStartDay);
   const monthNamesEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const monthNamesBn = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
   const monthNameEn = monthNamesEn[refDate.getMonth()];
@@ -267,6 +280,11 @@ function getSaturdayToFridayWeek(logicalDateStr: string, todayDateKey?: string) 
     monthNameEn,
     monthNameBn
   };
+}
+
+// Backward compatibility alias
+function getSaturdayToFridayWeek(logicalDateStr: string, todayDateKey?: string) {
+  return getWeekDaysForDate(logicalDateStr, 6, todayDateKey);
 }
 
 interface HabitRowItemProps {
@@ -450,7 +468,7 @@ function HabitRowItem({
   );
 }
 
-export default function Habitor({ darkMode, lang }: HabitorProps) {
+export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorProps) {
   const [habits, setHabits] = useState<HabitItem[]>(() => {
     const saved = localStorage.getItem('ratool_habits_v1') || localStorage.getItem('ratbod_habits_v1');
     if (saved) {
@@ -590,10 +608,10 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
     }
   }, [isLoaded, selectedDateKey]);
 
-  // Week Days Saturday to Friday
+  // Week Days based on weekStartDay (default Saturday)
   const { weekDays, weekNum } = useMemo(
-    () => getSaturdayToFridayWeek(selectedDateKey, dhakaInfo.dateKey), 
-    [selectedDateKey, dhakaInfo.dateKey]
+    () => getWeekDaysForDate(selectedDateKey, weekStartDay, dhakaInfo.dateKey), 
+    [selectedDateKey, dhakaInfo.dateKey, weekStartDay]
   );
 
   // Modal for adding habit
@@ -686,35 +704,36 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       });
     }
 
-    // Build Saturday-to-Friday week rows for the entire month
+    // Build week rows for the entire month based on weekStartDay
     const firstDayOfMonth = new Date(curYear, curMonth, 1);
     const lastDayOfMonth = new Date(curYear, curMonth + 1, 0);
     const firstDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 6=Sat
-    const diffToSat = firstDayOfWeek === 6 ? 0 : -(firstDayOfWeek + 1);
+    const diffToStart = (firstDayOfWeek - weekStartDay + 7) % 7;
     
-    let currentWeekSat = new Date(curYear, curMonth, 1 + diffToSat);
+    let currentWeekStart = new Date(curYear, curMonth, 1 - diffToStart);
     const monthlyWeeks = [];
 
-    while (currentWeekSat <= lastDayOfMonth || (currentWeekSat.getMonth() === curMonth && currentWeekSat.getDate() <= daysInMonthCount)) {
-      const weekNum = getSaturdayWeekNumber(currentWeekSat);
+    while (currentWeekStart <= lastDayOfMonth || (currentWeekStart.getMonth() === curMonth && currentWeekStart.getDate() <= daysInMonthCount)) {
+      const weekNum = getWeekNumber(currentWeekStart, weekStartDay);
       const daysInWeek = [];
 
       for (let i = 0; i < 7; i++) {
-        const curDate = new Date(currentWeekSat);
-        curDate.setDate(currentWeekSat.getDate() + i);
+        const curDate = new Date(currentWeekStart);
+        curDate.setDate(currentWeekStart.getDate() + i);
 
         const isCurrentMonth = curDate.getMonth() === curMonth;
         const yyyy = curDate.getFullYear();
         const mm = String(curDate.getMonth() + 1).padStart(2, '0');
         const dd = String(curDate.getDate()).padStart(2, '0');
         const dateKey = `${yyyy}-${mm}-${dd}`;
+        const dayIdx = (weekStartDay + i) % 7;
 
         daysInWeek.push({
           dayNum: curDate.getDate(),
           dateKey,
           isCurrentMonth,
           isCompleted: datesSet.has(dateKey),
-          isSaturdayOrFriday: i === 0 || i === 6 // 0=Sat, 6=Fri
+          isSaturdayOrFriday: dayIdx === 5 || dayIdx === 6 // Weekend off days
         });
       }
 
@@ -723,9 +742,9 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
         days: daysInWeek
       });
 
-      // Advance to next Saturday
-      currentWeekSat.setDate(currentWeekSat.getDate() + 7);
-      if (currentWeekSat.getFullYear() > curYear || (currentWeekSat.getMonth() > curMonth && currentWeekSat.getDate() > 7)) {
+      // Advance to next week
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      if (currentWeekStart.getFullYear() > curYear || (currentWeekStart.getMonth() > curMonth && currentWeekStart.getDate() > 7)) {
         break;
       }
     }
@@ -758,7 +777,7 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
       curYear,
       curMonthName: refDate.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })
     };
-  }, [analyticsHabit, completedLogs, selectedDateKey, lang]);
+  }, [analyticsHabit, completedLogs, selectedDateKey, lang, weekStartDay]);
 
   // Active completed array for selected date
   const completedTodaySet = useMemo(() => {
@@ -1367,16 +1386,28 @@ export default function Habitor({ darkMode, lang }: HabitorProps) {
 
                   {/* Monthly Table / Grid with Week Numbers and Sat...Fri weekdays */}
                   <div className="border border-white/10 rounded-2xl overflow-hidden bg-black/20 p-2 space-y-1.5">
-                    {/* Header Row: WN | SAT (OFF) | SUN | MON | TUE | WED | THU | FRI (OFF) */}
+                    {/* Header Row: WN | 7 day columns matching weekStartDay */}
                     <div className="grid grid-cols-8 gap-1 text-center text-[10px] font-black uppercase pb-1 border-b border-white/10">
                       <span className="text-gray-500 py-0.5">WN</span>
-                      <span className="text-rose-400 bg-rose-500/10 rounded-md py-0.5" title="Weekly Off">SAT (OFF)</span>
-                      <span className="text-gray-500 dark:text-gray-400 py-0.5">SUN</span>
-                      <span className="text-gray-500 dark:text-gray-400 py-0.5">MON</span>
-                      <span className="text-gray-500 dark:text-gray-400 py-0.5">TUE</span>
-                      <span className="text-gray-500 dark:text-gray-400 py-0.5">WED</span>
-                      <span className="text-gray-500 dark:text-gray-400 py-0.5">THU</span>
-                      <span className="text-rose-400 bg-rose-500/10 rounded-md py-0.5" title="Weekly Off">FRI (OFF)</span>
+                      {Array.from({ length: 7 }).map((_, i) => {
+                        const dayIdx = (weekStartDay + i) % 7;
+                        const isWeekend = dayIdx === 5 || dayIdx === 6;
+                        return (
+                          <span
+                            key={i}
+                            className={cn(
+                              "py-0.5 rounded-md",
+                              isWeekend
+                                ? "text-rose-400 bg-rose-500/10"
+                                : "text-gray-500 dark:text-gray-400"
+                            )}
+                            title={isWeekend ? (lang === 'bn' ? 'সাপ্তাহিক ছুটি' : 'Weekly Off') : undefined}
+                          >
+                            {lang === 'bn' ? ALL_DAY_NAMES_BN[dayIdx] : ALL_DAY_NAMES[dayIdx]}
+                            {isWeekend ? ` (${lang === 'bn' ? 'ছুটি' : 'OFF'})` : ''}
+                          </span>
+                        );
+                      })}
                     </div>
 
                     {/* Week Rows */}

@@ -44,6 +44,8 @@ interface DashboardModalProps {
   historyList?: any[];
   savedGoal?: any;
   onNavigateTab?: (tab: string, subTab?: string) => void;
+  isInline?: boolean;
+  weekStartDay?: number;
 }
 
 export default function DashboardModal({
@@ -55,7 +57,9 @@ export default function DashboardModal({
   currentWeight,
   historyList = [],
   savedGoal,
-  onNavigateTab
+  onNavigateTab,
+  isInline = false,
+  weekStartDay = 6
 }: DashboardModalProps) {
   const isBn = lang === 'bn';
   const [timeframe, setTimeframe] = useState<Timeframe>('weekly');
@@ -104,7 +108,7 @@ export default function DashboardModal({
 
   // Load latest activity data from localStorage and Firestore
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !isInline) return;
 
     const loadAllActivities = async () => {
       setIsLoading(true);
@@ -209,10 +213,16 @@ export default function DashboardModal({
   // Cutoff timestamp for the timeframe
   const cutoffTime = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() - timeframeDays);
+    if (timeframe === 'weekly') {
+      const day = d.getDay();
+      const diffToStart = (day - weekStartDay + 7) % 7;
+      d.setDate(d.getDate() - diffToStart);
+    } else {
+      d.setDate(d.getDate() - timeframeDays);
+    }
     d.setHours(0, 0, 0, 0);
     return d.getTime();
-  }, [timeframeDays]);
+  }, [timeframe, timeframeDays, weekStartDay]);
 
   // ==================== 1. WEIGHT & GOAL METRICS ====================
   const weightMetrics = useMemo(() => {
@@ -325,15 +335,19 @@ export default function DashboardModal({
     const dailyAvgMl = Math.round(totalMl / daysCount);
     const dailyAvgGlasses = (dailyAvgMl / 250).toFixed(1);
     const totalLiters = (totalMl / 1000).toFixed(1);
+    const totalGlasses = Math.round(totalMl / 250);
 
     const targetMl = ((waterData?.goalGlasses || 8) * (waterData?.glassVolumeMl || 250));
     const percentGoal = Math.min(100, Math.round((dailyAvgMl / (targetMl || 2000)) * 100));
+    const completionRate = percentGoal;
 
     return {
       dailyAvgMl,
       dailyAvgGlasses,
       totalLiters,
+      totalGlasses,
       percentGoal,
+      completionRate,
       points: filteredPoints.length > 0 ? filteredPoints : [dailyAvgMl]
     };
   }, [waterData, cutoffTime, timeframeDays]);
@@ -356,9 +370,9 @@ export default function DashboardModal({
 
     const count = Math.max(1, records.length);
     const avgMinutes = Math.round(totalMinutes / count);
-    const avgHours = Math.floor(avgMinutes / 60);
+    const avgHours = (avgMinutes / 60).toFixed(1);
     const avgRemMins = avgMinutes % 60;
-    const avgDisplay = `${avgHours}h ${avgRemMins}m`;
+    const avgDisplay = `${Math.floor(avgMinutes / 60)}h ${avgRemMins}m`;
 
     const totalHours = Math.floor(totalMinutes / 60);
     const totalRemMins = totalMinutes % 60;
@@ -372,6 +386,9 @@ export default function DashboardModal({
       totalDisplay,
       isOptimal,
       avgMinutes,
+      avgHours,
+      totalHours,
+      totalLogs: records.length,
       points: points.length > 0 ? points : [avgMinutes]
     };
   }, [sleepRecords, cutoffTime, timeframeDays]);
@@ -405,6 +422,7 @@ export default function DashboardModal({
       avgSteps,
       distanceDisplay,
       totalCalories,
+      totalKm: totalDistanceKm.toFixed(1),
       points: points.length > 0 ? points : [avgSteps]
     };
   }, [stepRecords, cutoffTime, timeframeDays, unit, isBn]);
@@ -451,6 +469,7 @@ export default function DashboardModal({
       countBooks,
       booksList,
       avgPagesPerDay,
+      totalSessions: records.length,
       points: points.length > 0 ? points : [totalPages]
     };
   }, [readingRecords, savedBooks, cutoffTime, timeframeDays]);
@@ -514,6 +533,408 @@ export default function DashboardModal({
       </div>
     );
   };
+
+  const renderDashboardBody = (isInlineView: boolean) => (
+    <div className={cn("space-y-2.5 sm:space-y-3", isInlineView ? "px-3 sm:px-5 py-3" : "flex-1 overflow-y-auto px-3 sm:px-5 py-3")}>
+      {/* Quick At-a-Glance Strip (5 compact badges) */}
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+        {/* Weight */}
+        <div className={cn(
+          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
+          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
+        )}>
+          <Scale size={12} className="text-orange-400 mb-0.5" />
+          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ওজন' : 'Weight'}</span>
+          <span className="text-xs sm:text-sm font-black text-orange-400">
+            {weightMetrics.isLoss ? '-' : weightMetrics.isGain ? '+' : ''}{formatNum(Math.abs(weightMetrics.deltaDisplay))} {weightMetrics.unitLabel}
+          </span>
+        </div>
+
+        {/* Water */}
+        <div className={cn(
+          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
+          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
+        )}>
+          <Droplets size={12} className="text-cyan-400 mb-0.5" />
+          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পানি' : 'Water'}</span>
+          <span className="text-xs sm:text-sm font-black text-cyan-400">
+            {formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস' : 'gls'}
+          </span>
+        </div>
+
+        {/* Sleep */}
+        <div className={cn(
+          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
+          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
+        )}>
+          <Moon size={12} className="text-indigo-400 mb-0.5" />
+          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ঘুম' : 'Sleep'}</span>
+          <span className="text-xs sm:text-sm font-black text-indigo-400">
+            {formatNum(sleepMetrics.avgHours)} {isBn ? 'ঘণ্টা' : 'h'}
+          </span>
+        </div>
+
+        {/* Steps */}
+        <div className={cn(
+          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
+          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
+        )}>
+          <Footprints size={12} className="text-emerald-400 mb-0.5" />
+          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'হাঁটা' : 'Steps'}</span>
+          <span className="text-xs sm:text-sm font-black text-emerald-400">
+            {formatNum(stepMetrics.avgSteps >= 1000 ? Math.round(stepMetrics.avgSteps / 1000) + 'k' : stepMetrics.avgSteps)}
+          </span>
+        </div>
+
+        {/* Reading */}
+        <div className={cn(
+          "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
+          darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
+        )}>
+          <BookOpen size={12} className="text-amber-400 mb-0.5" />
+          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পড়া' : 'Read'}</span>
+          <span className="text-xs sm:text-sm font-black text-amber-400">
+            {formatNum(readingMetrics.avgPagesPerDay)} {isBn ? 'পৃষ্ঠা' : 'p'}
+          </span>
+        </div>
+      </div>
+
+      {/* Row 1: Weight & Water side by side on desktop */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+        {/* Weight Tracking Card */}
+        <div className={cn(
+          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
+          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+        )}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400">
+                <Scale size={14} />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'ওজনের পরিবর্তন' : 'Weight Progress'}</h3>
+                <p className="text-[10px] text-gray-400">{isBn ? 'সর্বশেষ রেকর্ড ও লক্ষ্য' : 'Latest record & target'}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab ? onNavigateTab('calculator') : onClose()}
+              className="text-[10px] font-bold text-primary flex items-center gap-0.5 hover:underline cursor-pointer"
+            >
+              <span>{isBn ? 'লগ' : 'Log'}</span>
+              <ArrowRight size={10} />
+            </button>
+          </div>
+
+          <div className="flex items-baseline justify-between my-1">
+            <div>
+              <span className="text-xl sm:text-2xl font-black">{formatNum(weightMetrics.latestDisplay)}</span>
+              <span className="text-xs font-bold text-gray-400 ml-1">{weightMetrics.unitLabel}</span>
+            </div>
+            <div className={cn(
+              "px-2 py-0.5 rounded-lg text-xs font-black flex items-center gap-1",
+              weightMetrics.isLoss ? "bg-emerald-500/15 text-emerald-400" :
+              weightMetrics.isGain ? "bg-amber-500/15 text-amber-400" : "bg-gray-500/15 text-gray-400"
+            )}>
+              {weightMetrics.isLoss && <TrendingDown size={12} />}
+              {weightMetrics.isGain && <TrendingUp size={12} />}
+              {!weightMetrics.isLoss && !weightMetrics.isGain && <Minus size={12} />}
+              <span>{formatNum(Math.abs(weightMetrics.deltaDisplay))} {weightMetrics.unitLabel}</span>
+            </div>
+          </div>
+
+          {weightMetrics.targetDisplay ? (
+            <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
+              <span className="text-gray-400 flex items-center gap-1">
+                <Target size={11} className="text-primary" />
+                {isBn ? 'লক্ষ্যমাত্রা:' : 'Goal Target:'}
+              </span>
+              <span className="font-bold text-primary">{formatNum(weightMetrics.targetDisplay)} {weightMetrics.unitLabel}</span>
+            </div>
+          ) : (
+            <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 text-[10px] text-gray-400">
+              {isBn ? 'লক্ষ্য সেট করা হয়নি' : 'No target weight set yet'}
+            </div>
+          )}
+        </div>
+
+        {/* Water Intake Card */}
+        <div className={cn(
+          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
+          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+        )}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
+                <Droplets size={14} />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'পানি পানের অগ্রগতি' : 'Hydration Intake'}</h3>
+                <p className="text-[10px] text-gray-400">{isBn ? 'দৈনিক লক্ষ্য ও পূর্ণতার হার' : 'Daily target & completion'}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab ? onNavigateTab('logify', 'water') : onClose()}
+              className="text-[10px] font-bold text-cyan-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+            >
+              <span>{isBn ? 'লগ' : 'Log'}</span>
+              <ArrowRight size={10} />
+            </button>
+          </div>
+
+          <div className="flex items-baseline justify-between my-1">
+            <div>
+              <span className="text-xl sm:text-2xl font-black text-cyan-400">{formatNum(waterMetrics.totalGlasses)}</span>
+              <span className="text-xs font-bold text-gray-400 ml-1">{isBn ? 'গ্লাস (মোট)' : 'glasses total'}</span>
+            </div>
+            <div className="px-2 py-0.5 rounded-lg text-xs font-black bg-cyan-500/15 text-cyan-400">
+              {formatNum(waterMetrics.completionRate, 0)}% {isBn ? 'লক্ষ্য পূরণ' : 'of goal'}
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
+            <span className="text-gray-400">{isBn ? 'দৈনিক গড়:' : 'Daily Average:'}</span>
+            <span className="font-bold text-cyan-400">{formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস/দিন' : 'gls/day'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Sleep & Steps */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+        {/* Sleep Quality & Hours Card */}
+        <div className={cn(
+          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
+          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+        )}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                <Moon size={14} />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'ঘুম ট্র্যাকিং' : 'Sleep Tracking'}</h3>
+                <p className="text-[10px] text-gray-400">{isBn ? 'গড় ঘুম ও রেকর্ডের সংখ্যা' : 'Average sleep & logs'}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab ? onNavigateTab('logify', 'sleep') : onClose()}
+              className="text-[10px] font-bold text-indigo-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+            >
+              <span>{isBn ? 'লগ' : 'Log'}</span>
+              <ArrowRight size={10} />
+            </button>
+          </div>
+
+          <div className="flex items-baseline justify-between my-1">
+            <div>
+              <span className="text-xl sm:text-2xl font-black text-indigo-400">{formatNum(sleepMetrics.avgHours)}</span>
+              <span className="text-xs font-bold text-gray-400 ml-1">{isBn ? 'ঘণ্টা/রাত' : 'hrs/night'}</span>
+            </div>
+            <div className="px-2 py-0.5 rounded-lg text-xs font-black bg-indigo-500/15 text-indigo-400">
+              {formatNum(sleepMetrics.totalLogs)} {isBn ? 'দিন রেকর্ড' : 'nights logged'}
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
+            <span className="text-gray-400">{isBn ? 'মোট বিশ্রামের সময়:' : 'Total Rest Time:'}</span>
+            <span className="font-bold text-indigo-400">{formatNum(sleepMetrics.totalHours)} {isBn ? 'ঘণ্টা' : 'hours'}</span>
+          </div>
+        </div>
+
+        {/* Steps Card */}
+        <div className={cn(
+          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
+          darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-gray-50/70 border-black/5 hover:border-black/10"
+        )}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                <Footprints size={14} />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'হাঁটার হিসাব' : 'Steps & Activity'}</h3>
+                <p className="text-[10px] text-gray-400">{isBn ? 'মোট কদম ও দূরত্ব' : 'Total steps & distance'}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab ? onNavigateTab('logify', 'steps') : onClose()}
+              className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+            >
+              <span>{isBn ? 'লগ' : 'Log'}</span>
+              <ArrowRight size={10} />
+            </button>
+          </div>
+
+          <div className="flex items-baseline justify-between my-1">
+            <div>
+              <span className="text-xl sm:text-2xl font-black text-emerald-400">{formatNum(stepMetrics.totalSteps)}</span>
+              <span className="text-xs font-bold text-gray-400 ml-1">{isBn ? 'কদম' : 'steps'}</span>
+            </div>
+            <div className="px-2 py-0.5 rounded-lg text-xs font-black bg-emerald-500/15 text-emerald-400">
+              ~{formatNum(stepMetrics.totalKm)} {isBn ? 'কিমি' : 'km'}
+            </div>
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-dashed border-gray-500/20 flex items-center justify-between text-[11px]">
+            <span className="text-gray-400">{isBn ? 'দৈনিক গড় কদম:' : 'Daily Average:'}</span>
+            <span className="font-bold text-emerald-400">{formatNum(stepMetrics.avgSteps)} {isBn ? 'কদম/দিন' : 'steps/day'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: Reading Tracker Summary Card */}
+      <div className={cn(
+        "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all",
+        darkMode ? "bg-white/[0.02] border-white/10" : "bg-gray-50/70 border-black/5"
+      )}>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+              <BookOpen size={14} />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold">{isBn ? 'বই পড়ার সারাংশ' : 'Reading Insights'}</h3>
+              <p className="text-[10px] text-gray-400">{isBn ? 'মোট পৃষ্ঠা, পড়ার সময় ও সক্রিয় বই' : 'Pages, reading minutes & library'}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab ? onNavigateTab('logify', 'reading') : onClose()}
+            className="text-[10px] font-bold text-amber-400 flex items-center gap-0.5 hover:underline cursor-pointer"
+          >
+            <span>{isBn ? 'লগ' : 'Log'}</span>
+            <ArrowRight size={10} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 py-1 text-center">
+          <div className={cn("p-2 rounded-xl", darkMode ? "bg-white/5" : "bg-white shadow-xs")}>
+            <span className="text-[10px] text-gray-400 block">{isBn ? 'মোট পৃষ্ঠা' : 'Pages Read'}</span>
+            <span className="text-base sm:text-lg font-black text-amber-400">{formatNum(readingMetrics.totalPages)}</span>
+          </div>
+          <div className={cn("p-2 rounded-xl", darkMode ? "bg-white/5" : "bg-white shadow-xs")}>
+            <span className="text-[10px] text-gray-400 block">{isBn ? 'মোট সময়' : 'Minutes'}</span>
+            <span className="text-base sm:text-lg font-black text-amber-400">{formatNum(readingMetrics.totalMinutes)} {isBn ? 'মি.' : 'm'}</span>
+          </div>
+          <div className={cn("p-2 rounded-xl", darkMode ? "bg-white/5" : "bg-white shadow-xs")}>
+            <span className="text-[10px] text-gray-400 block">{isBn ? 'পড়ার সেশন' : 'Sessions'}</span>
+            <span className="text-base sm:text-lg font-black text-amber-400">{formatNum(readingMetrics.totalSessions)}</span>
+          </div>
+        </div>
+
+        {savedBooks.length > 0 ? (
+          <div className="mt-2.5 pt-2 border-t border-dashed border-gray-500/20 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] text-gray-400 mr-1">{isBn ? 'লাইব্রেরি বই:' : 'Library books:'}</span>
+            {savedBooks.slice(0, 3).map((book: any, idx: number) => (
+              <div 
+                key={idx}
+                className={cn(
+                  "px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border",
+                  darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
+                )}
+              >
+                <BookOpen size={10} className="text-amber-400 shrink-0" />
+                <span className="truncate max-w-[130px] sm:max-w-[200px]">{book.title}</span>
+                <span className="px-1 py-0.2 rounded-md bg-amber-500/20 text-amber-300 font-mono text-[9px]">
+                  {formatNum(book.pages)}{book.totalPages ? ` / ${formatNum(book.totalPages)}p` : 'p'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[10px] text-gray-400 italic">
+            {isBn ? 'এই সময়সীমায় কোনো পড়ার তথ্য রেকর্ড করা হয়নি।' : 'No reading sessions logged for this timeframe yet.'}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  if (isInline) {
+    return (
+      <div 
+        id="dashboard_inline_container"
+        className={cn(
+          "w-full max-w-4xl mx-auto flex flex-col rounded-2xl sm:rounded-3xl border shadow-sm overflow-hidden",
+          darkMode 
+            ? "bg-[#0F0F0F] border-white/10 text-white shadow-black/40" 
+            : "bg-white border-black/10 text-gray-900 shadow-gray-200/50"
+        )}
+      >
+        <div className={cn(
+          "flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 border-b shrink-0",
+          darkMode ? "border-white/10 bg-white/[0.02]" : "border-black/5 bg-gray-50/50"
+        )}>
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "w-7 h-7 rounded-lg flex items-center justify-center border",
+              darkMode 
+                ? "bg-primary/20 border-primary/30 text-primary" 
+                : "bg-primary/10 border-primary/20 text-primary"
+            )}>
+              <LayoutDashboard size={15} />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-black tracking-tight leading-tight">
+                {isBn ? 'হোম ড্যাশবোর্ড' : 'Home Dashboard'}
+              </h2>
+              <p className="text-[10px] text-gray-400 font-medium leading-none hidden xs:block">
+                {isBn ? 'সাপ্তাহিক, মাসিক ও বার্ষিক সারাংশ' : 'Weekly, monthly & yearly summary'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex p-0.5 rounded-xl border",
+              darkMode ? "bg-black/40 border-white/10" : "bg-gray-100/80 border-black/5"
+            )}>
+              {(['weekly', 'monthly', 'yearly'] as Timeframe[]).map((t) => {
+                const isSelected = timeframe === t;
+                const label = t === 'weekly' 
+                  ? (isBn ? 'সাপ্তাহিক' : 'Weekly') 
+                  : t === 'monthly' 
+                    ? (isBn ? 'মাসিক' : 'Monthly') 
+                    : (isBn ? 'বার্ষিক' : 'Yearly');
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTimeframe(t)}
+                    className={cn(
+                      "relative px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer select-none",
+                      isSelected
+                        ? (darkMode ? "text-white font-black" : "text-gray-900 font-black")
+                        : (darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-600 hover:text-gray-900")
+                    )}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="activeDashboardInlineTimeframe"
+                        className={cn(
+                          "absolute inset-0 rounded-lg",
+                          darkMode 
+                            ? "bg-white/15 border border-white/20 shadow-xs" 
+                            : "bg-white shadow-xs border border-black/5"
+                        )}
+                        transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                      />
+                    )}
+                    <span className="relative z-10">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {renderDashboardBody(true)}
+      </div>
+    );
+  }
 
   if (!isOpen) return null;
 
@@ -624,295 +1045,8 @@ export default function DashboardModal({
           </div>
         </div>
 
-        {/* Modal Body: High-density, minimal one-screen scannable layout on mobile */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 space-y-2.5 sm:space-y-3">
-          
-          {/* Quick At-a-Glance Strip (5 compact badges) */}
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-            {/* Weight */}
-            <div className={cn(
-              "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-              darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-            )}>
-              <Scale size={12} className="text-orange-400 mb-0.5" />
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ওজন' : 'Weight'}</span>
-              <span className="text-xs sm:text-sm font-black text-orange-400">
-                {weightMetrics.isLoss ? '-' : weightMetrics.isGain ? '+' : ''}{formatNum(Math.abs(weightMetrics.deltaDisplay))} {weightMetrics.unitLabel}
-              </span>
-            </div>
-
-            {/* Water */}
-            <div className={cn(
-              "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-              darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-            )}>
-              <Droplets size={12} className="text-cyan-400 mb-0.5" />
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'পানি' : 'Water'}</span>
-              <span className="text-xs sm:text-sm font-black text-cyan-400">
-                {formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস' : 'gls'}
-              </span>
-            </div>
-
-            {/* Sleep */}
-            <div className={cn(
-              "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-              darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-            )}>
-              <Moon size={12} className="text-indigo-400 mb-0.5" />
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'ঘুম' : 'Sleep'}</span>
-              <span className="text-xs sm:text-sm font-black text-indigo-400">
-                {sleepMetrics.avgDisplay}
-              </span>
-            </div>
-
-            {/* Steps */}
-            <div className={cn(
-              "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-              darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-            )}>
-              <Footprints size={12} className="text-emerald-400 mb-0.5" />
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'হাঁটা' : 'Steps'}</span>
-              <span className="text-xs sm:text-sm font-black text-emerald-400">
-                {formatNum(stepMetrics.avgSteps)}
-              </span>
-            </div>
-
-            {/* Reading */}
-            <div className={cn(
-              "flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border text-center transition-all",
-              darkMode ? "bg-white/[0.02] border-white/5" : "bg-gray-50 border-black/5"
-            )}>
-              <BookOpen size={12} className="text-amber-400 mb-0.5" />
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{isBn ? 'বই' : 'Books'}</span>
-              <span className="text-xs sm:text-sm font-black text-amber-400">
-                {formatNum(readingMetrics.countBooks)} ({formatNum(readingMetrics.totalPages)}p)
-              </span>
-            </div>
-          </div>
-
-          {/* 1. Weight & Goal Progress Card */}
-          <div className={cn(
-            "p-2.5 sm:p-3 rounded-2xl border transition-all flex flex-col gap-2",
-            darkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-black/5 shadow-xs"
-          )}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center">
-                  <Scale size={13} />
-                </div>
-                <div>
-                  <span className="text-xs font-black">
-                    {timeframe === 'weekly' ? (isBn ? 'সাপ্তাহিক ওজন পরিবর্তন' : 'Weekly Weight Change')
-                      : timeframe === 'monthly' ? (isBn ? 'মাসিক ওজন পরিবর্তন' : 'Monthly Weight Change')
-                      : (isBn ? 'বার্ষিক গড় ওজন পরিবর্তন' : 'Yearly Weight Trend')}
-                  </span>
-                  <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
-                    <span>{isBn ? 'বর্তমান' : 'Current'}: <strong>{formatNum(weightMetrics.latestDisplay)} {weightMetrics.unitLabel}</strong></span>
-                    <span>•</span>
-                    <span className={cn(
-                      "font-bold flex items-center gap-0.5",
-                      weightMetrics.isLoss ? "text-emerald-400" : weightMetrics.isGain ? "text-amber-400" : "text-gray-400"
-                    )}>
-                      {weightMetrics.isLoss ? <TrendingDown size={11} /> : weightMetrics.isGain ? <TrendingUp size={11} /> : <Minus size={11} />}
-                      {weightMetrics.isLoss ? (isBn ? 'কমেছে' : 'Down') : weightMetrics.isGain ? (isBn ? 'বেড়েছে' : 'Up') : (isBn ? 'অপরিবর্তিত' : 'Steady')} {formatNum(Math.abs(weightMetrics.deltaDisplay))} {weightMetrics.unitLabel}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sparkline Analytics */}
-              <div className="flex flex-col items-end">
-                {renderSparkline(weightMetrics.points, '#f97316')}
-                <span className="text-[9px] text-gray-400 font-mono mt-0.5">
-                  {isBn ? 'ট্রেন্ড অ্যানালিটিক্স' : 'trendline'}
-                </span>
-              </div>
-            </div>
-
-            {/* Target Goal Progress Bar if set */}
-            {weightMetrics.targetDisplay && (
-              <div className={cn(
-                "p-2 rounded-xl flex items-center justify-between text-[11px] border",
-                darkMode ? "bg-black/30 border-white/5" : "bg-gray-50 border-black/5"
-              )}>
-                <div className="flex items-center gap-1.5">
-                  <Target size={12} className="text-primary" />
-                  <span className="text-gray-400">{isBn ? 'লক্ষ্যমাত্রা' : 'Target'}:</span>
-                  <strong className="text-primary">{formatNum(weightMetrics.targetDisplay)} {weightMetrics.unitLabel}</strong>
-                  {weightMetrics.goalDiffDisplay !== null && (
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      ({formatNum(weightMetrics.goalDiffDisplay)} {weightMetrics.unitLabel} {isBn ? 'বাকি' : 'to go'})
-                    </span>
-                  )}
-                </div>
-                {weightMetrics.goalPercent !== null && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-primary/20 text-primary border border-primary/30">
-                    {formatNum(weightMetrics.goalPercent)}%
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 2. Water Intake Card */}
-          <div className={cn(
-            "p-2.5 sm:p-3 rounded-2xl border transition-all flex items-center justify-between",
-            darkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-black/5 shadow-xs"
-          )}>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Droplets size={13} />
-              </div>
-              <div>
-                <span className="text-xs font-black">
-                  {timeframe === 'weekly' ? (isBn ? 'সাপ্তাহিক পানি পান' : 'Weekly Water Intake')
-                    : timeframe === 'monthly' ? (isBn ? 'মাসিক পানি পান' : 'Monthly Water Intake')
-                    : (isBn ? 'বার্ষিক পানি গ্রহণের গড়' : 'Yearly Water Intake')}
-                </span>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
-                  <span>{isBn ? 'গড়' : 'Avg'}: <strong className="text-cyan-400">{formatNum(waterMetrics.dailyAvgMl)} ml/day</strong> ({formatNum(waterMetrics.dailyAvgGlasses)} {isBn ? 'গ্লাস' : 'glasses'})</span>
-                  <span>•</span>
-                  <span>{isBn ? 'মোট' : 'Total'}: {formatNum(waterMetrics.totalLiters)} L</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end">
-              {renderSparkline(waterMetrics.points, '#06b6d4')}
-              <span className="text-[9px] text-cyan-400 font-mono mt-0.5">
-                {formatNum(waterMetrics.percentGoal)}% {isBn ? 'লক্ষ্য পূরণ' : 'goal rate'}
-              </span>
-            </div>
-          </div>
-
-          {/* 3. Sleep Card */}
-          <div className={cn(
-            "p-2.5 sm:p-3 rounded-2xl border transition-all flex items-center justify-between",
-            darkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-black/5 shadow-xs"
-          )}>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <Moon size={13} />
-              </div>
-              <div>
-                <span className="text-xs font-black">
-                  {timeframe === 'weekly' ? (isBn ? 'সাপ্তাহিক ঘুম' : 'Weekly Sleep Routine')
-                    : timeframe === 'monthly' ? (isBn ? 'মাসিক ঘুম' : 'Monthly Sleep Routine')
-                    : (isBn ? 'বার্ষিক ঘুমের গড়' : 'Yearly Sleep Average')}
-                </span>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
-                  <span>{isBn ? 'গড় সময়' : 'Avg duration'}: <strong className="text-indigo-400">{sleepMetrics.avgDisplay}</strong></span>
-                  <span>•</span>
-                  <span>{isBn ? 'মোট' : 'Total'}: {sleepMetrics.totalDisplay}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end">
-              {renderSparkline(sleepMetrics.points, '#818cf8')}
-              <span className={cn(
-                "text-[9px] font-mono mt-0.5",
-                sleepMetrics.isOptimal ? "text-emerald-400" : "text-amber-400"
-              )}>
-                {sleepMetrics.isOptimal ? (isBn ? 'পর্যাপ্ত ঘুম' : 'Optimal range') : (isBn ? 'উন্নতি প্রয়োজন' : 'Keep resting')}
-              </span>
-            </div>
-          </div>
-
-          {/* 4. Steps Card */}
-          <div className={cn(
-            "p-2.5 sm:p-3 rounded-2xl border transition-all flex items-center justify-between",
-            darkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-black/5 shadow-xs"
-          )}>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <Footprints size={13} />
-              </div>
-              <div>
-                <span className="text-xs font-black">
-                  {timeframe === 'weekly' ? (isBn ? 'সাপ্তাহিক পদক্ষেপ' : 'Weekly Steps Activity')
-                    : timeframe === 'monthly' ? (isBn ? 'মাসিক পদক্ষেপ' : 'Monthly Steps Activity')
-                    : (isBn ? 'বার্ষিক পদক্ষেপের গড়' : 'Yearly Steps Average')}
-                </span>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
-                  <span>{isBn ? 'গড়' : 'Avg'}: <strong className="text-emerald-400">{formatNum(stepMetrics.avgSteps)}/day</strong></span>
-                  <span>•</span>
-                  <span>{stepMetrics.distanceDisplay}</span>
-                  <span>•</span>
-                  <span>{formatNum(stepMetrics.totalCalories)} kcal</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end">
-              {renderSparkline(stepMetrics.points, '#10b981')}
-              <span className="text-[9px] text-emerald-400 font-mono mt-0.5">
-                {formatNum(stepMetrics.totalSteps)} {isBn ? 'পদক্ষেপ মোট' : 'total steps'}
-              </span>
-            </div>
-          </div>
-
-          {/* 5. Reading & Books Card (Displays which book & how many books reading / pages read) */}
-          <div className={cn(
-            "p-2.5 sm:p-3 rounded-2xl border transition-all flex flex-col gap-2",
-            darkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-black/5 shadow-xs"
-          )}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                  <BookOpen size={13} />
-                </div>
-                <div>
-                  <span className="text-xs font-black">
-                    {timeframe === 'weekly' ? (isBn ? 'সাপ্তাহিক পড়ার বিবরণ ও বই' : 'Weekly Reading & Books')
-                      : timeframe === 'monthly' ? (isBn ? 'মাসিক পড়ার বিবরণ ও বই' : 'Monthly Reading & Books')
-                      : (isBn ? 'বার্ষিক বই ও পড়ার বিবরণ' : 'Yearly Reading & Books')}
-                  </span>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
-                    <span><strong>{formatNum(readingMetrics.countBooks)}</strong> {isBn ? 'টি বই' : readingMetrics.countBooks === 1 ? 'book' : 'books'}</span>
-                    <span>•</span>
-                    <span><strong>{formatNum(readingMetrics.totalPages)}</strong> {isBn ? 'পৃষ্ঠা পঠিত' : 'pages read'}</span>
-                    <span>•</span>
-                    <span>{formatNum(readingMetrics.totalMinutes)} min</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end">
-                {renderSparkline(readingMetrics.points, '#f59e0b')}
-                <span className="text-[9px] text-amber-400 font-mono mt-0.5">
-                  ~{formatNum(readingMetrics.avgPagesPerDay)} {isBn ? 'পৃষ্ঠা/দিন' : 'pg/day'}
-                </span>
-              </div>
-            </div>
-
-            {/* List of Which Books Reading & Pages Read */}
-            {readingMetrics.booksList.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {readingMetrics.booksList.map((book, idx) => (
-                  <div 
-                    key={idx}
-                    className={cn(
-                      "px-2 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1.5",
-                      darkMode ? "bg-black/30 border-white/10 text-gray-200" : "bg-gray-50 border-black/5 text-gray-800"
-                    )}
-                  >
-                    <BookOpen size={10} className="text-amber-400 shrink-0" />
-                    <span className="truncate max-w-[130px] sm:max-w-[200px]">{book.title}</span>
-                    <span className="px-1 py-0.2 rounded-md bg-amber-500/20 text-amber-300 font-mono text-[9px]">
-                      {formatNum(book.pages)}{book.totalPages ? ` / ${formatNum(book.totalPages)}p` : 'p'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[10px] text-gray-400 italic">
-                {isBn ? 'এই সময়সীমায় কোনো পড়ার তথ্য রেকর্ড করা হয়নি।' : 'No reading sessions logged for this timeframe yet.'}
-              </p>
-            )}
-          </div>
-
-        </div>
+        {/* Modal Body */}
+        {renderDashboardBody(false)}
 
         {/* Modal Footer: Action shortcuts & close */}
         <div className={cn(

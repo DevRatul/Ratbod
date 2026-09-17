@@ -43,7 +43,8 @@ import {
   Globe,
   LayoutDashboard,
   ChevronLeft,
-  Compass
+  Compass,
+  Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -276,6 +277,35 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       }, { merge: true }).catch(() => {});
     }
   };
+
+  // Week Start Day (0=Sun, 1=Mon, ..., 6=Sat) - default 6 (Saturday)
+  const [weekStartDay, setWeekStartDay] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ratool_week_start_day') || localStorage.getItem('ratbod_week_start_day');
+      if (saved !== null && !isNaN(Number(saved))) return Number(saved);
+      return 6; // Default: Saturday
+    } catch (e) {
+      return 6;
+    }
+  });
+
+  const handleSetWeekStartDay = (day: number) => {
+    setWeekStartDay(day);
+    try {
+      localStorage.setItem('ratool_week_start_day', String(day));
+      localStorage.setItem('ratbod_week_start_day', String(day));
+    } catch (e) {}
+
+    const user = authUser || auth.currentUser;
+    if (user) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        weekStartDay: day,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+    }
+  };
+
   const [showSavedNotification, setShowSavedNotification] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -430,6 +460,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             return currentSubTab;
           });
         }
+
+        // Real-time synchronization of week start day
+        if (data.weekStartDay !== undefined && typeof data.weekStartDay === 'number') {
+          setWeekStartDay(data.weekStartDay);
+          try {
+            localStorage.setItem('ratool_week_start_day', String(data.weekStartDay));
+            localStorage.setItem('ratbod_week_start_day', String(data.weekStartDay));
+          } catch (e) {}
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}`);
@@ -513,6 +552,14 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 return currentSubTab;
               });
             }
+
+            if (data.weekStartDay !== undefined && typeof data.weekStartDay === 'number') {
+              setWeekStartDay(data.weekStartDay);
+              try {
+                localStorage.setItem('ratool_week_start_day', String(data.weekStartDay));
+                localStorage.setItem('ratbod_week_start_day', String(data.weekStartDay));
+              } catch (e) {}
+            }
           }
         } catch (e) {}
       }
@@ -552,6 +599,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             // Quick measurement fields (weight, waist, neck, hip) intentionally start empty on reload
             if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
             if (data.unit !== undefined) setUnit(data.unit || 'metric');
+            if (data.weekStartDay !== undefined && typeof data.weekStartDay === 'number') {
+              setWeekStartDay(data.weekStartDay);
+              try {
+                localStorage.setItem('ratool_week_start_day', String(data.weekStartDay));
+                localStorage.setItem('ratbod_week_start_day', String(data.weekStartDay));
+              } catch (e) {}
+            }
 
             const isRemoteSunrise = data.isSunriseToSunset !== undefined 
               ? Boolean(data.isSunriseToSunset) 
@@ -1366,7 +1420,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
   // Mobile Liquid Drag & Swapping Navigation (iOS 27 Fluid Gestures)
   const MOBILE_TABS_CONFIG = useMemo(() => [
-    { id: 'groceries' as TabType, nameEn: 'Groceries', nameBn: 'বাজার' },
+    { id: 'home' as TabType, nameEn: 'Home', nameBn: 'হোম' },
     { id: 'results' as TabType, nameEn: 'Habitor', nameBn: 'অভ্যাস' },
     { id: 'logify' as TabType, nameEn: 'Logify', nameBn: 'লগ' },
     { id: 'salah' as TabType, nameEn: 'Salah', nameBn: 'সালাত' },
@@ -1458,20 +1512,6 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     setMobileDragOffset(0);
   };
 
-  if (activeTab === 'home') {
-    return (
-      <LandingPage
-        onNavigateTab={(tab) => {
-          handleMenuClick(tab);
-        }}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        lang={lang}
-        setLang={setLang}
-      />
-    );
-  }
-
   return (
     <>
     {/* Notification Toast */}
@@ -1497,13 +1537,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       onTouchEnd={handleMobileTouchEnd}
       onTouchCancel={handleMobileTouchEnd}
       className={cn(
-      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-clip pb-24 md:pb-0",
+      "min-h-screen font-sans transition-colors duration-300 selection:bg-primary-light overflow-x-clip",
       darkMode ? "dark bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#1A1A1A]"
     )}>
       {/* Header */}
       <header className={cn(
         "sticky top-0 z-50 px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-[8px] transition-all duration-300",
-        activeTab !== 'calculator' ? "hidden md:block" : "block"
+        activeTab !== 'home' ? "hidden md:block" : "block"
       )}>
         <div className={cn(
           "relative max-w-6xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between rounded-2xl border backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300",
@@ -1525,7 +1565,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             <h1 className="font-sans font-black text-base tracking-tighter select-none">RaTooL</h1>
           </button>
           
-          {/* Desktop Navigation Links (Centered in header / full webpage width): 1. Health, 2. Salah, 3. Logify, 4. Habitor, 5. Groceries */}
+          {/* Desktop Navigation Links (Centered in header / full webpage width): 1. Home, 2. Habitor, 3. Logify, 4. Salah, 5. Health */}
           <nav 
             aria-label="Main Navigation"
             className={cn(
@@ -1535,19 +1575,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 : "bg-gray-100/70 border-black/5"
             )}
           >
-            {/* 1. Health */}
+            {/* 1. Home (Takes position of Health in full view) */}
             <button
-              id="tab_calculator_desktop"
+              id="tab_home_desktop"
               type="button"
-              onClick={() => handleMenuClick('calculator')}
+              onClick={() => handleMenuClick('home')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                activeTab === 'calculator'
+                activeTab === 'home'
                   ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              {activeTab === 'calculator' && (
+              {activeTab === 'home' && (
                 <motion.div
                   layoutId="activeHeaderTabIndicator"
                   className={cn(
@@ -1564,77 +1604,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   }}
                 />
               )}
-              <Heart size={13} className="relative z-10 text-primary shrink-0" />
-              <span className="relative z-10">{t.tabMeasure}</span>
+              <Home size={13} className="relative z-10 text-primary shrink-0" />
+              <span className="relative z-10">{t.tabHome}</span>
             </button>
 
-            {/* 2. Salah (repositioned with Habitor) */}
-            <button
-              id="tab_salah_desktop"
-              type="button"
-              onClick={() => handleMenuClick('salah')}
-              className={cn(
-                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                activeTab === 'salah'
-                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
-              )}
-            >
-              {activeTab === 'salah' && (
-                <motion.div
-                  layoutId="activeHeaderTabIndicator"
-                  className={cn(
-                    "absolute inset-0 rounded-lg",
-                    darkMode 
-                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
-                      : "bg-white shadow-sm border border-black/5"
-                  )}
-                  transition={{
-                    type: "spring",
-                    stiffness: 380,
-                    damping: 25,
-                    mass: 0.7
-                  }}
-                />
-              )}
-              <Compass size={13} className="relative z-10 text-emerald-500 shrink-0" />
-              <span className="relative z-10">{t.tabSalah}</span>
-            </button>
-
-            {/* 3. Logify (Third) */}
-            <button
-              id="tab_logify_desktop"
-              type="button"
-              onClick={() => handleMenuClick('logify')}
-              className={cn(
-                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                (activeTab === 'logify' || activeTab === 'water')
-                  ? (darkMode ? "text-blue-400 font-bold" : "text-blue-600 font-bold")
-                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
-              )}
-            >
-              {(activeTab === 'logify' || activeTab === 'water') && (
-                <motion.div
-                  layoutId="activeHeaderTabIndicator"
-                  className={cn(
-                    "absolute inset-0 rounded-lg",
-                    darkMode 
-                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
-                      : "bg-white shadow-sm border border-black/5"
-                  )}
-                  transition={{
-                    type: "spring",
-                    stiffness: 380,
-                    damping: 25,
-                    mass: 0.7
-                  }}
-                />
-              )}
-              <ClipboardList size={13} className={cn("relative z-10 shrink-0 transition-colors", (activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "opacity-75")} />
-              <span className="relative z-10">{t.tabLogify}</span>
-            </button>
-
-            {/* 4. Habitor (repositioned with Salah) */}
+            {/* 2. Habitor */}
             <button
               id="tab_results_desktop"
               type="button"
@@ -1667,19 +1641,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               <span className="relative z-10">{t.tabResults}</span>
             </button>
 
-            {/* 5. Groceries (Fifth) */}
+            {/* 3. Logify */}
             <button
-              id="tab_groceries_desktop"
+              id="tab_logify_desktop"
               type="button"
-              onClick={() => handleMenuClick('groceries')}
+              onClick={() => handleMenuClick('logify')}
               className={cn(
                 "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
-                activeTab === 'groceries'
-                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                (activeTab === 'logify' || activeTab === 'water')
+                  ? (darkMode ? "text-blue-400 font-bold" : "text-blue-600 font-bold")
                   : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
               )}
             >
-              {activeTab === 'groceries' && (
+              {(activeTab === 'logify' || activeTab === 'water') && (
                 <motion.div
                   layoutId="activeHeaderTabIndicator"
                   className={cn(
@@ -1696,8 +1670,74 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   }}
                 />
               )}
-              <ShoppingBag size={13} className="relative z-10 text-orange-500 shrink-0" />
-              <span className="relative z-10">{t.tabHistory}</span>
+              <ClipboardList size={13} className={cn("relative z-10 shrink-0 transition-colors", (activeTab === 'logify' || activeTab === 'water') ? (darkMode ? "text-blue-400" : "text-blue-500") : "opacity-75")} />
+              <span className="relative z-10">{t.tabLogify}</span>
+            </button>
+
+            {/* 4. Salah */}
+            <button
+              id="tab_salah_desktop"
+              type="button"
+              onClick={() => handleMenuClick('salah')}
+              className={cn(
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
+                activeTab === 'salah'
+                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
+              )}
+            >
+              {activeTab === 'salah' && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <Compass size={13} className="relative z-10 text-emerald-500 shrink-0" />
+              <span className="relative z-10">{t.tabSalah}</span>
+            </button>
+
+            {/* 5. Health (Calculator) */}
+            <button
+              id="tab_calculator_desktop"
+              type="button"
+              onClick={() => handleMenuClick('calculator')}
+              className={cn(
+                "relative px-3.5 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-1.5 select-none",
+                activeTab === 'calculator'
+                  ? (darkMode ? "text-white font-bold" : "text-gray-900 font-bold")
+                  : (darkMode ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900")
+              )}
+            >
+              {activeTab === 'calculator' && (
+                <motion.div
+                  layoutId="activeHeaderTabIndicator"
+                  className={cn(
+                    "absolute inset-0 rounded-lg",
+                    darkMode 
+                      ? "bg-white/15 border border-white/10 shadow-sm shadow-black/40" 
+                      : "bg-white shadow-sm border border-black/5"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 25,
+                    mass: 0.7
+                  }}
+                />
+              )}
+              <Heart size={13} className="relative z-10 text-primary shrink-0" />
+              <span className="relative z-10">{t.tabMeasure}</span>
             </button>
           </nav>
           
@@ -1744,13 +1784,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                         darkMode ? "bg-[#121212]/95 backdrop-blur-xl border-white/10 shadow-black/80" : "bg-white/95 backdrop-blur-xl border-black/10 shadow-gray-400/50"
                       )}
                     >
-                      {/* Dashboard (On top of profile menu) */}
+                      {/* Home / Dashboard (In profile menu) */}
                       <button
                         id="profile_menu_dashboard"
                         type="button"
                         onClick={() => {
                           setShowProfileMenu(false);
-                          setIsDashboardOpen(true);
+                          handleMenuClick('home');
                         }}
                         className={cn(
                           "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
@@ -1829,6 +1869,64 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       </div>
 
                       <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
+
+                      {/* Week Start Day Option */}
+                      <div
+                        id="profile_menu_week_start"
+                        className={cn(
+                          "w-full px-3.5 sm:px-4 py-2 text-xs font-bold flex flex-col gap-1.5 transition-colors select-none",
+                          darkMode ? "text-white" : "text-gray-900"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 sm:gap-3">
+                            <Calendar size={14} className="sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                            <span>{lang === 'bn' ? 'সপ্তাহ শুরু' : 'Week Start'}</span>
+                          </div>
+                          <span className="text-[10px] font-black text-primary uppercase">
+                            {weekStartDay === 6 ? (lang === 'bn' ? 'শনি (ডিফল্ট)' : 'Sat (Default)') : (
+                              lang === 'bn'
+                                ? ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'][weekStartDay]
+                                : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekStartDay]
+                            )}
+                          </span>
+                        </div>
+                        <div className={cn(
+                          "grid grid-cols-7 gap-1 p-1 rounded-lg",
+                          darkMode ? "bg-white/5 border border-white/5" : "bg-black/5 border border-black/5"
+                        )}>
+                          {[
+                            { day: 6, en: 'Sat', bn: 'শনি' },
+                            { day: 0, en: 'Sun', bn: 'রবি' },
+                            { day: 1, en: 'Mon', bn: 'সোম' },
+                            { day: 2, en: 'Tue', bn: 'মঙ্গল' },
+                            { day: 3, en: 'Wed', bn: 'বুধ' },
+                            { day: 4, en: 'Thu', bn: 'বৃহঃ' },
+                            { day: 5, en: 'Fri', bn: 'শুক্র' }
+                          ].map((item) => (
+                            <button
+                              key={item.day}
+                              id={`profile_menu_week_start_${item.en.toLowerCase()}`}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetWeekStartDay(item.day);
+                              }}
+                              className={cn(
+                                "py-1 rounded text-[9px] font-black text-center transition-all cursor-pointer",
+                                weekStartDay === item.day
+                                  ? "bg-primary text-white shadow-xs font-bold"
+                                  : (darkMode ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-600 hover:text-gray-900 hover:bg-black/5")
+                              )}
+                              title={`${item.en}${item.day === 6 ? ' (Default)' : ''}`}
+                            >
+                              {lang === 'bn' ? item.bn : item.en}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
                       <button
                         id="profile_menu_signout"
                         type="button"
@@ -1843,6 +1941,24 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                       >
                         <LogOut size={14} className="sm:w-4 sm:h-4 shrink-0" />
                         <span>{lang === 'bn' ? 'সাইন আউট' : 'Sign out'}</span>
+                      </button>
+
+                      <div className={cn("h-px w-full my-1", darkMode ? "bg-white/10" : "bg-black/5")} />
+                      {/* Grocery (Moved to last position in profile menu) */}
+                      <button
+                        id="profile_menu_groceries"
+                        type="button"
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          handleMenuClick('groceries');
+                        }}
+                        className={cn(
+                          "w-full text-left px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 sm:gap-3 transition-colors cursor-pointer",
+                          darkMode ? "hover:bg-white/5 text-orange-400 hover:text-orange-300" : "hover:bg-orange-50/60 text-orange-600 hover:text-orange-700"
+                        )}
+                      >
+                        <ShoppingBag size={14} className="sm:w-4 sm:h-4 text-orange-500 shrink-0" />
+                        <span>{lang === 'bn' ? 'বাজার তালিকা' : 'Grocery'}</span>
                       </button>
                     </motion.div>
                 )}
@@ -1887,7 +2003,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[20px] sm:pb-12",
         activeTab === 'salah' ? "block" : "hidden"
       )}>
-        <SalahTracker darkMode={darkMode} lang={lang} />
+        <SalahTracker darkMode={darkMode} lang={lang} weekStartDay={weekStartDay} />
       </div>
 
       {/* Groceries Tab Content */}
@@ -1900,7 +2016,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Logify Tab Content (includes Water section) */}
       <div className={cn(
-        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[70px] sm:pb-12",
         (activeTab === 'logify' || activeTab === 'water') ? "block" : "hidden"
       )}>
         <Logify 
@@ -1918,12 +2034,39 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
-        <Habitor darkMode={darkMode} lang={lang} />
+        <Habitor darkMode={darkMode} lang={lang} weekStartDay={weekStartDay} />
+      </div>
+
+      {/* Home Tab Content (Activity Dashboard rendered inline) */}
+      <div className={cn(
+        "max-w-5xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
+        activeTab === 'home' ? "block" : "hidden"
+      )}>
+        <DashboardModal
+          isOpen={true}
+          isInline={true}
+          onClose={() => {}}
+          darkMode={darkMode}
+          lang={lang}
+          unit={unit}
+          weekStartDay={weekStartDay}
+          currentWeight={metricData.weight}
+          historyList={historyList}
+          savedGoal={savedGoal}
+          onNavigateTab={(tab, subTab) => {
+            handleMenuClick(tab as TabType);
+            if (subTab) {
+              try {
+                localStorage.setItem('ratool_logify_subtab', subTab);
+              } catch (e) {}
+            }
+          }}
+        />
       </div>
 
       <main className={cn(
         "max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-2.5 pb-[11px] sm:pb-12 space-y-8 overflow-x-hidden",
-        (activeTab === 'results' || activeTab === 'salah' || activeTab === 'groceries' || activeTab === 'water' || activeTab === 'logify' || activeTab === 'breathing') ? "hidden" : "block"
+        activeTab !== 'calculator' ? "hidden" : "block"
       )}>
         {/* Top Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 !mb-[16px]">
@@ -2187,71 +2330,80 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       {/* Footer - Omitted in Liquify's 5-nav sub-nav page */}
       {activeTab !== 'logify' && activeTab !== 'water' && (
         <footer className={cn(
-          "max-w-5xl mx-auto px-6 py-[10px] sm:py-6 border-t transition-colors",
+          "max-w-5xl mx-auto px-6 pt-3 sm:pt-6 pb-[calc(54px+env(safe-area-inset-bottom,0px)+12px)] sm:pb-6 border-t transition-colors",
           darkMode ? "border-white/5" : "border-black/5"
         )}>
-          <div className="flex flex-col items-center justify-center gap-3 text-center">
-            {/* Logo - Displayed across all tabs and views */}
-            <div className="flex items-center gap-1.5">
-              <Activity size={14} className="text-gray-700 dark:text-gray-300" />
-              <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
+          <div className="flex flex-col items-center justify-center gap-3 text-center w-full">
+            {/* Logo - Centrally middle in position */}
+            <div className="w-full flex items-center justify-center text-center">
+              <button
+                type="button"
+                onClick={handleLogoClick}
+                className="flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all text-center bg-transparent border-0 p-0 select-none mx-auto"
+                title="Reload RaTooL"
+                aria-label="Reload RaTooL"
+              >
+                <Activity size={14} className="text-gray-700 dark:text-gray-300" />
+                <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
+              </button>
             </div>
 
-            {/* Unit Toggle, Policies, & Copyright: always shown on desktop, on mobile only in Health tab */}
-            <div className={cn(
-              "flex flex-col items-center justify-center gap-3 text-center w-full",
-              activeTab !== 'calculator' ? "hidden md:flex" : "flex"
-            )}>
-              {/* UNIT Switcher Pill (Only in Health / Calculator view) */}
-              {activeTab === 'calculator' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
-                  <div className={cn(
-                    "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
-                  )}>
-                    <button 
-                      onClick={() => setUnit('metric')}
-                      className={cn(
-                        "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                        unit === 'metric' 
-                          ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                          : "text-gray-400 hover:text-gray-200"
-                      )}
-                      title="Metric System"
-                    >
-                      M
-                    </button>
-                    <button 
-                      onClick={() => setUnit('imperial')}
-                      className={cn(
-                        "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
-                        unit === 'imperial' 
-                          ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
-                          : "text-gray-400 hover:text-gray-200"
-                      )}
-                      title="Imperial System"
-                    >
-                      I
-                    </button>
-                  </div>
+            {/* UNIT Switcher Pill - Moved from Home to Health directly under footer logo */}
+            {activeTab === 'calculator' && (
+              <div id="health_footer_unit_toggle" className="flex items-center justify-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-400">UNIT:</span>
+                <div className={cn(
+                  "flex p-0.5 rounded-full border transition-colors bg-[#18181c] border-white/10"
+                )}>
+                  <button 
+                    type="button"
+                    onClick={() => setUnit('metric')}
+                    className={cn(
+                      "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                      unit === 'metric' 
+                        ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                        : "text-gray-400 hover:text-gray-200"
+                    )}
+                    title="Metric System"
+                  >
+                    M
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setUnit('imperial')}
+                    className={cn(
+                      "px-3 py-0.5 rounded-full text-[10px] font-black transition-all cursor-pointer",
+                      unit === 'imperial' 
+                        ? "bg-[#00A3FF] text-white shadow-xs shadow-cyan-500/30" 
+                        : "text-gray-400 hover:text-gray-200"
+                    )}
+                    title="Imperial System"
+                  >
+                    I
+                  </button>
                 </div>
-              )}
-
-              {/* Policy Links */}
-              <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
-                <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
-                <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
-                <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
               </div>
+            )}
 
-              {/* Copyright */}
-              <p className={cn(
-                "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
-                darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
-              )}>
-                © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
-              </p>
-            </div>
+            {/* Policies & Copyright: strictly only available at home footer, removed from health and all other menus */}
+            {activeTab === 'home' && (
+              <div className="flex flex-col items-center justify-center gap-3 text-center w-full">
+                {/* Policy Links */}
+                <div className="flex items-center gap-4 sm:gap-6 text-[10px] font-semibold text-gray-700 dark:text-gray-400">
+                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Privacy Policy</a>
+                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Terms of Service</a>
+                  <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors">Contact Support</a>
+                </div>
+
+                {/* Copyright */}
+                <p className={cn(
+                  "text-[9px] font-extrabold uppercase tracking-widest transition-colors opacity-40",
+                  darkMode ? "text-gray-900 dark:text-gray-100" : "text-gray-800"
+                )}>
+                  © 2026 CRAFTED BY <a href="https://www.facebook.com/iamratulashiq" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">RATUL BIN ZAHANGIR</a>
+                </p>
+              </div>
+            )}
           </div>
         </footer>
       )}
@@ -2296,6 +2448,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         unit={unit}
         isSunriseToSunset={isSunriseToSunset}
         onToggleSunriseSunset={handleToggleSunriseSunset}
+        weekStartDay={weekStartDay}
+        onSetWeekStartDay={handleSetWeekStartDay}
       />
 
       <DashboardModal
@@ -2304,6 +2458,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         darkMode={darkMode}
         lang={lang}
         unit={unit}
+        weekStartDay={weekStartDay}
         currentWeight={metricData.weight}
         historyList={historyList}
         savedGoal={savedGoal}
@@ -2329,19 +2484,19 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         )}
       >
         <div className="w-full max-w-md mx-auto grid grid-cols-5 gap-1 items-center">
-          {/* 1. Groceries (Leftmost) */}
+          {/* 1. Home (replaced Groceries) */}
           <button 
-            id="tab_groceries"
+            id="tab_home"
             type="button"
-            onClick={() => handleMenuClick('groceries')}
+            onClick={() => handleMenuClick('home')}
             className={cn(
               "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
-              activeTab === 'groceries'
+              activeTab === 'home'
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
-            {activeTab === 'groceries' && (
+            {activeTab === 'home' && (
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
                 className={cn(
@@ -2358,22 +2513,22 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 }}
               />
             )}
-            <ShoppingBag 
+            <Home 
               size={16} 
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
-                activeTab === 'groceries' 
+                activeTab === 'home' 
                   ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
                   : "opacity-75"
               )} 
             />
             <span className={cn(
               "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
-              activeTab === 'groceries' 
+              activeTab === 'home' 
                 ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                 : "font-semibold"
             )}>
-              {lang === 'bn' ? 'বাজার' : 'Grocery'}
+              {lang === 'bn' ? 'হোম' : 'Home'}
             </span>
           </button>
 

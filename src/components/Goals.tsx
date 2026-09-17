@@ -36,7 +36,7 @@ interface GoalsProps {
 export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, onGoalUpdate, lang = 'en' }: GoalsProps) {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 

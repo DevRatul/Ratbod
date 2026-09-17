@@ -407,7 +407,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       customTotalLitersLabel: "Total Target in Liters",
       saveGoalBtn: "Save Goal",
       cancelBtn: "Cancel",
-      todayLogs: "Today's Intake Log",
+      todayLogs: "Today's Log",
       emptyLogs: "No water logged today yet. Tap a button above to start!",
       hydrationStatusGoalReached: "Hydration Target Achieved! Great job keeping your body refreshed! 🎉",
       hydrationStatusAlmost: "Almost there! Keep sipping to reach your daily goal.",
@@ -457,7 +457,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       customTotalLitersLabel: "লিটারে মোট লক্ষ্য",
       saveGoalBtn: "লক্ষ্য সংরক্ষণ করুন",
       cancelBtn: "বাতিল",
-      todayLogs: "আজকের পানির তালিকা",
+      todayLogs: "আজকের লগ",
       emptyLogs: "আজ এখনো কোনো পানি ট্র্যাকিং করা হয়নি। ওপরের বোতামে চাপ দিয়ে শুরু করুন!",
       hydrationStatusGoalReached: "অভিনন্দন! আজকের দৈনিক পানির লক্ষ্য পূর্ণ হয়েছে! 🎉",
       hydrationStatusAlmost: "খুব কাছাকাছি! লক্ষ্য পূরণে আর কিছুটা পানি পান করুন।",
@@ -966,89 +966,47 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   return (
     <div className="space-y-3 sm:space-y-4 max-w-4xl mx-auto pb-0 w-full overflow-x-hidden">
 
-      {/* Top Cards: Water Intake History & Daily Targeted Goal */}
-      <div className="space-y-2 sm:space-y-2.5 w-full">
-        {/* Water Intake History Card */}
-        <div className={cn(
-          "p-2 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all shadow-xs w-full flex-nowrap",
-          darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
-        )}>
-          <div className="flex items-center gap-2 min-w-0 flex-nowrap">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-emerald-500/20">
-              <HistoryIcon size={15} />
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0 flex-nowrap text-xs font-bold leading-tight">
-              <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                {lang === 'bn' ? 'পানি পানের ইতিহাস' : 'Water Intake History'}:
-              </span>
-              <span className={cn(
-                "text-xs font-extrabold px-2 py-0.5 rounded-lg border whitespace-nowrap shrink-0",
-                darkMode
-                  ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/25"
-                  : "text-emerald-700 bg-emerald-50 border-emerald-200"
-              )}>
-                {formatNum(totalConsumedMl)} {labels.mlUnit} {lang === 'bn' ? '(আজ)' : '(Today)'}
-              </span>
-            </div>
+      {/* Top Card: Daily Goal */}
+      <div className={cn(
+        "p-2 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all shadow-xs w-full flex-nowrap",
+        darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
+      )}>
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-nowrap">
+          <div className={cn(
+            "w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs",
+            darkMode
+              ? "bg-[#181a20] text-white border-gray-700/80"
+              : "bg-gray-100 text-black border-gray-300"
+          )}>
+            <Target size={15} />
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowHistoryModal(true)}
-            className={cn(
-              "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
-              darkMode
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
-                : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
-            )}
-          >
-            <HistoryIcon size={13} />
-            <span>{lang === 'bn' ? 'ইতিহাস (History)' : 'History'}</span>
-          </button>
-        </div>
-
-        {/* Daily Targeted Goal Section */}
-        <div className={cn(
-          "p-2 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all shadow-xs w-full flex-nowrap",
-          darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
-        )}>
-          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-nowrap">
-            <div className={cn(
-              "w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs",
-              darkMode
-                ? "bg-[#181a20] text-white border-gray-700/80"
-                : "bg-gray-100 text-black border-gray-300"
+          <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
+            <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0 whitespace-nowrap">
+              {lang === 'bn' ? 'দৈনিক লক্ষ্য:' : 'Daily Goal:'}
+            </span>
+            <span className={cn(
+              "text-xs font-extrabold px-2 py-0.5 rounded-lg border whitespace-nowrap shrink-0",
+              darkMode 
+                ? "text-blue-400 bg-blue-500/15 border-blue-500/25" 
+                : "text-blue-600 bg-blue-50 border-blue-200"
             )}>
-              <Target size={15} />
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
-              <span className="text-xs font-bold text-gray-900 dark:text-white shrink-0 whitespace-nowrap">
-                {lang === 'bn' ? 'দৈনিক লক্ষ্য' : 'Daily Targeted Goal'}:
-              </span>
-              <span className={cn(
-                "text-xs font-extrabold px-2 py-0.5 rounded-lg border whitespace-nowrap shrink-0",
-                darkMode 
-                  ? "text-blue-400 bg-blue-500/15 border-blue-500/25" 
-                  : "text-blue-600 bg-blue-50 border-blue-200"
-              )}>
-                {formatNum(goalMl / 1000, goalMl % 1000 === 0 ? 0 : 1)}L ({formatNum(goalMl)} {lang === 'bn' ? 'মিলি' : 'ml'})
-              </span>
-            </div>
+              {formatNum(goalMl / 1000, goalMl % 1000 === 0 ? 0 : 1)}L ({formatNum(goalMl)} {lang === 'bn' ? 'মিলি' : 'ml'})
+            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={handleOpenGoalModal}
-            className={cn(
-              "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
-              darkMode
-                ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
-                : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
-            )}
-          >
-            <span>{lang === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Edit Goal'}</span>
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleOpenGoalModal}
+          className={cn(
+            "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+            darkMode
+              ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
+              : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
+          )}
+        >
+          <span>{lang === 'bn' ? 'লক্ষ্য নির্ধারণ' : 'Set Goal'}</span>
+        </button>
       </div>
 
       {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}
@@ -1376,9 +1334,20 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               <Calendar size={15} className="text-blue-500" />
               {labels.todayLogs} ({formatNum(entries.length)})
             </h3>
-            <span className="text-xs font-extrabold text-blue-500">
-              {formatNum(totalConsumedMl)} / {formatNum(goalMl)} {labels.mlUnit}
-            </span>
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              className={cn(
+                "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+                darkMode
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
+                  : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+              )}
+              title={lang === 'bn' ? 'পানি পানের ইতিহাস দেখুন' : 'View Water Intake History'}
+            >
+              <HistoryIcon size={13} />
+              <span>{lang === 'bn' ? 'ইতিহাস' : 'History'}</span>
+            </button>
           </div>
 
           {entries.length === 0 ? (

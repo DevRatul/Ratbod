@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User as UserIcon, Key, CheckCircle, AlertCircle, Check, SunMedium } from 'lucide-react';
+import { X, User as UserIcon, Key, CheckCircle, AlertCircle, Check, SunMedium, Calendar } from 'lucide-react';
 import { Gender } from '../utils/calculations';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -35,13 +35,17 @@ interface ProfileModalProps {
   unit: 'metric' | 'imperial';
   isSunriseToSunset?: boolean;
   onToggleSunriseSunset?: () => void;
+  weekStartDay?: number;
+  onSetWeekStartDay?: (day: number) => void;
 }
 
 export default function ProfileModal({
   isOpen, onClose, darkMode, setDarkMode,
   name, setName, gender, setGender, birthdate, setBirthdate, height, setHeight, unit,
   isSunriseToSunset: propIsSunriseToSunset,
-  onToggleSunriseSunset: propOnToggleSunriseSunset
+  onToggleSunriseSunset: propOnToggleSunriseSunset,
+  weekStartDay = 6,
+  onSetWeekStartDay
 }: ProfileModalProps) {
   if (!isOpen) return null;
 
@@ -241,6 +245,49 @@ export default function ProfileModal({
                 {isSunriseToSunset && <Check size={14} strokeWidth={3} />}
               </div>
             </button>
+
+            {/* Week Start Day Setting */}
+            <div className="mt-2.5 pt-2.5 border-t border-white/10 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar size={15} className="text-emerald-500 shrink-0" />
+                  <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
+                    Week Start Day
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-primary">
+                  {weekStartDay === 6 ? 'Saturday (Default)' : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][weekStartDay]}
+                </span>
+              </div>
+              <div className={cn(
+                "grid grid-cols-7 gap-1 p-1 rounded-xl border",
+                darkMode ? "bg-white/5 border-white/5" : "bg-black/5 border-black/5"
+              )}>
+                {[
+                  { day: 6, label: 'Sat' },
+                  { day: 0, label: 'Sun' },
+                  { day: 1, label: 'Mon' },
+                  { day: 2, label: 'Tue' },
+                  { day: 3, label: 'Wed' },
+                  { day: 4, label: 'Thu' },
+                  { day: 5, label: 'Fri' }
+                ].map((item) => (
+                  <button
+                    key={item.day}
+                    type="button"
+                    onClick={() => onSetWeekStartDay?.(item.day)}
+                    className={cn(
+                      "py-1.5 rounded-lg text-[10px] font-black text-center transition-all cursor-pointer",
+                      weekStartDay === item.day
+                        ? "bg-primary text-white shadow-xs font-bold"
+                        : (darkMode ? "text-gray-400 hover:text-white hover:bg-white/10" : "text-gray-600 hover:text-gray-900 hover:bg-black/5")
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Reset Password Button */}

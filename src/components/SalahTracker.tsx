@@ -465,7 +465,7 @@ export interface SalahTabConfig {
 export const SALAH_TABS: SalahTabConfig[] = [
   {
     id: 'zikar',
-    labelEn: 'Zikar',
+    labelEn: 'Zikr',
     labelBn: 'যিকির',
     icon: Sparkles
   },
@@ -483,11 +483,33 @@ export const SALAH_TABS: SalahTabConfig[] = [
   }
 ];
 
+export const MOBILE_SALAH_TABS: SalahTabConfig[] = [
+  {
+    id: 'adhkar',
+    labelEn: 'Adhkar',
+    labelBn: 'আযকার',
+    icon: Award
+  },
+  {
+    id: 'salah',
+    labelEn: 'Salah',
+    labelBn: 'সালাত',
+    icon: Compass
+  },
+  {
+    id: 'zikar',
+    labelEn: 'Zikr',
+    labelBn: 'যিকির',
+    icon: Sparkles
+  }
+];
+
 interface SalahTrackerProps {
   darkMode: boolean;
   lang?: 'en' | 'bn' | string;
   activeSubTab?: SalahSubTab;
   onSubTabChange?: (tab: SalahSubTab) => void;
+  weekStartDay?: number;
 }
 
 interface DhikrPreset {
@@ -762,7 +784,8 @@ export default function SalahTracker({
   darkMode, 
   lang = 'en',
   activeSubTab: propActiveSubTab,
-  onSubTabChange
+  onSubTabChange,
+  weekStartDay = 6
 }: SalahTrackerProps) {
   const isBn = lang === 'bn';
 
@@ -1226,8 +1249,13 @@ export default function SalahTracker({
   const activeDhikrCount = currentRecord.dhikrCounts?.[activeTasbeehDhikr] || 0;
   const tasbeehProgress = Math.min(100, Math.round((activeDhikrCount / (tasbeehTarget || 33)) * 100));
 
-  // Collapsible section states
-  const [isNafalExpanded, setIsNafalExpanded] = useState<boolean>(true);
+  // Collapsible section states - nafal ibadat collapsed by default on mobile view
+  const [isNafalExpanded, setIsNafalExpanded] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return false;
+    }
+    return true;
+  });
   const [isTasbeehExpanded, setIsTasbeehExpanded] = useState<boolean>(true);
   const [isAzkarExpanded, setIsAzkarExpanded] = useState<boolean>(true);
 
@@ -1328,49 +1356,45 @@ export default function SalahTracker({
     }
   ];
 
-  // Current week date range with week number (e.g., 14–20 Sep • Week 38)
+  // Current week date range with week number based on weekStartDay (default 6 = Saturday)
   const currentWeekInfo = useMemo(() => {
     try {
       const now = new Date();
-      // Calculate start of current week (Monday)
+      // Calculate start of current week based on weekStartDay
       const day = now.getDay();
-      const diffToMonday = (day === 0 ? -6 : 1) - day;
-      const monday = new Date(now);
-      monday.setDate(now.getDate() + diffToMonday);
+      const diffToStart = (day - weekStartDay + 7) % 7;
+      const startDay = new Date(now);
+      startDay.setDate(now.getDate() - diffToStart);
 
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
+      const endDay = new Date(startDay);
+      endDay.setDate(startDay.getDate() + 6);
 
-      // ISO week number calculation
-      const target = new Date(now.valueOf());
-      const dayNr = (now.getDay() + 6) % 7;
-      target.setDate(target.getDate() - dayNr + 3);
-      const firstThursday = target.valueOf();
-      target.setMonth(0, 1);
-      if (target.getDay() !== 4) {
-        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-      }
-      const weekNumber = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+      // Week number calculation with weekStartDay
+      const target = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const jan1 = new Date(target.getFullYear(), 0, 1);
+      const jan1StartIndex = (jan1.getDay() - weekStartDay + 7) % 7;
+      const dayOfYear = Math.floor((target.getTime() - jan1.getTime()) / 86400000);
+      const weekNumber = Math.floor((dayOfYear + jan1StartIndex) / 7) + 1;
 
-      const monDay = formatNum(monday.getDate());
-      const sunDay = formatNum(sunday.getDate());
-      const monthName = isBn
-        ? monday.toLocaleDateString('bn-BD', { month: 'short' })
-        : monday.toLocaleDateString('en-US', { month: 'short' });
-      const sunMonthName = isBn
-        ? sunday.toLocaleDateString('bn-BD', { month: 'short' })
-        : sunday.toLocaleDateString('en-US', { month: 'short' });
+      const startDayNum = formatNum(startDay.getDate());
+      const endDayNum = formatNum(endDay.getDate());
+      const startMonthName = isBn
+        ? startDay.toLocaleDateString('bn-BD', { month: 'short' })
+        : startDay.toLocaleDateString('en-US', { month: 'short' });
+      const endMonthName = isBn
+        ? endDay.toLocaleDateString('bn-BD', { month: 'short' })
+        : endDay.toLocaleDateString('en-US', { month: 'short' });
 
-      const dateRange = monday.getMonth() === sunday.getMonth()
-        ? `${monDay}–${sunDay} ${monthName}`
-        : `${monDay} ${monthName} – ${sunDay} ${sunMonthName}`;
+      const dateRange = startDay.getMonth() === endDay.getMonth()
+        ? `${startDayNum}–${endDayNum} ${startMonthName}`
+        : `${startDayNum} ${startMonthName} – ${endDayNum} ${endMonthName}`;
 
       const weekLabel = isBn ? `সপ্তাহ ${formatNum(weekNumber)}` : `Week ${weekNumber}`;
       return `${dateRange} • ${weekLabel}`;
     } catch (e) {
       return isBn ? 'চলতি সপ্তাহ' : 'Current Week';
     }
-  }, [isBn]);
+  }, [isBn, weekStartDay]);
 
   const renderDateAndThemeControls = () => (
     <div className="flex items-center gap-1.5 self-start sm:self-auto py-0.5 px-0 text-[11px] sm:text-xs font-bold">
@@ -1417,22 +1441,22 @@ export default function SalahTracker({
             <p className={cn("text-xs hidden sm:block", darkMode ? "text-neutral-400" : st.bannerSubtitle)}>
               {isBn 
                 ? 'পাঁচ ওয়াক্ত ফরজ সালাত, নফল ইবাদত ও যিকির-আযকার নিয়মিত আদায় করুন।' 
-                : 'Track daily five waqt prayers, nafal ibadat, and daily zikar azkar with peace of mind.'}
+                : 'Track daily five waqt prayers, nafal ibadat, and daily zikr azkar with peace of mind.'}
             </p>
           </div>
 
           {renderDateAndThemeControls()}
         </div>
 
-        {/* Stats Strip: 4 larger, easily readable cards (Fard, Streak, Nafl, Dhikr) */}
-        <div className={cn("grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
+        {/* Stats Strip: matching Zikr banner height, padding, and layout */}
+        <div className={cn("grid grid-cols-4 gap-1.5 sm:gap-3 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
           {/* 1. Fard */}
           <div className={cn(
-            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
-            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
+            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
           )}>
             <div className={cn(
-              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs",
+              "w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 shadow-xs",
               farzCount === 5 
                 ? (darkMode ? "bg-emerald-600 text-white shadow-xs" : st.farzStatDone)
                 : (darkMode ? "bg-emerald-500/20 text-emerald-400" : st.farzStatPending)
@@ -1440,10 +1464,10 @@ export default function SalahTracker({
               {formatNum(farzCount)}/৫
             </div>
             <div className="min-w-0 flex-1">
-              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
+              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
                 {isBn ? 'ফরজ সালাত' : 'Fard'}
               </span>
-              <span className={cn("font-black text-xs sm:text-sm truncate block mt-0.5", darkMode ? "text-white" : st.farzStatText)}>
+              <span className={cn("font-black text-xs sm:text-sm truncate block", darkMode ? "text-white" : st.farzStatText)}>
                 {farzCount === 5 ? (isBn ? '৫/৫ ★' : '5/5 ★') : `${formatNum(farzCount)}/5`}
               </span>
             </div>
@@ -1451,62 +1475,62 @@ export default function SalahTracker({
 
           {/* 2. Streak */}
           <div className={cn(
-            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
-            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
+            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
           )}>
             <div className={cn(
-              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-xs",
+              "w-7 h-7 rounded-lg flex items-center justify-center font-black shrink-0 shadow-xs",
               darkMode ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-900 font-bold"
             )}>
-              <Flame size={18} className="text-amber-600 dark:text-amber-500" />
+              <Flame size={14} className="text-amber-600 dark:text-amber-500" />
             </div>
             <div className="min-w-0 flex-1">
-              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
+              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
                 {isBn ? 'ধারাবাহিক' : 'Streak'}
               </span>
-              <span className={cn("font-black text-xs sm:text-sm truncate block mt-0.5", darkMode ? "text-amber-400" : "text-amber-900 font-black")}>
-                {formatNum(currentStreak)}{isBn ? ' দিন' : ' Days'}
+              <span className={cn("font-black text-xs sm:text-sm truncate block", darkMode ? "text-amber-400" : "text-amber-900")}>
+                {formatNum(currentStreak)}{isBn ? ' দিন' : 'd'}
               </span>
             </div>
           </div>
 
           {/* 3. Nafl */}
           <div className={cn(
-            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
-            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
+            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
           )}>
             <div className={cn(
-              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-xs",
+              "w-7 h-7 rounded-lg flex items-center justify-center font-black shrink-0 shadow-xs",
               darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-100 text-teal-900 font-bold"
             )}>
-              <Sparkles size={18} className="text-teal-600 dark:text-teal-400" />
+              <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
+              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
                 {isBn ? 'নফল রাকাত' : 'Nafl'}
               </span>
-              <span className={cn("font-black text-xs sm:text-sm truncate block mt-0.5", darkMode ? "text-teal-400" : "text-teal-900 font-black")}>
-                {formatNum(totalNaflRakahs)}{isBn ? ' রাকাত' : ' Rakahs'}
+              <span className={cn("font-black text-xs sm:text-sm truncate block", darkMode ? "text-teal-400" : "text-teal-900")}>
+                {formatNum(totalNaflRakahs)}{isBn ? ' রাকাত' : 'R'}
               </span>
             </div>
           </div>
 
           {/* 4. Dhikr */}
           <div className={cn(
-            "flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border min-w-0 transition-all shadow-2xs",
-            darkMode ? "bg-black/25 border-emerald-500/20" : st.statCard
+            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
+            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
           )}>
             <div className={cn(
-              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-xs",
+              "w-7 h-7 rounded-lg flex items-center justify-center font-black shrink-0 shadow-xs",
               darkMode ? "bg-cyan-500/20 text-cyan-400" : "bg-cyan-100 text-cyan-900 font-bold"
             )}>
-              <Heart size={18} className="text-cyan-600 dark:text-cyan-400" />
+              <Heart size={14} className="text-cyan-600 dark:text-cyan-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <span className={cn("block text-[11px] sm:text-xs font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-700 font-bold")}>
+              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
                 {isBn ? 'যিকির' : 'Dhikr'}
               </span>
-              <span className={cn("font-black text-xs sm:text-sm font-mono truncate block mt-0.5", darkMode ? "text-cyan-400" : "text-cyan-950 font-black")}>
+              <span className={cn("font-black text-xs sm:text-sm font-mono truncate block", darkMode ? "text-cyan-400" : "text-cyan-950")}>
                 {formatNum(totalDhikrToday)}
               </span>
             </div>
@@ -2040,9 +2064,9 @@ export default function SalahTracker({
       </div>
     </div>
 
-    {/* Sub Tab: Zikar */}
+    {/* Sub Tab: Zikr */}
     <div className={cn("space-y-3 sm:space-y-5 w-full", activeSubTab === 'zikar' ? "block" : "hidden")}>
-      {/* Zikar Header Banner with Date & Progress */}
+      {/* Zikr Header Banner with Date & Progress */}
       <div className={cn(
         "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-sm",
         darkMode 
@@ -2059,7 +2083,7 @@ export default function SalahTracker({
                 <Sparkles size={16} className={cn("animate-pulse", darkMode ? "text-cyan-400" : st.iconText)} />
               </div>
               <h1 className={cn("text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5", darkMode ? "text-white" : st.bannerTitle)}>
-                {isBn ? 'যিকির ও ডিজিটাল তাসবীহ' : 'Zikar & Digital Tasbeeh'}
+                {isBn ? 'যিকির ও ডিজিটাল তাসবীহ' : 'Zikr & Digital Tasbeeh'}
                 <span className={cn(
                   "text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold",
                   darkMode ? "bg-cyan-500/20 text-cyan-400" : st.badge
@@ -2078,7 +2102,7 @@ export default function SalahTracker({
           {renderDateAndThemeControls()}
         </div>
 
-        {/* Stats Strip for Zikar */}
+        {/* Stats Strip for Zikr */}
         <div className={cn("grid grid-cols-3 gap-1.5 sm:gap-3 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-cyan-500/15" : st.statsBorder)}>
           <div className={cn("p-2 rounded-xl border flex items-center gap-2", darkMode ? "bg-black/20 border-cyan-500/10" : st.statCard)}>
             <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", darkMode ? "bg-cyan-500/20 text-cyan-400" : "bg-cyan-100 text-cyan-900")}>
@@ -2110,7 +2134,7 @@ export default function SalahTracker({
         </div>
       </div>
 
-      {/* 4. Digital Tasbeeh & Zikar Azkar Section */}
+      {/* 4. Digital Tasbeeh & Zikr Section */}
       <div className={cn(
         "rounded-xl sm:rounded-2xl border transition-all overflow-hidden shadow-xs",
         darkMode ? "bg-[#18181b] border-white/10" : "bg-white border-slate-300 shadow-sm"
@@ -2124,7 +2148,7 @@ export default function SalahTracker({
             <div className="flex items-center gap-2 min-w-0">
               <Heart size={16} className={cn(darkMode ? "text-cyan-400" : st.tasbeehIcon, "shrink-0")} />
               <h2 className={cn("text-sm sm:text-base font-black tracking-tight truncate", darkMode ? "text-white" : "text-gray-950")}>
-                {isBn ? 'যিকির ও ডিজিটাল তাসবীহ' : 'Zikar Azkar & Digital Tasbeeh'}
+                {isBn ? 'যিকির ও ডিজিটাল তাসবীহ' : 'Zikr & Digital Tasbeeh'}
               </h2>
             </div>
             <span className={cn(
@@ -2666,7 +2690,7 @@ export default function SalahTracker({
         : "bg-[#f2f2f7]/85 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
     )}
   >
-    {SALAH_TABS.map((tab) => {
+    {MOBILE_SALAH_TABS.map((tab) => {
       const Icon = tab.icon;
       const isSelected = activeSubTab === tab.id;
 

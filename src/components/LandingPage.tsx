@@ -1306,21 +1306,23 @@ export default function LandingPage({
 
       {/* Footer matching logged-in inner footer style exactly */}
       <footer className={cn(
-        "max-w-5xl mx-auto px-6 py-[10px] sm:py-6 border-t transition-colors",
+        "max-w-5xl mx-auto px-6 py-3 sm:py-6 border-t transition-colors",
         darkMode ? "border-white/5" : "border-black/5"
       )}>
-        <div className="flex flex-col items-center justify-center gap-3 text-center">
-          {/* Logo with reload functionality */}
-          <button 
-            type="button"
-            onClick={handleLogoClick}
-            className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all text-left bg-transparent border-0 p-0 select-none"
-            title="Reload RaTooL"
-            aria-label="Reload RaTooL"
-          >
-            <Activity size={14} className="text-gray-700 dark:text-gray-300" />
-            <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
-          </button>
+        <div className="flex flex-col items-center justify-center gap-3 text-center w-full">
+          {/* Logo with reload functionality, centrally middle in position */}
+          <div className="w-full flex items-center justify-center text-center">
+            <button 
+              type="button"
+              onClick={handleLogoClick}
+              className="flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all text-center bg-transparent border-0 p-0 select-none mx-auto"
+              title="Reload RaTooL"
+              aria-label="Reload RaTooL"
+            >
+              <Activity size={14} className="text-gray-700 dark:text-gray-300" />
+              <span className="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">RATOOL</span>
+            </button>
+          </div>
 
           {/* UNIT Switcher Pill matching inner footer */}
           <div className="flex items-center gap-2">
