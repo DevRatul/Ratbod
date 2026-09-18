@@ -88,6 +88,7 @@ export default function Logify({
   onTabChange 
 }: LogifyProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<LogifyTab>(() => {
+    if (propActiveTab) return propActiveTab;
     try {
       const saved = localStorage.getItem('ratool_logify_subtab');
       if (saved === 'breathing' || saved === 'calm') return 'calm';
@@ -97,6 +98,15 @@ export default function Logify({
     } catch (e) {}
     return 'steps';
   });
+
+  useEffect(() => {
+    if (propActiveTab && propActiveTab !== internalActiveTab) {
+      setInternalActiveTab(propActiveTab);
+      try {
+        localStorage.setItem('ratool_logify_subtab', propActiveTab);
+      } catch (e) {}
+    }
+  }, [propActiveTab]);
 
   const activeTab = propActiveTab || internalActiveTab;
 

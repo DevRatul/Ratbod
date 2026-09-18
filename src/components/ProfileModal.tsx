@@ -30,25 +30,29 @@ interface ProfileModalProps {
   setGender: (gender: Gender) => void;
   birthdate: string;
   setBirthdate: (date: string) => void;
+  age?: string;
+  setAge?: (age: string) => void;
   height: string;
   setHeight: (h: string) => void;
   unit: 'metric' | 'imperial';
+  setUnit?: (unit: 'metric' | 'imperial') => void;
   isSunriseToSunset?: boolean;
   onToggleSunriseSunset?: () => void;
   weekStartDay?: number;
   onSetWeekStartDay?: (day: number) => void;
+  onSaveProfile?: () => void;
 }
 
 export default function ProfileModal({
   isOpen, onClose, darkMode, setDarkMode,
-  name, setName, gender, setGender, birthdate, setBirthdate, height, setHeight, unit,
+  name, setName, gender, setGender, birthdate, setBirthdate,
+  age = '', setAge, height, setHeight, unit, setUnit,
   isSunriseToSunset: propIsSunriseToSunset,
   onToggleSunriseSunset: propOnToggleSunriseSunset,
   weekStartDay = 6,
-  onSetWeekStartDay
+  onSetWeekStartDay,
+  onSaveProfile
 }: ProfileModalProps) {
-  if (!isOpen) return null;
-
   const user = auth.currentUser;
   const photoUrl = user?.photoURL;
   const email = user?.email;
@@ -70,6 +74,75 @@ export default function ProfileModal({
   }, [isOpen, propIsSunriseToSunset]);
 
   const isSunriseToSunset = propIsSunriseToSunset !== undefined ? propIsSunriseToSunset : internalSunriseToSunset;
+
+  const handleBirthdateChange = (newDate: string) => {
+    setBirthdate(newDate);
+    if (newDate) {
+      const bDate = new Date(newDate);
+      const today = new Date();
+      let calculatedAge = today.getFullYear() - bDate.getFullYear();
+      const m = today.getMonth() - bDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < bDate.getDate())) {
+        calculatedAge--;
+      }
+      if (!isNaN(calculatedAge) && calculatedAge >= 0 && setAge) {
+        setAge(calculatedAge.toString());
+      }
+    }
+  };
+
+  const handleSaveAndExit = () => {
+    // 1. Immediately persist all profile fields to localStorage under both keys
+    try {
+      localStorage.setItem('ratool_name', name);
+      localStorage.setItem('ratbod_name', name);
+      localStorage.setItem('ratool_gender', gender);
+      localStorage.setItem('ratbod_gender', gender);
+      localStorage.setItem('ratool_birthdate', birthdate);
+      localStorage.setItem('ratbod_birthdate', birthdate);
+      if (age) {
+        localStorage.setItem('ratool_age', age);
+        localStorage.setItem('ratbod_age', age);
+      }
+      localStorage.setItem('ratool_height', height);
+      localStorage.setItem('ratbod_height', height);
+      localStorage.setItem('ratool_unit', unit);
+      localStorage.setItem('ratbod_unit', unit);
+      if (typeof weekStartDay === 'number') {
+        localStorage.setItem('ratool_week_start_day', String(weekStartDay));
+        localStorage.setItem('ratbod_week_start_day', String(weekStartDay));
+      }
+      localStorage.setItem('ratool_sunrise_sunset', String(Boolean(isSunriseToSunset)));
+      localStorage.setItem('ratbod_sunrise_sunset', String(Boolean(isSunriseToSunset)));
+    } catch (e) {}
+
+    // 2. If user is signed in to Firebase, sync directly to Firestore
+    if (user) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        name,
+        gender,
+        birthdate,
+        age: age || '',
+        height,
+        unit,
+        weekStartDay,
+        isSunriseToSunset: Boolean(isSunriseToSunset),
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch((err) => {
+        console.error("Failed to sync profile on save:", err);
+      });
+    }
+
+    // 3. Dispatch global toast event for visual confirmation
+    window.dispatchEvent(new CustomEvent('ratool_saved_toast'));
+
+    if (onSaveProfile) {
+      onSaveProfile();
+    }
+
+    onClose();
+  };
 
   const handleSendResetEmail = async () => {
     if (!email) {
@@ -120,6 +193,8 @@ export default function ProfileModal({
       }, { merge: true }).catch(() => {});
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto flex flex-col sm:justify-center items-center p-4 pt-20 sm:pt-4 transition-colors">
@@ -190,12 +265,47 @@ export default function ProfileModal({
             </div>
             <div>
               <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
-                Birthdate
+                Height ({unit === 'metric' ? 'cm' : 'in'})
+              </label>
+              <input
+                type="number"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                className={cn(
+                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
+                  darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+                )}
+                placeholder={unit === 'metric' ? 'e.g. 175' : 'e.g. 69'}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
+                Date of Birth
               </label>
               <input
                 type="date"
                 value={birthdate}
-                onChange={(e) => setBirthdate(e.target.value)}
+                onChange={(e) => handleBirthdateChange(e.target.value)}
+                className={cn(
+                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
+                  darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+                )}
+              />
+            </div>
+            <div>
+              <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
+                Age (years)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={age || ''}
+                onChange={(e) => setAge?.(e.target.value)}
+                placeholder="e.g. 28"
                 className={cn(
                   "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
                   darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
@@ -204,20 +314,37 @@ export default function ProfileModal({
             </div>
           </div>
 
+          {/* Unit System Selector */}
           <div>
             <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
-              Height ({unit === 'metric' ? 'cm' : 'inches'})
+              Unit System
             </label>
-            <input
-              type="number"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
-                darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
-              )}
-              placeholder="e.g. 175"
-            />
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border bg-gray-50 dark:bg-black/40 border-gray-200 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setUnit?.('metric')}
+                className={cn(
+                  "py-2 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  unit === 'metric'
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                )}
+              >
+                Metric (kg / cm)
+              </button>
+              <button
+                type="button"
+                onClick={() => setUnit?.('imperial')}
+                className={cn(
+                  "py-2 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  unit === 'imperial'
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                )}
+              >
+                Imperial (lbs / in)
+              </button>
+            </div>
           </div>
 
           {/* Sunrise to Sunset Setting: One-liner with tick icon - ONLY available in Profile Edit section */}
@@ -313,10 +440,13 @@ export default function ProfileModal({
         
         <div className="mt-4 pt-3 border-t border-white/10 flex flex-col gap-3">
           <button
-            onClick={onClose}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+            type="button"
+            id="profile_save_exit_btn"
+            onClick={handleSaveAndExit}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
           >
-            Save & Exit
+            <Check size={18} strokeWidth={2.5} />
+            <span>Save & Exit</span>
           </button>
         </div>
       </div>

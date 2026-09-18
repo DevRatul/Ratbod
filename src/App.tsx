@@ -160,17 +160,55 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   };
 
   const t = translations[lang];
-  const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
-  const [gender, setGender] = useState<Gender>('male');
-  const [name, setName] = useState<string>('');
-  const [birthdate, setBirthdate] = useState<string>('');
-  const [age, setAge] = useState<string>('');
-  const [height, setHeight] = useState<string>(''); // cm or inches
+  const [unit, setUnit] = useState<'metric' | 'imperial'>(() => {
+    try {
+      const u = localStorage.getItem('ratool_unit') || localStorage.getItem('ratbod_unit');
+      if (u === 'metric' || u === 'imperial') return u;
+    } catch (e) {}
+    return 'metric';
+  });
+  const [gender, setGender] = useState<Gender>(() => {
+    try {
+      const g = localStorage.getItem('ratool_gender') || localStorage.getItem('ratbod_gender');
+      if (g === 'male' || g === 'female') return g as Gender;
+    } catch (e) {}
+    return 'male';
+  });
+  const [name, setName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ratool_name') || localStorage.getItem('ratbod_name') || '';
+    } catch (e) {}
+    return '';
+  });
+  const [birthdate, setBirthdate] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ratool_birthdate') || localStorage.getItem('ratbod_birthdate') || '';
+    } catch (e) {}
+    return '';
+  });
+  const [age, setAge] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ratool_age') || localStorage.getItem('ratbod_age') || '';
+    } catch (e) {}
+    return '';
+  });
+  const [height, setHeight] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ratool_height') || localStorage.getItem('ratbod_height') || '';
+    } catch (e) {}
+    return '';
+  }); // cm or inches
   const [weight, setWeight] = useState<string>(''); // kg or lbs
   const [waist, setWaist] = useState<string>(''); // cm or inches
   const [neck, setNeck] = useState<string>(''); // cm or inches
   const [hip, setHip] = useState<string>(''); // cm or inches (for female)
-  const [activityLevel, setActivityLevel] = useState<ActivityLevel>('sedentary');
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>(() => {
+    try {
+      const a = localStorage.getItem('ratool_activity') || localStorage.getItem('ratbod_activity');
+      if (a) return a as ActivityLevel;
+    } catch (e) {}
+    return 'sedentary';
+  });
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
@@ -200,6 +238,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const VALID_SUB_TABS: readonly LogifyTab[] = ['steps', 'reading', 'water', 'sleep', 'calm'] as const;
   type SubNavTab = LogifyTab;
   const isSubTabSyncingFromRemote = useRef(false);
+  const lastSyncedSubTabRef = useRef<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<LogifyTab>(() => {
     try {
       const saved = localStorage.getItem('ratool_logify_subtab');
@@ -212,6 +251,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       return 'steps';
     }
   });
+  const activeSubTabRef = useRef<LogifyTab>(activeSubTab);
+  activeSubTabRef.current = activeSubTab;
 
   const [authUser, setAuthUser] = useState(auth.currentUser);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -227,6 +268,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       return 'calculator';
     }
   });
+  const activeTabRef = useRef<TabType>(activeTab);
+  activeTabRef.current = activeTab;
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -436,33 +479,30 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         // Real-time synchronization of active menu tab
         const remoteMenuTab = data.lastMenuTab === 'breathing' ? 'salah' : data.lastMenuTab;
         if (remoteMenuTab && (VALID_TABS as readonly string[]).includes(remoteMenuTab)) {
-          setActiveTab((currentTab) => {
-            if (currentTab !== remoteMenuTab) {
-              isTabSyncingFromRemote.current = true;
-              lastSyncedTabRef.current = remoteMenuTab;
-              try {
-                localStorage.setItem('ratool_active_tab', remoteMenuTab);
-                localStorage.setItem('ratbod_active_tab', remoteMenuTab);
-              } catch (e) {}
-              return remoteMenuTab;
-            }
-            return currentTab;
-          });
+          if (remoteMenuTab !== lastSyncedTabRef.current && remoteMenuTab !== activeTabRef.current) {
+            isTabSyncingFromRemote.current = true;
+            lastSyncedTabRef.current = remoteMenuTab;
+            activeTabRef.current = remoteMenuTab as TabType;
+            try {
+              localStorage.setItem('ratool_active_tab', remoteMenuTab);
+              localStorage.setItem('ratbod_active_tab', remoteMenuTab);
+            } catch (e) {}
+            setActiveTab(remoteMenuTab as TabType);
+          }
         }
 
         // Real-time synchronization of active sub nav tab across devices
         const remoteSubNavTab = (data.lastSubNavTab === 'breathing' || data.lastSubNavTab === 'salah') ? 'calm' : data.lastSubNavTab;
         if (remoteSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(remoteSubNavTab)) {
-          setActiveSubTab((currentSubTab) => {
-            if (currentSubTab !== remoteSubNavTab) {
-              isSubTabSyncingFromRemote.current = true;
-              try {
-                localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
-              } catch (e) {}
-              return remoteSubNavTab as LogifyTab;
-            }
-            return currentSubTab;
-          });
+          if (remoteSubNavTab !== lastSyncedSubTabRef.current && remoteSubNavTab !== activeSubTabRef.current) {
+            isSubTabSyncingFromRemote.current = true;
+            lastSyncedSubTabRef.current = remoteSubNavTab;
+            activeSubTabRef.current = remoteSubNavTab as LogifyTab;
+            try {
+              localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
+            } catch (e) {}
+            setActiveSubTab(remoteSubNavTab as LogifyTab);
+          }
         }
 
         // Real-time synchronization of week start day
@@ -593,16 +633,76 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             getDoc(doc(db, 'users', user.uid, 'appData', 'goals')).catch(() => null)
           ]);
 
+          const localName = localStorage.getItem('ratool_name') || localStorage.getItem('ratbod_name') || '';
+          const localGender = (localStorage.getItem('ratool_gender') || localStorage.getItem('ratbod_gender')) as Gender || 'male';
+          const localBirthdate = localStorage.getItem('ratool_birthdate') || localStorage.getItem('ratbod_birthdate') || '';
+          const localAge = localStorage.getItem('ratool_age') || localStorage.getItem('ratbod_age') || '';
+          const localHeight = localStorage.getItem('ratool_height') || localStorage.getItem('ratbod_height') || '';
+          const localActivity = (localStorage.getItem('ratool_activity') || localStorage.getItem('ratbod_activity')) as ActivityLevel || 'sedentary';
+          const localUnit = (localStorage.getItem('ratool_unit') || localStorage.getItem('ratbod_unit')) as 'metric' | 'imperial' || 'metric';
+
           if (docSnap && docSnap.exists()) {
             const data = docSnap.data();
-            if (data.name !== undefined) setName(data.name || '');
-            if (data.gender !== undefined) setGender(data.gender || 'male');
-            if (data.birthdate !== undefined) setBirthdate(data.birthdate || '');
-            if (data.age !== undefined) setAge(data.age || '');
-            if (data.height !== undefined) setHeight(data.height || '');
-            // Quick measurement fields (weight, waist, neck, hip) intentionally start empty on reload
-            if (data.activityLevel !== undefined) setActivityLevel(data.activityLevel || 'sedentary');
-            if (data.unit !== undefined) setUnit(data.unit || 'metric');
+            const resolvedName = (data.name !== undefined && data.name !== '') ? data.name : localName;
+            const resolvedGender = (data.gender !== undefined && data.gender !== '') ? data.gender : localGender;
+            const resolvedBirthdate = (data.birthdate !== undefined && data.birthdate !== '') ? data.birthdate : localBirthdate;
+            const resolvedAge = (data.age !== undefined && data.age !== '') ? data.age : localAge;
+            const resolvedHeight = (data.height !== undefined && data.height !== '') ? data.height : localHeight;
+            const resolvedActivity = (data.activityLevel !== undefined && data.activityLevel !== '') ? data.activityLevel : localActivity;
+            const resolvedUnit = (data.unit !== undefined && data.unit !== '') ? data.unit : localUnit;
+
+            setName(resolvedName);
+            setGender(resolvedGender);
+            setBirthdate(resolvedBirthdate);
+            setAge(resolvedAge);
+            setHeight(resolvedHeight);
+            setActivityLevel(resolvedActivity);
+            setUnit(resolvedUnit);
+
+            // Keep localStorage updated with resolved values
+            try {
+              if (resolvedName) {
+                localStorage.setItem('ratool_name', resolvedName);
+                localStorage.setItem('ratbod_name', resolvedName);
+              }
+              if (resolvedGender) {
+                localStorage.setItem('ratool_gender', resolvedGender);
+                localStorage.setItem('ratbod_gender', resolvedGender);
+              }
+              if (resolvedBirthdate) {
+                localStorage.setItem('ratool_birthdate', resolvedBirthdate);
+                localStorage.setItem('ratbod_birthdate', resolvedBirthdate);
+              }
+              if (resolvedAge) {
+                localStorage.setItem('ratool_age', resolvedAge);
+                localStorage.setItem('ratbod_age', resolvedAge);
+              }
+              if (resolvedHeight) {
+                localStorage.setItem('ratool_height', resolvedHeight);
+                localStorage.setItem('ratbod_height', resolvedHeight);
+              }
+              if (resolvedActivity) {
+                localStorage.setItem('ratool_activity', resolvedActivity);
+                localStorage.setItem('ratbod_activity', resolvedActivity);
+              }
+              if (resolvedUnit) {
+                localStorage.setItem('ratool_unit', resolvedUnit);
+                localStorage.setItem('ratbod_unit', resolvedUnit);
+              }
+            } catch (e) {}
+
+            // If Firestore was missing fields that local has, sync them up so Firestore is complete
+            const missingFields: Record<string, any> = {};
+            if (!data.name && resolvedName) missingFields.name = resolvedName;
+            if (!data.birthdate && resolvedBirthdate) missingFields.birthdate = resolvedBirthdate;
+            if (!data.age && resolvedAge) missingFields.age = resolvedAge;
+            if (!data.height && resolvedHeight) missingFields.height = resolvedHeight;
+            if (!data.gender && resolvedGender) missingFields.gender = resolvedGender;
+            if (!data.unit && resolvedUnit) missingFields.unit = resolvedUnit;
+            if (Object.keys(missingFields).length > 0) {
+              setDoc(docRef, missingFields, { merge: true }).catch(() => {});
+            }
+
             if (data.weekStartDay !== undefined && typeof data.weekStartDay === 'number') {
               setWeekStartDay(data.weekStartDay);
               try {
@@ -656,6 +756,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             if (remoteMenuTab && (VALID_TABS as readonly string[]).includes(remoteMenuTab)) {
               isTabSyncingFromRemote.current = true;
               lastSyncedTabRef.current = remoteMenuTab;
+              activeTabRef.current = remoteMenuTab;
               setActiveTab(remoteMenuTab);
               try {
                 localStorage.setItem('ratool_active_tab', remoteMenuTab);
@@ -667,12 +768,37 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             const remoteSubNavTab = (data.lastSubNavTab === 'breathing' || data.lastSubNavTab === 'salah') ? 'calm' : data.lastSubNavTab;
             if (remoteSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(remoteSubNavTab)) {
               isSubTabSyncingFromRemote.current = true;
+              lastSyncedSubTabRef.current = remoteSubNavTab;
+              activeSubTabRef.current = remoteSubNavTab as LogifyTab;
               setActiveSubTab(remoteSubNavTab as LogifyTab);
               try {
                 localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
               } catch (e) {}
             }
 
+            loadedFromDb = true;
+          } else {
+            // Document does not exist yet in Firestore: Migrate local data to Firestore immediately
+            if (localName || localBirthdate || localAge || localHeight) {
+              setName(localName);
+              setGender(localGender);
+              setBirthdate(localBirthdate);
+              setAge(localAge);
+              setHeight(localHeight);
+              setActivityLevel(localActivity);
+              setUnit(localUnit);
+
+              setDoc(docRef, {
+                name: localName,
+                gender: localGender,
+                birthdate: localBirthdate,
+                age: localAge,
+                height: localHeight,
+                activityLevel: localActivity,
+                unit: localUnit,
+                updatedAt: serverTimestamp()
+              }, { merge: true }).catch(() => {});
+            }
             loadedFromDb = true;
           }
 
@@ -703,40 +829,22 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       }
 
       if (!loadedFromDb) {
-        // Do not fallback to local storage if user is signed in to prevent local leak over to new account
-        if (user) {
-          // Keep fields empty for new user
-        } else {
-          // If no user load local
-          const savedName = localStorage.getItem('ratool_name') || localStorage.getItem('ratbod_name') || '';
-          const savedGender = (localStorage.getItem('ratool_gender') || localStorage.getItem('ratbod_gender')) as Gender || 'male';
-          const savedBirthdate = localStorage.getItem('ratool_birthdate') || localStorage.getItem('ratbod_birthdate') || '';
-          const savedAge = localStorage.getItem('ratool_age') || localStorage.getItem('ratbod_age') || '';
-          const savedHeight = localStorage.getItem('ratool_height') || localStorage.getItem('ratbod_height') || '';
-          // Quick measurement fields reset on reload
-          const savedActivity = (localStorage.getItem('ratool_activity') || localStorage.getItem('ratbod_activity')) as ActivityLevel || 'sedentary';
-          const savedUnit = (localStorage.getItem('ratool_unit') || localStorage.getItem('ratbod_unit')) as 'metric' | 'imperial' || 'metric';
-          const savedDarkMode = getInitialTheme();
-          const savedLang = (localStorage.getItem('ratool_lang') || localStorage.getItem('ratbod_lang')) as 'en' | 'bn' || 'en';
+        // If not logged in, load from localStorage
+        const savedName = localStorage.getItem('ratool_name') || localStorage.getItem('ratbod_name') || '';
+        const savedGender = (localStorage.getItem('ratool_gender') || localStorage.getItem('ratbod_gender')) as Gender || 'male';
+        const savedBirthdate = localStorage.getItem('ratool_birthdate') || localStorage.getItem('ratbod_birthdate') || '';
+        const savedAge = localStorage.getItem('ratool_age') || localStorage.getItem('ratbod_age') || '';
+        const savedHeight = localStorage.getItem('ratool_height') || localStorage.getItem('ratbod_height') || '';
+        const savedActivity = (localStorage.getItem('ratool_activity') || localStorage.getItem('ratbod_activity')) as ActivityLevel || 'sedentary';
+        const savedUnit = (localStorage.getItem('ratool_unit') || localStorage.getItem('ratbod_unit')) as 'metric' | 'imperial' || 'metric';
 
-          setName(savedName);
-          setGender(savedGender);
-          setBirthdate(savedBirthdate);
-          setAge(savedAge);
-          setHeight(savedHeight);
-          // weight, waist, neck, hip remain empty
-          setActivityLevel(savedActivity);
-          setUnit(savedUnit);
-          setDarkMode(savedDarkMode);
-          setLang(savedLang);
-
-          try {
-            const h = localStorage.getItem('ratool_history') || localStorage.getItem('ratbod_history');
-            setHistoryList(JSON.parse(h || '[]'));
-            const g = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
-            setSavedGoal(g ? JSON.parse(g) : null);
-          } catch (e) {}
-        }
+        if (savedName) setName(savedName);
+        if (savedGender) setGender(savedGender);
+        if (savedBirthdate) setBirthdate(savedBirthdate);
+        if (savedAge) setAge(savedAge);
+        if (savedHeight) setHeight(savedHeight);
+        if (savedActivity) setActivityLevel(savedActivity);
+        if (savedUnit) setUnit(savedUnit);
       }
       setIsLoaded(true);
     });
@@ -803,26 +911,26 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     const user = authUser || auth.currentUser;
     if (user) {
       const docRef = doc(db, 'users', user.uid);
-      setDoc(docRef, {
-        name,
+      const profilePayload: Record<string, any> = {
         gender,
-        birthdate,
-        age,
-        height,
         activityLevel,
         unit,
         themeMode: isSunriseToSunset ? 'auto' : (darkMode ? 'dark' : 'light'),
         darkMode,
         isSunriseToSunset: Boolean(isSunriseToSunset),
         lang,
-        lastMenuTab: activeTab,
-        lastSubNavTab: activeSubTab,
         updatedAt: serverTimestamp()
-      }, { merge: true }).catch(e => {
+      };
+      if (name) profilePayload.name = name;
+      if (birthdate) profilePayload.birthdate = birthdate;
+      if (age) profilePayload.age = age;
+      if (height) profilePayload.height = height;
+
+      setDoc(docRef, profilePayload, { merge: true }).catch(e => {
         console.error("Failed to sync profile to Firestore", e);
       });
     }
-  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, isSunriseToSunset, lang, activeTab, activeSubTab, isLoaded]);
+  }, [name, gender, birthdate, age, height, activityLevel, unit, darkMode, isSunriseToSunset, lang, isLoaded]);
 
   // Real-time synchronization of activeTab to Firestore across devices
   useEffect(() => {
@@ -1402,6 +1510,60 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         localStorage.setItem('ratbod_active_tab', tab);
       } catch (e) {}
     }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
+  const handleNavigateTab = (tab: string, subTab?: string) => {
+    setIsDashboardOpen(false);
+
+    if (tab === 'calculator') {
+      handleHealthMenuClick();
+      return;
+    }
+
+    const targetTab = (VALID_TABS as readonly string[]).includes(tab as TabType)
+      ? (tab as TabType)
+      : 'calculator';
+
+    const targetSubTab = (subTab && (VALID_SUB_TABS as readonly string[]).includes(subTab as LogifyTab))
+      ? (subTab as LogifyTab)
+      : undefined;
+
+    // Synchronously update local refs and state before any network triggers
+    lastSyncedTabRef.current = targetTab;
+    activeTabRef.current = targetTab;
+    if (targetSubTab) {
+      lastSyncedSubTabRef.current = targetSubTab;
+      activeSubTabRef.current = targetSubTab;
+      setActiveSubTab(targetSubTab);
+      try {
+        localStorage.setItem('ratool_logify_subtab', targetSubTab);
+        localStorage.setItem('ratbod_logify_subtab', targetSubTab);
+      } catch (e) {}
+    }
+
+    setActiveTab(targetTab);
+    try {
+      localStorage.setItem('ratool_active_tab', targetTab);
+      localStorage.setItem('ratbod_active_tab', targetTab);
+    } catch (e) {}
+
+    // Atomic update to Firestore
+    const user = authUser || auth.currentUser;
+    if (user && isLoaded) {
+      const docRef = doc(db, 'users', user.uid);
+      const payload: Record<string, any> = {
+        lastMenuTab: targetTab,
+        updatedAt: serverTimestamp()
+      };
+      if (targetSubTab) {
+        payload.lastSubNavTab = targetSubTab;
+      }
+      setDoc(docRef, payload, { merge: true }).catch(() => {});
+    }
+
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -2001,16 +2163,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           currentWeight={metricData.weight}
           historyList={historyList}
           savedGoal={savedGoal}
-          onNavigateTab={(tab, subTab) => {
-            handleMenuClick(tab as TabType);
-            if (subTab) {
-              setActiveSubTab(subTab as LogifyTab);
-              try {
-                localStorage.setItem('ratool_logify_subtab', subTab);
-                localStorage.setItem('ratbod_logify_subtab', subTab);
-              } catch (e) {}
-            }
-          }}
+          onNavigateTab={handleNavigateTab}
         />
       </div>
 
@@ -2499,17 +2652,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         currentWeight={metricData.weight}
         historyList={historyList}
         savedGoal={savedGoal}
-        onNavigateTab={(tab, subTab) => {
-          setIsDashboardOpen(false);
-          handleMenuClick(tab as TabType);
-          if (subTab) {
-            setActiveSubTab(subTab as LogifyTab);
-            try {
-              localStorage.setItem('ratool_logify_subtab', subTab);
-              localStorage.setItem('ratbod_logify_subtab', subTab);
-            } catch (e) {}
-          }
-        }}
+        onNavigateTab={handleNavigateTab}
       />
     </div>
       {/* Mobile Sticky 5-Tab Navigation: Full-width bottom bar with inside capsule/pill buttons */}
