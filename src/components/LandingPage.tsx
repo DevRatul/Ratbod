@@ -72,9 +72,22 @@ export default function LandingPage({
     try {
       localStorage.setItem('ratool_active_tab', targetTab);
       localStorage.setItem('ratbod_active_tab', targetTab);
+      if (tab === 'water') {
+        localStorage.setItem('ratool_logify_subtab', 'water');
+        localStorage.setItem('ratbod_logify_subtab', 'water');
+      } else if (tab === 'breathing') {
+        localStorage.setItem('ratool_logify_subtab', 'calm');
+        localStorage.setItem('ratbod_logify_subtab', 'calm');
+      }
     } catch (e) {}
     if (onNavigateTab) {
-      onNavigateTab(targetTab);
+      if (tab === 'water') {
+        (onNavigateTab as any)('logify', 'water');
+      } else if (tab === 'breathing') {
+        (onNavigateTab as any)('logify', 'calm');
+      } else {
+        onNavigateTab(targetTab);
+      }
     } else if (onLogin) {
       onLogin();
     }

@@ -637,12 +637,15 @@ export default function DashboardModal({
       {/* Row 1: Weight & Water side by side on desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
         {/* Weight Tracking Card */}
-        <div className={cn(
-          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode 
-            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
-            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
-        )}>
+        <div 
+          onClick={() => onNavigateTab ? onNavigateTab('calculator') : onClose()}
+          className={cn(
+            "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between cursor-pointer active:scale-[0.99]",
+            darkMode 
+              ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+              : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
+          )}
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className={cn(
@@ -661,7 +664,11 @@ export default function DashboardModal({
             <button
               id="overview_weight_log_btn"
               type="button"
-              onClick={() => onNavigateTab ? onNavigateTab('calculator') : onClose()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onNavigateTab) onNavigateTab('calculator');
+                else onClose();
+              }}
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
                 darkMode 
@@ -711,12 +718,15 @@ export default function DashboardModal({
         </div>
 
         {/* Water Intake Card */}
-        <div className={cn(
-          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode 
-            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
-            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
-        )}>
+        <div 
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'water') : onClose()}
+          className={cn(
+            "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between cursor-pointer active:scale-[0.99]",
+            darkMode 
+              ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+              : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
+          )}
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className={cn(
@@ -735,7 +745,11 @@ export default function DashboardModal({
             <button
               id="overview_water_log_btn"
               type="button"
-              onClick={() => onNavigateTab ? onNavigateTab('logify', 'water') : onClose()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onNavigateTab) onNavigateTab('logify', 'water');
+                else onClose();
+              }}
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
                 darkMode 
@@ -774,12 +788,15 @@ export default function DashboardModal({
       {/* Row 2: Sleep & Steps */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
         {/* Sleep Quality & Hours Card */}
-        <div className={cn(
-          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode 
-            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
-            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
-        )}>
+        <div 
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'sleep') : onClose()}
+          className={cn(
+            "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between cursor-pointer active:scale-[0.99]",
+            darkMode 
+              ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+              : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
+          )}
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className={cn(
@@ -798,7 +815,11 @@ export default function DashboardModal({
             <button
               id="overview_sleep_log_btn"
               type="button"
-              onClick={() => onNavigateTab ? onNavigateTab('logify', 'sleep') : onClose()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onNavigateTab) onNavigateTab('logify', 'sleep');
+                else onClose();
+              }}
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
                 darkMode 
@@ -823,7 +844,7 @@ export default function DashboardModal({
                 ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/20" 
                 : "bg-gray-100 text-gray-700 border-gray-200/70"
             )}>
-              {formatNum(sleepMetrics.totalLogs)} {isBn ? 'দিন রেকর্ড' : 'nights logged'}
+              {formatNum(sleepMetrics.totalLogs)} {isBn ? 'দিন record' : 'nights logged'}
             </div>
           </div>
 
@@ -834,12 +855,15 @@ export default function DashboardModal({
         </div>
 
         {/* Steps Card */}
-        <div className={cn(
-          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between",
-          darkMode 
-            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
-            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
-        )}>
+        <div 
+          onClick={() => onNavigateTab ? onNavigateTab('logify', 'steps') : onClose()}
+          className={cn(
+            "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between cursor-pointer active:scale-[0.99]",
+            darkMode 
+              ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+              : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
+          )}
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className={cn(
@@ -858,7 +882,11 @@ export default function DashboardModal({
             <button
               id="overview_steps_log_btn"
               type="button"
-              onClick={() => onNavigateTab ? onNavigateTab('logify', 'steps') : onClose()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onNavigateTab) onNavigateTab('logify', 'steps');
+                else onClose();
+              }}
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
                 darkMode 
@@ -895,12 +923,15 @@ export default function DashboardModal({
       </div>
 
       {/* Row 3: Reading Tracker Summary Card */}
-      <div className={cn(
-        "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all",
-        darkMode 
-          ? "bg-white/[0.02] border-white/10" 
-          : "bg-white border-gray-200/80 shadow-2xs"
-      )}>
+      <div 
+        onClick={() => onNavigateTab ? onNavigateTab('logify', 'reading') : onClose()}
+        className={cn(
+          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer active:scale-[0.99]",
+          darkMode 
+            ? "bg-white/[0.02] border-white/10 hover:border-white/20" 
+            : "bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs"
+        )}
+      >
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
             <div className={cn(
@@ -919,7 +950,11 @@ export default function DashboardModal({
           <button
             id="overview_reading_log_btn"
             type="button"
-            onClick={() => onNavigateTab ? onNavigateTab('logify', 'reading') : onClose()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onNavigateTab) onNavigateTab('logify', 'reading');
+              else onClose();
+            }}
             className={cn(
               "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95",
               darkMode 

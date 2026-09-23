@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -484,6 +484,43 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return val;
   };
 
+  // Format timestamp into 12-hour format with AM/PM (e.g. 09:30 AM, 02:45 PM)
+  const format12HourTime = (dateOrTimestamp?: number | Date | string | null): string => {
+    if (!dateOrTimestamp) return '';
+    let d: Date;
+    if (typeof dateOrTimestamp === 'number') {
+      d = new Date(dateOrTimestamp);
+    } else if (dateOrTimestamp instanceof Date) {
+      d = dateOrTimestamp;
+    } else if (typeof dateOrTimestamp === 'string') {
+      if (/AM|PM|am|pm/i.test(dateOrTimestamp)) {
+        return dateOrTimestamp;
+      }
+      const match = dateOrTimestamp.match(/^(\d{1,2}):(\d{2})/);
+      if (match) {
+        let h = parseInt(match[1], 10);
+        const m = match[2];
+        const period = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${String(h).padStart(2, '0')}:${m} ${period}`;
+      }
+      const parsed = Number(dateOrTimestamp);
+      if (!isNaN(parsed) && parsed > 1600000000000) {
+        d = new Date(parsed);
+      } else {
+        return dateOrTimestamp;
+      }
+    } else {
+      return '';
+    }
+
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const period = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${String(hours).padStart(2, '0')}:${minutes} ${period}`;
+  };
+
   // Helper formatting for past history dates
   const formatHistoryDate = (dateStr: string) => {
     const todayStr = getLocalDateString(new Date());
@@ -579,6 +616,106 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
   const lastIntakeMinutes = getLastIntakeMinutes();
   const isIntakeOverdue = lastIntakeMinutes !== null && lastIntakeMinutes >= 50;
+
+  // Mobile Notification Permission State
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+
+  const requestNotificationPermission = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        const res = await Notification.requestPermission();
+        setNotifPermission(res);
+        return res;
+      } catch (e) {
+        console.warn('Notification permission request error:', e);
+      }
+    }
+    return 'default';
+  };
+
+  // Trigger mobile notification and alarm
+  const trigger50MinNotification = useCallback(() => {
+    playHydrationAlarmSound();
+
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([400, 200, 400, 200, 600]);
+      } catch {}
+    }
+
+    const title = lang === 'bn' ? 'পানি পানের রিমাইন্ডার 💧 (৫০ মি.)' : 'Hydration Reminder 💧 (50 min)';
+    const body = lang === 'bn'
+      ? 'সর্বশেষ পানি পান করার পর ৫০ মিনিট অতিবাহিত হয়েছে। সতেজ ও সুস্থ থাকতে এখনই এক গ্লাস পানি পান করুন!'
+      : "It's been 50 minutes since your last water intake! Drink a fresh glass of water to keep your body hydrated.";
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then((reg) => {
+          (reg as any).showNotification(title, {
+            body,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'ratbod-water-50min-reminder',
+            renotify: true,
+            vibrate: [400, 200, 400, 200, 600],
+            data: { url: '/' }
+          });
+        }).catch(() => {
+          try {
+            new Notification(title, { body, icon: '/icon-192.png' });
+          } catch {}
+        });
+      } else {
+        try {
+          new Notification(title, { body, icon: '/icon-192.png' });
+        } catch {}
+      }
+    }
+
+    setShowAlarmModal(true);
+  }, [lang]);
+
+  // 50-minute notification scheduler: calculates exact time remaining and notifies
+  useEffect(() => {
+    if (entries.length === 0) return;
+    const lastEntry = entries[0];
+    let entryTimeMs = lastEntry.createdAt;
+    if (!entryTimeMs) {
+      const parsedId = Number(lastEntry.id);
+      if (!isNaN(parsedId) && parsedId > 1600000000000) {
+        entryTimeMs = parsedId;
+      }
+    }
+    if (!entryTimeMs) return;
+
+    const targetTimeMs = entryTimeMs + (50 * 60 * 1000); // exactly 50 minutes after last intake
+    const now = Date.now();
+    const remainingMs = targetTimeMs - now;
+
+    const checkAndNotify = () => {
+      const lastNotifiedId = localStorage.getItem('ratbod_water_last_notified_id');
+      if (lastNotifiedId !== lastEntry.id) {
+        localStorage.setItem('ratbod_water_last_notified_id', lastEntry.id);
+        trigger50MinNotification();
+      }
+    };
+
+    if (remainingMs <= 0) {
+      checkAndNotify();
+      return;
+    }
+
+    const timerId = setTimeout(() => {
+      checkAndNotify();
+    }, remainingMs);
+
+    return () => clearTimeout(timerId);
+  }, [entries, trigger50MinNotification]);
 
 
 
@@ -823,11 +960,16 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
 
     const now = Date.now();
+    // Auto-request notification permission on mobile when user starts logging water
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      requestNotificationPermission().catch(() => {});
+    }
+
     const newEntry: WaterEntry = {
       id: now.toString(),
       amountMl,
       glasses: amountMl / (glassVolumeMl || 250),
-      timestamp: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: format12HourTime(now),
       createdAt: now
     };
     setEntries(prev => [newEntry, ...prev]);
@@ -1021,55 +1163,77 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             {labels.consumed}
           </span>
 
-          {/* Last Water Intake with Clock Icon showing Time Ago (Acts as Red Theme / Red Button with Blinking Border when >= 50 minutes) */}
-          <motion.button 
-            type="button"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              const el = document.getElementById('water_glasses_container');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Last Water Intake with Clock Icon showing Time Ago (Acts as Red Theme / Red Button with Blinking Border when >= 50 minutes) */}
+            <motion.button 
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                const el = document.getElementById('water_glasses_container');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+              className={cn(
+                "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate cursor-pointer",
+                isIntakeOverdue
+                  ? "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border-red-500 animate-blink-red shadow-md shadow-red-500/30"
+                  : (entries.length > 0
+                      ? (darkMode 
+                          ? "bg-[#181a20] border-black text-white hover:bg-white/10" 
+                          : "bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200/80 shadow-2xs")
+                      : (darkMode 
+                          ? "bg-[#181a20] border-black text-white" 
+                          : "bg-gray-100 border-gray-300 text-gray-900 shadow-2xs"))
+              )}
+              title={
+                isIntakeOverdue
+                  ? (lang === 'bn' 
+                      ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ৫০ মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
+                      : `Alert: ${formatLastIntakeTimeAgo()} since last intake. Over 50 minutes—time to take water seriously! Tap to drink water.`)
+                  : (entries.length > 0 ? `${labels.lastIntake}: ${format12HourTime(entries[0].createdAt || entries[0].timestamp)}` : undefined)
               }
-            }}
-            className={cn(
-              "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate cursor-pointer",
-              isIntakeOverdue
-                ? "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border-red-500 animate-blink-red shadow-md shadow-red-500/30"
-                : (entries.length > 0
-                    ? (darkMode 
-                        ? "bg-[#181a20] border-black text-white hover:bg-white/10" 
-                        : "bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200/80 shadow-2xs")
-                    : (darkMode 
-                        ? "bg-[#181a20] border-black text-white" 
-                        : "bg-gray-100 border-gray-300 text-gray-900 shadow-2xs"))
-            )}
-            title={
-              isIntakeOverdue
-                ? (lang === 'bn' 
-                    ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ৫০ মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
-                    : `Alert: ${formatLastIntakeTimeAgo()} since last intake. Over 50 minutes—time to take water seriously! Tap to drink water.`)
-                : (entries.length > 0 ? `${labels.lastIntake}: ${entries[0].timestamp}` : undefined)
-            }
-          >
-            {isIntakeOverdue ? (
-              <>
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                </span>
-                <Clock size={15} className="text-white shrink-0 animate-pulse" />
-                <span className="truncate tracking-tight font-black text-white drop-shadow-xs">
-                  {formatLastIntakeTimeAgo()}
-                </span>
-              </>
-            ) : (
-              <>
-                <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-600 shrink-0")} />
-                <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
-              </>
-            )}
-          </motion.button>
+            >
+              {isIntakeOverdue ? (
+                <>
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                  </span>
+                  <Clock size={15} className="text-white shrink-0 animate-pulse" />
+                  <span className="truncate tracking-tight font-black text-white drop-shadow-xs">
+                    {formatLastIntakeTimeAgo()}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-600 shrink-0")} />
+                  <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
+                </>
+              )}
+            </motion.button>
+
+            {/* Mobile 50-Min Hydration Alert Toggle */}
+            <button
+              type="button"
+              onClick={requestNotificationPermission}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer shrink-0 active:scale-95",
+                notifPermission === 'granted'
+                  ? (darkMode ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200")
+                  : (darkMode ? "bg-blue-500/15 text-blue-300 border-blue-500/30 hover:bg-blue-500/25" : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100")
+              )}
+              title={lang === 'bn' ? 'সর্বশেষ গ্রহণের ৫০ মিনিট পর মোবাইল নোটিফিকেশন' : 'Mobile notification 50 minutes after last intake'}
+            >
+              <Bell size={12} className={notifPermission === 'granted' ? "text-emerald-500 fill-emerald-500/20 shrink-0" : "text-blue-500 shrink-0"} />
+              <span>
+                {notifPermission === 'granted'
+                  ? (lang === 'bn' ? '৫০মি. রিমাইন্ডার চালু ✓' : '50m Alert Active ✓')
+                  : (lang === 'bn' ? '৫০মি. নোটিফিকেশন চালু করুন' : 'Enable 50m Alert')}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Glass Cup with Liquid Fill: Left [300ml] [400ml] - Center [Cup] - Right [250ml] [100ml] - Zero horizontal scroll on mobile */}
@@ -1376,8 +1540,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
                           +{formatNum(item.amountMl)} {labels.mlUnit} ({formatNum(item.glasses, 1)} {labels.glassesUnit})
                         </span>
-                        <span className="text-[10px] text-gray-900 dark:text-white font-medium">
-                          {item.timestamp}
+                        <span className="text-[10px] text-gray-900 dark:text-white font-bold font-mono">
+                          {format12HourTime(item.createdAt || item.timestamp)}
                         </span>
                       </div>
                     </div>

@@ -28,6 +28,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 import { onAuthStateChanged } from 'firebase/auth';
 import { syncHabitsWithTrackers, markReadingHabitCompleted } from '../utils/habitSync';
 
@@ -159,7 +160,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     return String(num).replace(/[0-9]/g, d => bnDigits[Number(d)]);
   };
 
-  const getLocalDateString = (d: Date = new Date()) => {
+  const getLocalDateString = (d?: Date) => {
+    if (!d) return getDhakaLogicalDateKey().dateKey;
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -169,10 +171,9 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const formatHistoryDate = (dateStr: string) => {
     try {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const today = getLocalDateString(new Date());
-      const yesterdayDate = new Date();
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-      const yesterday = getLocalDateString(yesterdayDate);
+      const logicalInfo = getDhakaLogicalDateKey();
+      const today = logicalInfo.dateKey;
+      const yesterday = logicalInfo.yesterdayDateKey;
 
       if (dateStr === today) return isBn ? 'আজ' : 'Today';
       if (dateStr === yesterday) return isBn ? 'গতকাল' : 'Yesterday';
@@ -274,8 +275,29 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const [directPagesInput, setDirectPagesInput] = useState<string>('20');
   const [showNoteField, setShowNoteField] = useState<boolean>(false);
   const [noteInput, setNoteInput] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
+  const [selectedDate, setSelectedDate] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
   const [savedToast, setSavedToast] = useState<boolean>(false);
+
+  // Keep date synchronized when sunset passes in real-time
+  useEffect(() => {
+    const updateSunsetDate = () => {
+      const currentLogical = getDhakaLogicalDateKey().dateKey;
+      setSelectedDate(prev => {
+        // If user was on the previous logical date, roll it forward with sunset
+        const prevLogical = getDhakaLogicalDateKey(new Date(Date.now() - 30000)).dateKey;
+        if (prev === prevLogical) {
+          return currentLogical;
+        }
+        return prev;
+      });
+    };
+    const interval = setInterval(updateSunsetDate, 15000);
+    window.addEventListener('focus', updateSunsetDate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', updateSunsetDate);
+    };
+  }, []);
 
   // Deletion confirmation state
   interface DeleteTarget {
@@ -310,8 +332,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   useEffect(() => { pageGoalRef.current = pageGoal; }, [pageGoal]);
   useEffect(() => { selectedBookIdRef.current = selectedBookId; }, [selectedBookId]);
 
-  // Calculate today's pages from records
-  const todayStr = getLocalDateString();
+  // Calculate today's pages from records (aligned with sunset rollover)
+  const todayStr = getDhakaLogicalDateKey().dateKey;
   const todayPages = records
     .filter(r => r.date === todayStr)
     .reduce((acc, r) => acc + (r.pages || 0), 0);
@@ -331,10 +353,11 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       const activeDel = currentDeletedIds || deletedBookIdsRef.current;
 
       // 1. Sanitize to guarantee NO undefined properties are ever sent to Firestore or stored
+      const activeLogicalDate = getDhakaLogicalDateKey().dateKey;
       const cleanRecords = updatedRecords.map((r, idx) => {
         const item: any = {
-          id: String(r.id || `rec_${r.date || getLocalDateString()}_${Date.now()}_${idx}`),
-          date: String(r.date || getLocalDateString()),
+          id: String(r.id || `rec_${r.date || activeLogicalDate}_${Date.now()}_${idx}`),
+          date: String(r.date || activeLogicalDate),
           bookTitle: String(r.bookTitle || ''),
           pages: Number(r.pages) || 0,
           minutes: 0,
@@ -822,9 +845,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     }
 
     const uniqueRecId = `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const logicalToday = getDhakaLogicalDateKey().dateKey;
     const newRec: ReadingRecord = {
       id: uniqueRecId,
-      date: selectedDate || getLocalDateString(),
+      date: selectedDate || logicalToday,
       bookTitle: title,
       pages: p,
       minutes: 0,
@@ -860,7 +884,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     setRecords(updatedRecords);
     setBooks(updatedBooks);
     persistData(pageGoal, updatedRecords, updatedBooks, selectedBookId);
-    markReadingHabitCompleted(selectedDate || getLocalDateString());
+    markReadingHabitCompleted(selectedDate || logicalToday);
 
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);

@@ -26,6 +26,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 import CircularSleepDial from './CircularSleepDial';
 import { triggerHaptic, initHapticAudio } from '../utils/haptics';
 
@@ -57,7 +58,8 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
     return String(num).replace(/[0-9]/g, d => bnDigits[Number(d)]);
   };
 
-  const getLocalDateString = (d: Date = new Date()) => {
+  const getLocalDateString = (d?: Date) => {
+    if (!d) return getDhakaLogicalDateKey().dateKey;
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -67,12 +69,9 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   const formatHistoryDate = (dateStr: string) => {
     try {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const date = new Date(y, m - 1, d);
-      const today = getLocalDateString(new Date());
-      
-      const yesterdayDate = new Date();
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-      const yesterday = getLocalDateString(yesterdayDate);
+      const logicalInfo = getDhakaLogicalDateKey();
+      const today = logicalInfo.dateKey;
+      const yesterday = logicalInfo.yesterdayDateKey;
 
       if (dateStr === today) {
         return isBn ? 'আজ' : 'Today';
@@ -99,7 +98,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   const [sleepWakeTime, setSleepWakeTime] = useState<string>(() => {
     return localStorage.getItem('ratbod_sleep_wake') || '07:00';
   });
-  const [selectedSleepDate, setSelectedSleepDate] = useState<string>(() => getLocalDateString());
+  const [selectedSleepDate, setSelectedSleepDate] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
   const [sleepRecords, setSleepRecords] = useState<SleepRecord[]>(() => {
     try {
       const saved = localStorage.getItem('ratbod_sleep_records');
@@ -298,7 +297,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   const handleLogSleepRecord = () => {
     initHapticAudio();
     triggerHaptic('heavy', true);
-    const targetDate = selectedSleepDate || getLocalDateString(new Date());
+    const targetDate = selectedSleepDate || getDhakaLogicalDateKey().dateKey;
     const newRecord: SleepRecord = {
       id: String(Date.now()),
       date: targetDate,
@@ -328,10 +327,30 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   // Check if selected date already has a log
   const existingRecordForSelectedDate = sleepRecords.find(r => r.date === selectedSleepDate);
 
-  const todayStr = getLocalDateString(new Date());
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterdayStr = getLocalDateString(yesterdayDate);
+  // Sunset-aligned logical date (shifts to next day once sunset passes in Dhaka)
+  const logicalDateInfo = getDhakaLogicalDateKey();
+  const todayStr = logicalDateInfo.dateKey;
+  const yesterdayStr = logicalDateInfo.yesterdayDateKey;
+
+  // Real-time listener for sunset date rollover
+  useEffect(() => {
+    const checkSunsetShift = () => {
+      const current = getDhakaLogicalDateKey().dateKey;
+      setSelectedSleepDate(prev => {
+        const prevLogical = getDhakaLogicalDateKey(new Date(Date.now() - 30000)).dateKey;
+        if (prev === prevLogical) {
+          return current;
+        }
+        return prev;
+      });
+    };
+    const interval = setInterval(checkSunsetShift, 15000);
+    window.addEventListener('focus', checkSunsetShift);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkSunsetShift);
+    };
+  }, []);
 
   // Metrics for analytics
   const totalLogs = sleepRecords.length;

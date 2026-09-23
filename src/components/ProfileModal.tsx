@@ -265,7 +265,7 @@ export default function ProfileModal({
             </div>
             <div>
               <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
-                Height ({unit === 'metric' ? 'cm' : 'in'})
+                Height (cm)
               </label>
               <input
                 type="number"
@@ -275,133 +275,55 @@ export default function ProfileModal({
                   "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
                   darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
                 )}
-                placeholder={unit === 'metric' ? 'e.g. 175' : 'e.g. 69'}
+                placeholder="e.g. 175"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                value={birthdate}
-                onChange={(e) => handleBirthdateChange(e.target.value)}
-                className={cn(
-                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
-                  darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
-                )}
-              />
-            </div>
-            <div>
-              <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
-                Age (years)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="120"
-                value={age || ''}
-                onChange={(e) => setAge?.(e.target.value)}
-                placeholder="e.g. 28"
-                className={cn(
-                  "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
-                  darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Unit System Selector */}
           <div>
             <label className={cn("text-xs font-bold uppercase tracking-wider block mb-2", darkMode ? "text-gray-400" : "text-gray-600")}>
-              Unit System
+              Date of Birth
             </label>
-            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border bg-gray-50 dark:bg-black/40 border-gray-200 dark:border-white/10">
-              <button
-                type="button"
-                onClick={() => setUnit?.('metric')}
-                className={cn(
-                  "py-2 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  unit === 'metric'
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                )}
-              >
-                Metric (kg / cm)
-              </button>
-              <button
-                type="button"
-                onClick={() => setUnit?.('imperial')}
-                className={cn(
-                  "py-2 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  unit === 'imperial'
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                )}
-              >
-                Imperial (lbs / in)
-              </button>
-            </div>
+            <input
+              type="date"
+              value={birthdate}
+              onChange={(e) => handleBirthdateChange(e.target.value)}
+              className={cn(
+                "w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-sm",
+                darkMode ? "bg-black/50 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+              )}
+            />
           </div>
 
-          {/* Sunrise to Sunset Setting: One-liner with tick icon - ONLY available in Profile Edit section */}
-          <div className="mt-4 pt-3 border-t border-white/10 dark:border-white/10 border-gray-100">
-            <button
-              type="button"
-              onClick={handleToggleSunriseSunset}
+          {/* Week Start Day Setting */}
+          <div className="mt-4 pt-3 border-t border-white/10 dark:border-white/10 border-gray-100 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Calendar size={15} className="text-emerald-500 shrink-0" />
+              <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
+                Week Start Day
+              </span>
+            </div>
+            <select
+              id="profile_week_start_select"
+              value={weekStartDay}
+              onChange={(e) => onSetWeekStartDay?.(Number(e.target.value))}
               className={cn(
-                "w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer select-none",
-                darkMode ? "bg-white/[0.03] border-white/10 hover:bg-white/[0.06]" : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                "px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary transition-all",
+                darkMode 
+                  ? "bg-[#18181b] border-white/10 text-white" 
+                  : "bg-white border-gray-200 text-gray-900 shadow-2xs"
               )}
             >
-              <div className="flex items-center gap-2.5">
-                <SunMedium size={16} className="text-amber-500 shrink-0" />
-                <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
-                  Sunrise to sunset setting
-                </span>
-              </div>
-              <div className={cn(
-                "w-5 h-5 rounded-md flex items-center justify-center border transition-all",
-                isSunriseToSunset
-                  ? "bg-primary border-primary text-white shadow-sm"
-                  : (darkMode ? "border-white/20 bg-white/5" : "border-gray-300 bg-white")
-              )}>
-                {isSunriseToSunset && <Check size={14} strokeWidth={3} />}
-              </div>
-            </button>
-
-            {/* Week Start Day Setting */}
-            <div className="mt-2.5 pt-2.5 border-t border-white/10 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Calendar size={15} className="text-emerald-500 shrink-0" />
-                <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
-                  Week Start Day
-                </span>
-              </div>
-              <select
-                id="profile_week_start_select"
-                value={weekStartDay}
-                onChange={(e) => onSetWeekStartDay?.(Number(e.target.value))}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary transition-all",
-                  darkMode 
-                    ? "bg-[#18181b] border-white/10 text-white" 
-                    : "bg-white border-gray-200 text-gray-900 shadow-2xs"
-                )}
-              >
-                <option value={6}>Saturday</option>
-                <option value={0}>Sunday</option>
-                <option value={1}>Monday</option>
-                <option value={2}>Tuesday</option>
-                <option value={3}>Wednesday</option>
-                <option value={4}>Thursday</option>
-                <option value={5}>Friday</option>
-              </select>
-            </div>
+              <option value={6}>Saturday</option>
+              <option value={0}>Sunday</option>
+              <option value={1}>Monday</option>
+              <option value={2}>Tuesday</option>
+              <option value={3}>Wednesday</option>
+              <option value={4}>Thursday</option>
+              <option value={5}>Friday</option>
+            </select>
           </div>
+
 
           {/* Reset Password Button */}
           {email && (

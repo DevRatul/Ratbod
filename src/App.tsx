@@ -585,16 +585,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
             const remoteSubNavTab = (data.lastSubNavTab === 'breathing' || data.lastSubNavTab === 'salah') ? 'calm' : data.lastSubNavTab;
             if (remoteSubNavTab && (VALID_SUB_TABS as readonly string[]).includes(remoteSubNavTab)) {
-              setActiveSubTab((currentSubTab) => {
-                if (currentSubTab !== remoteSubNavTab) {
-                  isSubTabSyncingFromRemote.current = true;
-                  try {
-                    localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
-                  } catch (e) {}
-                  return remoteSubNavTab as LogifyTab;
-                }
-                return currentSubTab;
-              });
+              if (remoteSubNavTab !== lastSyncedSubTabRef.current && remoteSubNavTab !== activeSubTabRef.current) {
+                isSubTabSyncingFromRemote.current = true;
+                lastSyncedSubTabRef.current = remoteSubNavTab;
+                activeSubTabRef.current = remoteSubNavTab as LogifyTab;
+                try {
+                  localStorage.setItem('ratool_logify_subtab', remoteSubNavTab);
+                } catch (e) {}
+                setActiveSubTab(remoteSubNavTab as LogifyTab);
+              }
             }
 
             if (data.weekStartDay !== undefined && typeof data.weekStartDay === 'number') {
@@ -1491,17 +1490,43 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     document.body.scrollTop = 0;
   };
 
+  // Callback to handle subnav tab changes cleanly syncing state, refs, localStorage, and Firestore
+  const handleSubNavTabChange = useCallback((tab: LogifyTab) => {
+    activeSubTabRef.current = tab;
+    lastSyncedSubTabRef.current = tab;
+    setActiveSubTab(tab);
+    try {
+      localStorage.setItem('ratool_logify_subtab', tab);
+      localStorage.setItem('ratbod_logify_subtab', tab);
+    } catch (e) {}
+
+    const user = authUser || auth.currentUser;
+    if (user && isLoaded) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        lastSubNavTab: tab,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+    }
+  }, [authUser, isLoaded]);
+
   // Whenever any menu or subnav menu is clicked, the selected page will be shown from top, not from the bottom
   const handleMenuClick = (tab: TabType) => {
     if (tab === 'calculator') {
       handleHealthMenuClick();
     } else if ((tab as string) === 'breathing') {
       setActiveTab('logify');
-      setActiveSubTab('calm');
+      handleSubNavTabChange('calm');
       try {
         localStorage.setItem('ratool_active_tab', 'logify');
         localStorage.setItem('ratbod_active_tab', 'logify');
-        localStorage.setItem('ratool_logify_subtab', 'calm');
+      } catch (e) {}
+    } else if ((tab as string) === 'water') {
+      setActiveTab('logify');
+      handleSubNavTabChange('water');
+      try {
+        localStorage.setItem('ratool_active_tab', 'logify');
+        localStorage.setItem('ratbod_active_tab', 'logify');
       } catch (e) {}
     } else {
       setActiveTab(tab);
@@ -1523,13 +1548,28 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       return;
     }
 
-    const targetTab = (VALID_TABS as readonly string[]).includes(tab as TabType)
-      ? (tab as TabType)
-      : 'calculator';
+    let targetTab: TabType = 'calculator';
+    let targetSubTab: LogifyTab | undefined = undefined;
 
-    const targetSubTab = (subTab && (VALID_SUB_TABS as readonly string[]).includes(subTab as LogifyTab))
-      ? (subTab as LogifyTab)
-      : undefined;
+    if (tab === 'water' || tab === 'reading' || tab === 'sleep' || tab === 'steps' || tab === 'calm') {
+      targetTab = 'logify';
+      targetSubTab = tab as LogifyTab;
+    } else if (tab === 'breathing') {
+      targetTab = 'logify';
+      targetSubTab = 'calm';
+    } else if (tab === 'logify') {
+      targetTab = 'logify';
+      if (subTab && (VALID_SUB_TABS as readonly string[]).includes(subTab as LogifyTab)) {
+        targetSubTab = subTab as LogifyTab;
+      } else if (subTab === 'breathing') {
+        targetSubTab = 'calm';
+      }
+    } else if ((VALID_TABS as readonly string[]).includes(tab as TabType)) {
+      targetTab = tab as TabType;
+      if (subTab && (VALID_SUB_TABS as readonly string[]).includes(subTab as LogifyTab)) {
+        targetSubTab = subTab as LogifyTab;
+      }
+    }
 
     // Synchronously update local refs and state before any network triggers
     lastSyncedTabRef.current = targetTab;
@@ -2135,7 +2175,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           unit={unit} 
           isLogifyActive={activeTab === 'logify' || activeTab === 'water'} 
           activeTab={activeSubTab}
-          onTabChange={setActiveSubTab}
+          onTabChange={handleSubNavTabChange}
         />
       </div>
 
