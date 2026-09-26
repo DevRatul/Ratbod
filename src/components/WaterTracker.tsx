@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle, Sunset } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -7,6 +7,7 @@ import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { syncHabitsWithTrackers, markWaterHabitCompleted } from '../utils/habitSync';
+import { getDhakaLogicalDateKey, getDhakaSunsetTime } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -80,6 +81,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
 
 
+  const dhakaSunsetInfo = useMemo(() => getDhakaLogicalDateKey(), []);
+
   const goalMl = goalGlasses * glassVolumeMl;
   const totalConsumedMl = entries.reduce((acc, curr) => acc + curr.amountMl, 0);
   const totalGlasses = totalConsumedMl / (glassVolumeMl || 250);
@@ -106,12 +109,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
   };
 
-  // Helper to get local YYYY-MM-DD date string (respects user's actual timezone)
-  const getLocalDateString = (d: Date = new Date()): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  // Logical tracking date aligned with Dhaka sunset cycle (Habitor, Reading, Sleep, Water, Salah)
+  const getActiveWaterDateKey = (): string => {
+    return getDhakaLogicalDateKey().dateKey;
   };
 
   // Load from Firestore & LocalStorage (persists user-chosen goal strictly)
@@ -146,7 +146,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             setGlassVolumeMl(parsed.glassVolumeMl);
           }
 
-          const currentToday = getLocalDateString(new Date());
+          const currentToday = getDhakaLogicalDateKey().dateKey;
           let loadedHistory: DayHistory[] = Array.isArray(parsed.history) ? [...parsed.history] : [];
 
           if (parsed.todayDate === currentToday) {
@@ -155,7 +155,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               setEntries(parsed.todayEntries);
             }
           } else {
-            // Date changed since last session: archive the previous day's intake into history
+            // Date changed since last session (or sunset passed): archive the previous day's intake into history
             if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
               const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
               const oldGoal = (parsed.goalGlasses || goalGlasses) * (parsed.glassVolumeMl || glassVolumeMl);
@@ -201,32 +201,45 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return () => unsubscribe();
   }, []);
 
-  // Real-time day rollover checker (archives previous day if midnight passes while app is open)
+  // Real-time day rollover checker (archives previous day if sunset passes while app is open)
   useEffect(() => {
     if (!isLoaded) return;
     
     const checkDayRollover = () => {
-      const currentToday = getLocalDateString(new Date());
+      const currentToday = getDhakaLogicalDateKey().dateKey;
       const savedDataStr = localStorage.getItem('ratbod_water_tracker_data');
       if (savedDataStr) {
         try {
           const saved = JSON.parse(savedDataStr);
           if (saved.todayDate && saved.todayDate !== currentToday) {
-            const oldEntries: WaterEntry[] = saved.todayEntries || [];
+            const oldEntries: WaterEntry[] = saved.todayEntries || entries || [];
             const oldTotal = oldEntries.reduce((acc, c) => acc + (c.amountMl || 0), 0);
             const oldGoal = (saved.goalGlasses || goalGlasses) * (saved.glassVolumeMl || glassVolumeMl);
             
+            let updatedHistory = history;
             if (oldTotal > 0) {
-              setHistory(prev => {
-                const uniqueMap = new Map<string, DayHistory>();
-                prev.forEach(h => uniqueMap.set(h.date, h));
-                uniqueMap.set(saved.todayDate, { date: saved.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
-                const updated = Array.from(uniqueMap.values()).sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
-                return updated.slice(0, 60);
-              });
+              const uniqueMap = new Map<string, DayHistory>();
+              history.forEach(h => uniqueMap.set(h.date, h));
+              uniqueMap.set(saved.todayDate, { date: saved.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
+              updatedHistory = Array.from(uniqueMap.values()).sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)).slice(0, 60);
+              setHistory(updatedHistory);
             }
             
             setEntries([]);
+
+            // Persist reset day state
+            const nextData = {
+              ...saved,
+              todayEntries: [],
+              todayDate: currentToday,
+              history: updatedHistory
+            };
+            localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(nextData));
+            localStorage.setItem('ratool_water_tracker_data', JSON.stringify(nextData));
+            const user = auth.currentUser;
+            if (user) {
+              setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), nextData, { merge: true }).catch(() => {});
+            }
           }
         } catch (e) {}
       }
@@ -241,13 +254,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       window.removeEventListener('focus', checkDayRollover);
       document.removeEventListener('visibilitychange', checkDayRollover);
     };
-  }, [isLoaded, goalGlasses, glassVolumeMl]);
+  }, [isLoaded, goalGlasses, glassVolumeMl, history, entries]);
 
   // Save to Firestore & LocalStorage
   useEffect(() => {
     if (!isLoaded) return;
     try {
-      const todayDate = getLocalDateString(new Date());
+      const todayDate = getDhakaLogicalDateKey().dateKey;
       const dataToSave = {
         goalGlasses,
         glassVolumeMl,
@@ -523,10 +536,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
   // Helper formatting for past history dates
   const formatHistoryDate = (dateStr: string) => {
-    const todayStr = getLocalDateString(new Date());
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = getLocalDateString(yesterday);
+    const { dateKey: todayStr, yesterdayDateKey: yesterdayStr } = getDhakaLogicalDateKey();
 
     if (dateStr === todayStr) {
       return lang === 'bn' ? 'আজ (Today)' : 'Today';
@@ -976,7 +986,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     setRedoStack([]); // Clear redo stack on new water entry
 
     if (newTotal >= goalMl && goalMl > 0) {
-      markWaterHabitCompleted(getLocalDateString(new Date()));
+      markWaterHabitCompleted(getDhakaLogicalDateKey().dateKey);
     }
   };
 
@@ -1080,7 +1090,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     setShowGoalModal(false);
 
     try {
-      const todayDate = getLocalDateString(new Date());
+      const todayDate = getDhakaLogicalDateKey().dateKey;
       const currentSaved = localStorage.getItem('ratbod_water_tracker_data');
       let baseObj: any = {};
       if (currentSaved) {
@@ -1137,18 +1147,30 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenGoalModal}
-          className={cn(
-            "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          <div className={cn(
+            "px-2 sm:px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1 shrink-0",
             darkMode
-              ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
-              : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
-          )}
-        >
-          <span>{lang === 'bn' ? 'লক্ষ্য নির্ধারণ' : 'Set Goal'}</span>
-        </button>
+              ? "bg-amber-500/10 text-amber-300 border-amber-500/25"
+              : "bg-amber-50 text-amber-800 border-amber-200"
+          )}>
+            <Sunset size={13} className="text-amber-500 shrink-0" />
+            <span>{lang === 'bn' ? `সূর্যাস্ত: ${getDhakaSunsetTime().displayStr}` : `Sunset: ${getDhakaSunsetTime().displayStr}`}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenGoalModal}
+            className={cn(
+              "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+              darkMode
+                ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
+                : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
+            )}
+          >
+            <span>{lang === 'bn' ? 'লক্ষ্য নির্ধারণ' : 'Set Goal'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}

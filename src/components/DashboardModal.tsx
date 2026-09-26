@@ -27,6 +27,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -298,7 +299,7 @@ export default function DashboardModal({
 
   // ==================== 2. WATER INTAKE METRICS ====================
   const waterMetrics = useMemo(() => {
-    const todayStr = getLocalDateString(new Date());
+    const todayStr = getDhakaLogicalDateKey().dateKey;
     const historyArr: any[] = Array.isArray(waterData?.history) ? waterData.history : [];
     
     // Combine history with today's entries

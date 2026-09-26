@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { 
   Compass, 
@@ -37,6 +37,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getDhakaLogicalDateKey, getDhakaSunsetTime } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -842,6 +843,8 @@ export default function SalahTracker({
     return String(num).replace(/[0-9]/g, d => bnDigits[Number(d)]);
   };
 
+  const dhakaInfo = useMemo(() => getDhakaLogicalDateKey(), []);
+
   const getLocalDateString = (d: Date = new Date()) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -849,7 +852,179 @@ export default function SalahTracker({
     return `${year}-${month}-${day}`;
   };
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
+  const [selectedDate, setSelectedDate] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
+
+  // Fireworks canvas ref and celebration engine
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const animationFrameIdRef = React.useRef<number | null>(null);
+
+  const triggerFireworks = () => {
+    playTargetReachedSound();
+    if (typeof window === 'undefined') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
+    canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      alpha: number;
+      color: string;
+      size: number;
+      gravity: number;
+      friction: number;
+      decay: number;
+      flicker: boolean;
+    }
+
+    interface Rocket {
+      x: number;
+      y: number;
+      targetY: number;
+      vy: number;
+      color: string;
+      exploded: boolean;
+    }
+
+    const particles: Particle[] = [];
+    const rockets: Rocket[] = [];
+    const colors = [
+      '#10B981', '#34D399', '#F59E0B', '#FBBF24', 
+      '#06B6D4', '#38BDF8', '#8B5CF6', '#EC4899', 
+      '#E11D48', '#FFFFFF', '#FCD34D'
+    ];
+
+    const createExplosion = (x: number, y: number, baseColor?: string) => {
+      const pCount = 75 + Math.floor(Math.random() * 45);
+      const chosenColor = baseColor || colors[Math.floor(Math.random() * colors.length)];
+      for (let i = 0; i < pCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 6 + 1.5;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          color: Math.random() > 0.3 ? chosenColor : colors[Math.floor(Math.random() * colors.length)],
+          size: Math.random() * 2.5 + 1.5,
+          gravity: 0.08,
+          friction: 0.96,
+          decay: Math.random() * 0.014 + 0.012,
+          flicker: Math.random() > 0.5
+        });
+      }
+    };
+
+    // Spawn 5 sequential celebratory rockets for the 5 Waqt Salah serial: 1. Maghrib, 2. Isha, 3. Fajr, 4. Dhuhr, 5. Asr
+    const width = canvas.width;
+    const height = canvas.height;
+    for (let r = 0; r < 5; r++) {
+      setTimeout(() => {
+        rockets.push({
+          x: (width * 0.15) + (width * 0.7 * (r / 4)) + (Math.random() * 30 - 15),
+          y: height,
+          targetY: (height * 0.18) + (Math.random() * height * 0.3),
+          vy: -(Math.random() * 3.5 + 11),
+          color: colors[r % colors.length],
+          exploded: false
+        });
+      }, r * 280);
+    }
+
+    const startTime = Date.now();
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update & draw rockets
+      for (let i = rockets.length - 1; i >= 0; i--) {
+        const r = rockets[i];
+        r.y += r.vy;
+        r.vy += 0.05;
+
+        ctx.save();
+        ctx.fillStyle = r.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = r.color;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillRect(r.x - 1, r.y + 4, 2, 8);
+
+        if (r.y <= r.targetY || r.vy >= -1) {
+          createExplosion(r.x, r.y, r.color);
+          rockets.splice(i, 1);
+        }
+      }
+
+      // Update & draw particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.vx *= p.friction;
+        p.vy *= p.friction;
+        p.vy += p.gravity;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.flicker && Math.random() > 0.4 ? p.alpha * 0.4 : p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (particles.length > 0 || rockets.length > 0 || (Date.now() - startTime < 4200)) {
+        animationFrameIdRef.current = requestAnimationFrame(animate);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    };
+
+    if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
+    animationFrameIdRef.current = requestAnimationFrame(animate);
+  };
+
+  // Synchronize active tracking date when sunset passes in real-time
+  useEffect(() => {
+    const updateSunsetDate = () => {
+      const currentLogical = getDhakaLogicalDateKey().dateKey;
+      setSelectedDate(prev => {
+        const prevLogical = getDhakaLogicalDateKey(new Date(Date.now() - 30000)).dateKey;
+        if (prev === prevLogical) {
+          return currentLogical;
+        }
+        return prev;
+      });
+    };
+    const interval = setInterval(updateSunsetDate, 15000);
+    window.addEventListener('focus', updateSunsetDate);
+    document.addEventListener('visibilitychange', updateSunsetDate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', updateSunsetDate);
+      document.removeEventListener('visibilitychange', updateSunsetDate);
+    };
+  }, []);
   const [recordsMap, setRecordsMap] = useState<Record<string, DailySalahRecord>>({});
   const [activeTasbeehDhikr, setActiveTasbeehDhikr] = useState<string>('subhanallah');
   const [tasbeehTarget, setTasbeehTarget] = useState<number>(33);
@@ -1007,32 +1182,74 @@ export default function SalahTracker({
 
   // Date controls
   const handlePrevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(getLocalDateString(d));
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() - 1);
+    const prevY = date.getFullYear();
+    const prevM = String(date.getMonth() + 1).padStart(2, '0');
+    const prevD = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${prevY}-${prevM}-${prevD}`);
   };
 
   const handleNextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    setSelectedDate(getLocalDateString(d));
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + 1);
+    const nextY = date.getFullYear();
+    const nextM = String(date.getMonth() + 1).padStart(2, '0');
+    const nextD = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${nextY}-${nextM}-${nextD}`);
   };
 
   const handleToday = () => {
-    setSelectedDate(getLocalDateString());
+    setSelectedDate(getDhakaLogicalDateKey().dateKey);
   };
 
-  // Calculation of Farz completion
+  // Calculation of Farz completion (Order: Maghrib, Isha, Fajr, Dhuhr, Asr)
   const farzCount = useMemo(() => {
     let count = 0;
     const p = currentRecord.prayers;
+    if (p.maghrib.fard) count++;
+    if (p.isha.fard) count++;
     if (p.fajr.fard) count++;
     if (p.dhuhr.fard) count++;
     if (p.asr.fard) count++;
-    if (p.maghrib.fard) count++;
-    if (p.isha.fard) count++;
     return count;
   }, [currentRecord]);
+
+  // Celebratory Fireworks animation for completing 5 Farz prayers
+  const triggerSalahFireworks = useCallback(() => {
+    try {
+      triggerFireworks();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200]);
+      }
+    } catch (e) {
+      console.warn('Salah fireworks trigger error:', e);
+    }
+  }, []);
+
+  const checkFireworksTrigger = (prevRecord: DailySalahRecord, nextRecord: DailySalahRecord) => {
+    const prevCount = [
+      prevRecord.prayers.maghrib.fard,
+      prevRecord.prayers.isha.fard,
+      prevRecord.prayers.fajr.fard,
+      prevRecord.prayers.dhuhr.fard,
+      prevRecord.prayers.asr.fard
+    ].filter(Boolean).length;
+
+    const nextCount = [
+      nextRecord.prayers.maghrib.fard,
+      nextRecord.prayers.isha.fard,
+      nextRecord.prayers.fajr.fard,
+      nextRecord.prayers.dhuhr.fard,
+      nextRecord.prayers.asr.fard
+    ].filter(Boolean).length;
+
+    if (nextCount === 5 && prevCount < 5) {
+      triggerSalahFireworks();
+    }
+  };
 
   // Calculation of Total Dhikr for selected date
   const totalDhikrToday = useMemo(() => {
@@ -1054,21 +1271,23 @@ export default function SalahTracker({
     return r;
   }, [currentRecord]);
 
-  // Streak calculation (consecutive days with 5 farz completed)
+  // Streak calculation (consecutive days with 5 farz completed according to sunset date)
   const currentStreak = useMemo(() => {
     let streak = 0;
-    const today = new Date();
+    const { dateKey: todayKey } = getDhakaLogicalDateKey();
+    const [y, m, d] = todayKey.split('-').map(Number);
+    const startDate = new Date(y, m - 1, d);
     for (let i = 0; i < 90; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const ds = getLocalDateString(d);
+      const curDate = new Date(startDate);
+      curDate.setDate(curDate.getDate() - i);
+      const ds = getLocalDateString(curDate);
       const rec = recordsMap[ds];
       if (!rec) {
         if (i === 0) continue; // Today might not be completed yet
         break;
       }
       const p = rec.prayers;
-      const completed = p.fajr.fard && p.dhuhr.fard && p.asr.fard && p.maghrib.fard && p.isha.fard;
+      const completed = p.maghrib.fard && p.isha.fard && p.fajr.fard && p.dhuhr.fard && p.asr.fard;
       if (completed) {
         streak++;
       } else {
@@ -1093,6 +1312,7 @@ export default function SalahTracker({
       current.status = 'not_prayed';
     }
     updated.updatedAt = Date.now();
+    checkFireworksTrigger(currentRecord, updated);
     saveRecord(updated);
   };
 
@@ -1103,6 +1323,7 @@ export default function SalahTracker({
     current.status = status;
     current.fard = status !== 'not_prayed';
     updated.updatedAt = Date.now();
+    checkFireworksTrigger(currentRecord, updated);
     saveRecord(updated);
   };
 
@@ -1112,6 +1333,7 @@ export default function SalahTracker({
     const current = updated.prayers[prayerKey] as any;
     current[part] = !current[part];
     updated.updatedAt = Date.now();
+    checkFireworksTrigger(currentRecord, updated);
     saveRecord(updated);
   };
 
@@ -1269,8 +1491,9 @@ export default function SalahTracker({
     try {
       const [y, m, d] = selectedDate.split('-').map(Number);
       const dateObj = new Date(y, m - 1, d);
-      const isToday = selectedDate === getLocalDateString();
-      const isYesterday = selectedDate === getLocalDateString(new Date(Date.now() - 86400000));
+      const { dateKey: todayKey, yesterdayDateKey: yesterdayKey } = getDhakaLogicalDateKey();
+      const isToday = selectedDate === todayKey;
+      const isYesterday = selectedDate === yesterdayKey;
 
       if (isToday) return isBn ? 'আজ (Today)' : 'Today';
       if (isYesterday) return isBn ? 'গতকাল (Yesterday)' : 'Yesterday';
@@ -1287,6 +1510,7 @@ export default function SalahTracker({
   }, [selectedDate, isBn]);
 
   const prayersList: Array<{
+    serial: number;
     key: keyof DailySalahRecord['prayers'];
     nameEn: string;
     nameBn: string;
@@ -1295,40 +1519,7 @@ export default function SalahTracker({
     breakdown: { labelEn: string; labelBn: string; key: string; rakahs: number }[];
   }> = [
     {
-      key: 'fajr',
-      nameEn: 'Fajr',
-      nameBn: 'ফজর',
-      arabic: 'الفجر',
-      icon: Sunrise,
-      breakdown: [
-        { labelEn: '2 Sunnah Muakkadah', labelBn: '২ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 2 },
-        { labelEn: '2 Fard', labelBn: '২ রাকাত ফরজ', key: 'fard', rakahs: 2 }
-      ]
-    },
-    {
-      key: 'dhuhr',
-      nameEn: 'Dhuhr',
-      nameBn: 'যোহর',
-      arabic: 'الظهر',
-      icon: Sun,
-      breakdown: [
-        { labelEn: '4 Sunnah Muakkadah', labelBn: '৪ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 4 },
-        { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 },
-        { labelEn: '2 Sunnah Ba\'diyyah', labelBn: '২ রাকাত পরবর্তী সুন্নত', key: 'nafl', rakahs: 2 }
-      ]
-    },
-    {
-      key: 'asr',
-      nameEn: 'Asr',
-      nameBn: 'আসর',
-      arabic: 'العصر',
-      icon: Sun,
-      breakdown: [
-        { labelEn: '4 Sunnah (Ghair Muakkadah)', labelBn: '৪ রাকাত সুন্নত (গায়রে মুয়াক্কাদাহ)', key: 'sunnahGhairMuakkadah', rakahs: 4 },
-        { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 }
-      ]
-    },
-    {
+      serial: 1,
       key: 'maghrib',
       nameEn: 'Maghrib',
       nameBn: 'মাগরিব',
@@ -1341,6 +1532,7 @@ export default function SalahTracker({
       ]
     },
     {
+      serial: 2,
       key: 'isha',
       nameEn: 'Isha',
       nameBn: 'এশা',
@@ -1352,6 +1544,43 @@ export default function SalahTracker({
         { labelEn: '2 Sunnah Muakkadah', labelBn: '২ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 2 },
         { labelEn: '3 Witr Wajib', labelBn: '৩ রাকাত বিতর ওয়াজিব', key: 'witr', rakahs: 3 },
         { labelEn: '2 Nafl', labelBn: '২ রাকাত নফল', key: 'nafl', rakahs: 2 }
+      ]
+    },
+    {
+      serial: 3,
+      key: 'fajr',
+      nameEn: 'Fajr',
+      nameBn: 'ফজর',
+      arabic: 'الفجر',
+      icon: Sunrise,
+      breakdown: [
+        { labelEn: '2 Sunnah Muakkadah', labelBn: '২ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 2 },
+        { labelEn: '2 Fard', labelBn: '২ রাকাত ফরজ', key: 'fard', rakahs: 2 }
+      ]
+    },
+    {
+      serial: 4,
+      key: 'dhuhr',
+      nameEn: 'Dhuhr',
+      nameBn: 'যোহর',
+      arabic: 'الظهر',
+      icon: Sun,
+      breakdown: [
+        { labelEn: '4 Sunnah Muakkadah', labelBn: '৪ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 4 },
+        { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 },
+        { labelEn: '2 Sunnah Ba\'diyyah', labelBn: '২ রাকাত পরবর্তী সুন্নত', key: 'nafl', rakahs: 2 }
+      ]
+    },
+    {
+      serial: 5,
+      key: 'asr',
+      nameEn: 'Asr',
+      nameBn: 'আসর',
+      arabic: 'العصر',
+      icon: Sun,
+      breakdown: [
+        { labelEn: '4 Sunnah (Ghair Muakkadah)', labelBn: '৪ রাকাত সুন্নত (গায়রে মুয়াক্কাদাহ)', key: 'sunnahGhairMuakkadah', rakahs: 4 },
+        { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 }
       ]
     }
   ];
@@ -1397,16 +1626,78 @@ export default function SalahTracker({
   }, [isBn, weekStartDay]);
 
   const renderDateAndThemeControls = () => (
-    <div className="flex items-center gap-1.5 self-start sm:self-auto py-0.5 px-0 text-[11px] sm:text-xs font-bold">
-      <Calendar size={13} className={cn(darkMode ? "text-emerald-400" : st.iconText, "shrink-0")} />
-      <span className={cn("whitespace-nowrap font-bold", darkMode ? "text-neutral-300" : "text-slate-800")}>
-        {currentWeekInfo}
-      </span>
+    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 self-start sm:self-auto py-0.5 text-[11px] sm:text-xs font-bold">
+      {/* Day Selector */}
+      <div className={cn(
+        "flex items-center gap-0.5 px-1 py-0.5 rounded-xl border shadow-2xs",
+        darkMode ? "bg-black/30 border-white/10 text-white" : "bg-white/90 border-slate-200 text-slate-800"
+      )}>
+        <button
+          type="button"
+          onClick={handlePrevDay}
+          title={isBn ? 'পূর্ববর্তী দিন' : 'Previous Day'}
+          className={cn(
+            "p-1 rounded-lg transition-colors cursor-pointer",
+            darkMode ? "hover:bg-white/10 text-neutral-300" : "hover:bg-slate-100 text-slate-700"
+          )}
+        >
+          <ChevronLeft size={14} />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleToday}
+          title={isBn ? 'আজকের তারিখে ফিরুন' : 'Jump to Today'}
+          className={cn(
+            "px-2 py-0.5 rounded-lg text-xs font-black transition-colors cursor-pointer",
+            darkMode ? "hover:bg-white/10 text-white" : "hover:bg-slate-100 text-slate-900"
+          )}
+        >
+          {formattedDisplayDate}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleNextDay}
+          title={isBn ? 'পরবর্তী দিন' : 'Next Day'}
+          className={cn(
+            "p-1 rounded-lg transition-colors cursor-pointer",
+            darkMode ? "hover:bg-white/10 text-neutral-300" : "hover:bg-slate-100 text-slate-700"
+          )}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* Sunset info badge */}
+      <div 
+        title={isBn ? 'প্রতিদিন সূর্যাস্তে সালাতের নতুন দিনচক্র শুরু হয় (১ মাগরিব হতে ৫ আসর)' : 'Daily Salah cycle advances at sunset with #1 Maghrib to #5 Asr'}
+        className={cn(
+          "flex items-center gap-1 px-2 py-1 rounded-xl border shrink-0 text-[10px] sm:text-[11px] font-bold shadow-2xs",
+          darkMode ? "bg-amber-500/10 text-amber-300 border-amber-500/25" : "bg-amber-50 text-amber-900 border-amber-200"
+        )}
+      >
+        <Sunset size={13} className="text-amber-500 shrink-0" />
+        <span>{isBn ? `সূর্যাস্ত: ${dhakaInfo.sunsetStr}` : `Sunset: ${dhakaInfo.sunsetStr}`}</span>
+      </div>
+
+      {/* Week info */}
+      <div className="flex items-center gap-1.5 opacity-80 shrink-0 text-[10px] sm:text-xs">
+        <Calendar size={13} className={cn(darkMode ? "text-emerald-400" : st.iconText, "shrink-0")} />
+        <span className={cn("whitespace-nowrap font-bold", darkMode ? "text-neutral-300" : "text-slate-800")}>
+          {currentWeekInfo}
+        </span>
+      </div>
     </div>
   );
 
   return (
     <div className="w-full max-w-4xl mx-auto relative">
+      {/* Celebratory Fireworks Canvas */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 pointer-events-none z-[9999] w-full h-full"
+      />
       <div className="flex flex-col md:flex-row items-start gap-3 md:gap-3.5 lg:gap-4 w-full">
         {/* Tab Content Area: 3 sub nav menu pages */}
         <div id={`salah_content_${activeSubTab}`} className="flex-1 min-w-0 w-full pb-16 md:pb-0 md:pr-32 xl:pr-0 space-y-3 sm:space-y-5">
@@ -1451,14 +1742,19 @@ export default function SalahTracker({
         {/* Stats Strip: matching Zikr banner height, padding, and layout */}
         <div className={cn("grid grid-cols-4 gap-1.5 sm:gap-3 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
           {/* 1. Fard */}
-          <div className={cn(
-            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
-          )}>
+          <div 
+            onClick={farzCount === 5 ? triggerSalahFireworks : undefined}
+            className={cn(
+              "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
+              farzCount === 5 ? "cursor-pointer active:scale-95" : "",
+              darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
+            )}
+            title={farzCount === 5 ? (isBn ? 'আতশবাজি উদযাপন চালান' : 'Fireworks Celebration') : undefined}
+          >
             <div className={cn(
               "w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 shadow-xs",
               farzCount === 5 
-                ? (darkMode ? "bg-emerald-600 text-white shadow-xs" : st.farzStatDone)
+                ? (darkMode ? "bg-emerald-600 text-white shadow-xs animate-bounce" : st.farzStatDone)
                 : (darkMode ? "bg-emerald-500/20 text-emerald-400" : st.farzStatPending)
             )}>
               {formatNum(farzCount)}/৫
@@ -1547,13 +1843,67 @@ export default function SalahTracker({
           <div className="flex items-center gap-2">
             <Clock size={16} className={cn(darkMode ? "text-emerald-500" : st.waqtClockIcon)} />
             <h2 className={cn("text-sm sm:text-base font-black tracking-tight", darkMode ? "text-white" : st.waqtTitle)}>
-              {isBn ? 'পাঁচ ওয়াক্ত ফরজ সালাত' : 'Five Waqt Farz Salah'}
+              {isBn ? 'পাঁচ ওয়াক্ত ফরজ সালাত (মাগরিব হতে শুরু)' : 'Five Waqt Farz Salah (Starts at Maghrib)'}
             </h2>
           </div>
-          <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : st.waqtCountBadge)}>
-            {formatNum(farzCount)} / {formatNum(5)} {isBn ? 'আদায়' : 'Offered'}
-          </span>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className={cn("text-[10px] sm:text-[11px] font-bold", darkMode ? "text-neutral-400" : st.waqtCountBadge)}>
+              {formatNum(farzCount)} / {formatNum(5)} {isBn ? 'আদায়' : 'Offered'}
+            </span>
+            {farzCount === 5 && (
+              <button
+                type="button"
+                onClick={triggerSalahFireworks}
+                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                title={isBn ? 'আতশবাজি উদযাপন চালান' : 'Fireworks Celebration'}
+              >
+                <Sparkles size={11} className="text-amber-400 animate-pulse" />
+                <span>{isBn ? 'আতশবাজি' : 'Fireworks'}</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Celebratory Banner on 5/5 completion */}
+        {farzCount === 5 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className={cn(
+              "mb-3 p-3 rounded-2xl border flex items-center justify-between gap-2.5 shadow-sm",
+              darkMode 
+                ? "bg-gradient-to-r from-emerald-950/40 via-amber-950/20 to-emerald-950/40 border-emerald-500/35 text-white" 
+                : "bg-gradient-to-r from-emerald-50 via-amber-50 to-emerald-50 border-emerald-200 text-emerald-950"
+            )}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-2xl shrink-0 animate-bounce">🎆</span>
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-black tracking-tight flex items-center gap-1.5 truncate">
+                  <span>{isBn ? 'মাশাআল্লাহ! পাঁচ ওয়াক্ত ফরজ সালাত সম্পন্ন!' : 'MashaAllah! All 5 Farz Prayers Completed!'}</span>
+                  <span className="text-amber-500 text-xs">★★★★★</span>
+                </h3>
+                <p className="text-[10px] sm:text-xs opacity-90 truncate">
+                  {isBn ? '১ মাগরিব, ২ এশা, ৩ ফজর, ৪ যোহর ও ৫ আসর নিয়মিত আদায় হয়েছে।' : 'Completed: #1 Maghrib, #2 Isha, #3 Fajr, #4 Dhuhr, and #5 Asr.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={triggerSalahFireworks}
+              className={cn(
+                "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap flex items-center gap-1",
+                darkMode
+                  ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400"
+                  : "bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-800"
+              )}
+            >
+              <span>🎆</span>
+              <span className="hidden xs:inline">{isBn ? 'পুনরায় আতশবাজি' : 'Replay Fireworks'}</span>
+            </button>
+          </motion.div>
+        )}
 
         {/* 5 Prayers Stack */}
         <div className="space-y-2 sm:space-y-2.5">
@@ -1589,6 +1939,16 @@ export default function SalahTracker({
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        {/* Serial number badge: #1 Maghrib, #2 Isha, #3 Fajr, #4 Dhuhr, #5 Asr */}
+                        <span className={cn(
+                          "px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-black font-mono border",
+                          isFardPrayed
+                            ? (darkMode ? "bg-emerald-500/25 text-emerald-300 border-emerald-500/35" : "bg-emerald-100 text-emerald-900 border-emerald-300")
+                            : (darkMode ? "bg-white/10 text-neutral-300 border-white/10" : "bg-slate-100 text-slate-700 border-slate-300")
+                        )}>
+                          {isBn ? `নং ${formatNum(item.serial)}` : `#${item.serial}`}
+                        </span>
+
                         <span className={cn("font-black text-xs sm:text-base tracking-tight truncate", darkMode ? "text-white" : (isFardPrayed ? st.prayerNameDone : st.prayerNameIdle))}>
                           {isBn ? item.nameBn : item.nameEn}
                         </span>
