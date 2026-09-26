@@ -12,6 +12,7 @@ import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Language, translations } from '../utils/translations';
+import { getDhakaLogicalDateKey, subscribeToSunsetDateChange } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,11 +36,8 @@ const PATTERN = {
   exhale: 8,
 };
 
-const getLocalDateString = (d: Date = new Date()) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+const getLocalDateString = (_d?: Date) => {
+  return getDhakaLogicalDateKey().dateKey;
 };
 
 let audioCtx: AudioContext | null = null;
@@ -297,6 +295,13 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Real-time sunset rollover listener: automatically resets today's sessions count after sunset
+  useEffect(() => {
+    return subscribeToSunsetDateChange((info) => {
+      setTodaySessions(prev => prev.filter(s => s.date === info.dateKey));
+    });
   }, []);
 
   // Main High-Precision Sync Animation Loop

@@ -4,6 +4,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -25,11 +26,20 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
     setIsSaving(true);
     try {
       const parsedSteps = parseInt(steps);
+      const logicalDateKey = getDhakaLogicalDateKey().dateKey;
       const newEntry = {
         id: Date.now().toString(),
         date: new Date().toISOString(),
+        dateKey: logicalDateKey,
         steps: parsedSteps
       };
+
+      // Also increment today's steps for StepsTracker if date matches current logical date
+      const savedStepsDate = localStorage.getItem('ratbod_steps_today_date');
+      const currentTodaySteps = (savedStepsDate === logicalDateKey) ? (parseInt(localStorage.getItem('ratbod_steps_today') || '0', 10) || 0) : 0;
+      const updatedTodaySteps = currentTodaySteps + parsedSteps;
+      localStorage.setItem('ratbod_steps_today', String(updatedTodaySteps));
+      localStorage.setItem('ratbod_steps_today_date', logicalDateKey);
 
       // Save to localStorage
       const localData = JSON.parse(localStorage.getItem('ratool_steps_history') || localStorage.getItem('ratbod_steps_history') || '[]');

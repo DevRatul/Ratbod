@@ -10,6 +10,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getLogicalDaysRemaining } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -404,9 +405,13 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
               </span>
             </div>
             <p className="text-[10px] sm:text-xs text-gray-500 font-semibold">
-              {lang === 'bn' 
-                ? `${formatNum(Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} দিন বাকি`
-                : `${Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left`}
+              {(() => {
+                const days = getLogicalDaysRemaining(goal.targetDate);
+                if (days === null) return '--';
+                return lang === 'bn' 
+                  ? `${formatNum(days)} দিন বাকি`
+                  : `${days} days left`;
+              })()}
             </p>
           </div>
           </div>

@@ -95,6 +95,13 @@ import {
   isSunriseToSunsetEnabled,
   toggleSunriseSunset
 } from './utils/theme';
+import {
+  getDhakaLogicalDate,
+  getDhakaLogicalDateKey,
+  getLogicalDaysRemaining,
+  getLogicalDiffDays,
+  subscribeToSunsetDateChange
+} from './utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -296,6 +303,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
   const [isSunriseToSunset, setIsSunriseToSunset] = useState<boolean>(() => isSunriseToSunsetEnabled());
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Global sunset date rollover sync: automatically resets daily date counts and updates date-sensitive tools
+  const [dhakaLogicalDate, setDhakaLogicalDate] = useState(() => getDhakaLogicalDate());
+  useEffect(() => {
+    return subscribeToSunsetDateChange((info) => {
+      setDhakaLogicalDate(info);
+      setHistoryRefreshTrigger(prev => prev + 1);
+    });
+  }, []);
 
   const handleToggleSunriseSunset = () => {
     const next = toggleSunriseSunset(darkMode, (newDark) => {
@@ -1052,19 +1068,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     return cat;
   };
 
-  // Relative date calculation for latest entry card
+  // Relative date calculation for latest entry card (aligned with Dhaka sunset rollover)
   const formatRelativeDate = (dateStr?: string | null) => {
     if (!dateStr) return lang === 'bn' ? 'কোনো তথ্য নেই' : 'No data';
     
     const entryDate = new Date(dateStr);
     if (isNaN(entryDate.getTime())) return lang === 'bn' ? 'কোনো তথ্য নেই' : 'No data';
     
-    const now = new Date();
-    
-    // Day difference by calendar date (midnight to midnight)
-    const entryMidnight = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate()).getTime();
-    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const diffDays = Math.round((nowMidnight - entryMidnight) / (1000 * 60 * 60 * 24));
+    // Day difference by calendar date aligned with Dhaka sunset cycle
+    const diffDays = getLogicalDiffDays(dateStr);
 
     if (diffDays <= 0) {
       return lang === 'bn' ? 'আজ' : 'Today';
@@ -1097,6 +1109,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     const newEntry = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
+      dateKey: getDhakaLogicalDateKey().dateKey,
       weight: weightInKg,
       bmi: computedBmi,
       bodyFat: computedBodyFat
@@ -1228,10 +1241,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   // Also calculates remaining weight to final target (e.g. 100kg target & 90kg latest = 10kg more to go)
   const goalProgress = useMemo(() => {
     const targetDate = savedGoal && savedGoal.targetDate ? savedGoal.targetDate : null;
-    let daysRemaining: number | null = null;
-    if (targetDate) {
-      daysRemaining = Math.ceil((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    }
+    const daysRemaining = getLogicalDaysRemaining(targetDate);
 
     if (sortedHistoryAsc.length === 0 || !goalTargetWeightKg) {
       const targetVal = goalTargetWeightKg ? (unit === 'metric' ? goalTargetWeightKg : goalTargetWeightKg * 2.20462) : null;
@@ -1337,7 +1347,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       const reportName = name || 'Guest';
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = getDhakaLogicalDateKey().dateKey;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${reportName}-${dateStr}.pdf`);
     } catch (error) {
@@ -2463,8 +2473,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         {/* Goals */}
         <Goals darkMode={darkMode} unit={unit} currentWeight={latestHistoryEntry?.weight || metricData.weight} currentBodyFat={dashboardMetrics?.bodyFat || metrics?.bodyFat} lang={lang} onGoalUpdate={() => setHistoryRefreshTrigger(prev => prev + 1)} />
 
-        {/* Quick Steps - Available only on Fridays */}
-        {new Date().getDay() === 5 && (
+        {/* Quick Steps - Available only on Fridays (Aligned with Dhaka sunset rollover) */}
+        {dhakaLogicalDate.isFriday && (
           <QuickSteps darkMode={darkMode} lang={lang} onSave={() => setHistoryRefreshTrigger(prev => prev + 1)} />
         )}
         

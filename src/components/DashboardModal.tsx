@@ -27,7 +27,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
+import { getDhakaLogicalDate, getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -211,9 +211,10 @@ export default function DashboardModal({
     loadAllActivities();
   }, [isOpen, historyList]);
 
-  // Cutoff timestamp for the timeframe
+  // Cutoff timestamp for the timeframe (aligned with Dhaka sunset rollover)
   const cutoffTime = useMemo(() => {
-    const d = new Date();
+    const { date: logicalDate } = getDhakaLogicalDate();
+    const d = new Date(logicalDate);
     if (timeframe === 'weekly') {
       const day = d.getDay();
       const diffToStart = (day - weekStartDay + 7) % 7;

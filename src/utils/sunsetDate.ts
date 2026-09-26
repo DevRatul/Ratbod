@@ -67,19 +67,23 @@ export function getDhakaSunsetTime(date: Date = new Date()): { hours: number; mi
   }
 }
 
-/**
- * Returns current date key formatted according to Dhaka Sunset Reset rule.
- * If current Dhaka time is after sunset, date shifts to the next date cycle!
- */
-export function getDhakaLogicalDateKey(now = new Date()): {
+export interface DhakaLogicalDateInfo {
+  date: Date;
   dateKey: string;
   isPastSunsetToday: boolean;
   sunsetStr: string;
   dhakaTimeStr: string;
   yesterdayDateKey: string;
-} {
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+  isFriday: boolean;
+}
+
+/**
+ * Returns current date key and rich date information formatted according to Dhaka Sunset Reset rule.
+ * If current Dhaka time is after sunset, date shifts to the next date cycle!
+ */
+export function getDhakaLogicalDate(now = new Date()): DhakaLogicalDateInfo {
   try {
-    // Get Dhaka time string
     const dhakaStr = now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' });
     const dhakaNow = new Date(dhakaStr);
     
@@ -108,25 +112,148 @@ export function getDhakaLogicalDateKey(now = new Date()): {
     const yesterdayDateKey = `${prevYyyy}-${prevMm}-${prevDd}`;
     
     const dhakaFormattedTime = dhakaNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const dayOfWeek = logicalDate.getDay();
 
     return {
+      date: logicalDate,
       dateKey,
       isPastSunsetToday,
       sunsetStr: sunset.displayStr,
       dhakaTimeStr: dhakaFormattedTime,
-      yesterdayDateKey
+      yesterdayDateKey,
+      dayOfWeek,
+      isFriday: dayOfWeek === 5
     };
   } catch (e) {
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
     const dateKey = `${y}-${m}-${d}`;
+    const dayOfWeek = now.getDay();
     return {
+      date: now,
       dateKey,
       isPastSunsetToday: false,
       sunsetStr: '6:36 PM',
       dhakaTimeStr: '12:00 PM',
-      yesterdayDateKey: dateKey
+      yesterdayDateKey: dateKey,
+      dayOfWeek,
+      isFriday: dayOfWeek === 5
     };
   }
+}
+
+/**
+ * Returns current date key formatted according to Dhaka Sunset Reset rule.
+ * If current Dhaka time is after sunset, date shifts to the next date cycle!
+ */
+export function getDhakaLogicalDateKey(now = new Date()): {
+  dateKey: string;
+  isPastSunsetToday: boolean;
+  sunsetStr: string;
+  dhakaTimeStr: string;
+  yesterdayDateKey: string;
+  dayOfWeek?: number;
+  isFriday?: boolean;
+} {
+  const info = getDhakaLogicalDate(now);
+  return {
+    dateKey: info.dateKey,
+    isPastSunsetToday: info.isPastSunsetToday,
+    sunsetStr: info.sunsetStr,
+    dhakaTimeStr: info.dhakaTimeStr,
+    yesterdayDateKey: info.yesterdayDateKey,
+    dayOfWeek: info.dayOfWeek,
+    isFriday: info.isFriday
+  };
+}
+
+/**
+ * Calculates remaining days from the current logical date to target date.
+ * Automatically decrements after sunset when the logical date rolls over.
+ */
+export function getLogicalDaysRemaining(targetDateStr?: string | null): number | null {
+  if (!targetDateStr) return null;
+  try {
+    const targetDate = new Date(targetDateStr);
+    if (isNaN(targetDate.getTime())) return null;
+
+    const { date: logicalDate } = getDhakaLogicalDate();
+    const logicalMidnight = new Date(logicalDate.getFullYear(), logicalDate.getMonth(), logicalDate.getDate()).getTime();
+    const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
+
+    const diffMs = targetMidnight - logicalMidnight;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Calculates day difference from a past entry date to current logical date.
+ * 0 = today, 1 = yesterday (or 1 day ago), etc.
+ */
+export function getLogicalDiffDays(pastDateStr?: string | null): number {
+  if (!pastDateStr) return 0;
+  try {
+    const entryDate = new Date(pastDateStr);
+    if (isNaN(entryDate.getTime())) return 0;
+
+    const { date: logicalDate } = getDhakaLogicalDate();
+    const entryMidnight = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate()).getTime();
+    const logicalMidnight = new Date(logicalDate.getFullYear(), logicalDate.getMonth(), logicalDate.getDate()).getTime();
+
+    return Math.round((logicalMidnight - entryMidnight) / (1000 * 60 * 60 * 24));
+  } catch (e) {
+    return 0;
+  }
+}
+
+/**
+ * Global subscriber for sunset date changes.
+ * Dispatches and listens to real-time sunset date rollover events across the website.
+ */
+let lastBroadcastedDateKey = '';
+
+export function subscribeToSunsetDateChange(callback: (info: DhakaLogicalDateInfo) => void): () => void {
+  const checkAndNotify = () => {
+    const info = getDhakaLogicalDate();
+    if (!lastBroadcastedDateKey) {
+      lastBroadcastedDateKey = info.dateKey;
+    } else if (lastBroadcastedDateKey !== info.dateKey) {
+      lastBroadcastedDateKey = info.dateKey;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ratool_sunset_day_reset', { detail: info }));
+        window.dispatchEvent(new CustomEvent('ratbod_sunset_day_reset', { detail: info }));
+      }
+    }
+    callback(info);
+  };
+
+  const handleCustomEvent = (e: any) => {
+    if (e?.detail) {
+      callback(e.detail);
+    } else {
+      callback(getDhakaLogicalDate());
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('ratool_sunset_day_reset', handleCustomEvent);
+    window.addEventListener('ratbod_sunset_day_reset', handleCustomEvent);
+    window.addEventListener('focus', checkAndNotify);
+    document.addEventListener('visibilitychange', checkAndNotify);
+  }
+
+  const intervalId = setInterval(checkAndNotify, 10000);
+
+  return () => {
+    clearInterval(intervalId);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('ratool_sunset_day_reset', handleCustomEvent);
+      window.removeEventListener('ratbod_sunset_day_reset', handleCustomEvent);
+      window.removeEventListener('focus', checkAndNotify);
+      document.removeEventListener('visibilitychange', checkAndNotify);
+    }
+  };
 }

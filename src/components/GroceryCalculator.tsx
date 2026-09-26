@@ -5,6 +5,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getDhakaLogicalDate } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -319,7 +320,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       content += border;
       content += "             বাজারের ফর্দ (RaTooL)\n";
       content += border;
-      content += `তারিখ: ${new Date().toLocaleDateString('bn-BD')}\n`;
+      content += `তারিখ: ${getDhakaLogicalDate().date.toLocaleDateString('bn-BD')}\n`;
       content += `মোট পণ্য: ${formatNum(items.length, 0)} টি\n`;
       content += `সর্বমোট মূল্য: ${formatNum(totalGroceryPrice)} টাকা\n`;
       content += border + "\n";
@@ -341,7 +342,7 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       content += border;
       content += "         GROCERY SHOPPING LIST (RaTooL)\n";
       content += border;
-      content += `Date: ${new Date().toLocaleDateString()}\n`;
+      content += `Date: ${getDhakaLogicalDate().date.toLocaleDateString()}\n`;
       content += `Total Items: ${items.length}\n`;
       content += `Total Price: ${totalGroceryPrice.toFixed(2)} BDT\n`;
       content += border + "\n";
