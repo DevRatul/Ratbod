@@ -357,7 +357,7 @@ export default function LandingPage({
               darkMode ? "bg-white/5 border-white/10 text-primary" : "bg-primary/10 border-primary/20 text-primary"
             )}>
               <Sparkles size={14} className="animate-spin text-primary" />
-              <span>{lang === 'bn' ? 'অল-ইন-ওয়ান স্বাস্থ্য, অভ্যাস ও হাইড্রেশন হাব V 4.0' : 'ALL-IN-ONE HEALTH, HABIT & HYDRATION HUB V 4.0'}</span>
+              <span>{lang === 'bn' ? 'অল-ইন-ওয়ান স্বাস্থ্য, অভ্যাস ও হাইড্রেশন হাব V 2.5' : 'ALL-IN-ONE HEALTH, HABIT & HYDRATION HUB V 2.5'}</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15]">

@@ -420,8 +420,32 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
     return {};
   });
 
-  const dhakaInfo = useMemo(() => getDhakaLogicalDateKey(), []);
-  const [selectedDateKey, setSelectedDateKey] = useState<string>(dhakaInfo.dateKey);
+  const [dhakaInfo, setDhakaInfo] = useState(() => getDhakaLogicalDateKey());
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
+
+  // Keep Habitor date synchronized when sunset passes in real-time
+  useEffect(() => {
+    const updateSunsetDate = () => {
+      const current = getDhakaLogicalDateKey();
+      setDhakaInfo(current);
+      const prevLogical = getDhakaLogicalDateKey(new Date(Date.now() - 30000)).dateKey;
+      setSelectedDateKey((prev) => {
+        if (!prev || prev === prevLogical) {
+          return current.dateKey;
+        }
+        return prev;
+      });
+    };
+
+    const interval = setInterval(updateSunsetDate, 15000);
+    window.addEventListener('focus', updateSunsetDate);
+    document.addEventListener('visibilitychange', updateSunsetDate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', updateSunsetDate);
+      document.removeEventListener('visibilitychange', updateSunsetDate);
+    };
+  }, []);
 
   const [isLoaded, setIsLoaded] = useState(false);
 

@@ -22,6 +22,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -50,20 +51,12 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
     return String(num).replace(/[0-9]/g, d => bnDigits[Number(d)]);
   };
 
-  const getLocalDateString = (d: Date = new Date()) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const getActiveWritingDateKey = () => getDhakaLogicalDateKey().dateKey;
 
   const formatHistoryDate = (dateStr: string) => {
     try {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const today = getLocalDateString(new Date());
-      const yesterdayDate = new Date();
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-      const yesterday = getLocalDateString(yesterdayDate);
+      const { dateKey: today, yesterdayDateKey: yesterday } = getDhakaLogicalDateKey();
 
       if (dateStr === today) return isBn ? 'আজ' : 'Today';
       if (dateStr === yesterday) return isBn ? 'গতকাল' : 'Yesterday';
@@ -88,8 +81,32 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
     return saved ? parseInt(saved, 10) || 300 : 300;
   });
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
+  const [selectedDate, setSelectedDate] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
   const [savedToast, setSavedToast] = useState<boolean>(false);
+
+  // Keep WritingTracker date synchronized when sunset passes in real-time
+  useEffect(() => {
+    const checkSunsetShift = () => {
+      const currentLogical = getDhakaLogicalDateKey().dateKey;
+      const prevLogical = getDhakaLogicalDateKey(new Date(Date.now() - 30000)).dateKey;
+
+      setSelectedDate((prev) => {
+        if (!prev || prev === prevLogical) {
+          return currentLogical;
+        }
+        return prev;
+      });
+    };
+
+    const interval = setInterval(checkSunsetShift, 15000);
+    window.addEventListener('focus', checkSunsetShift);
+    document.addEventListener('visibilitychange', checkSunsetShift);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkSunsetShift);
+      document.removeEventListener('visibilitychange', checkSunsetShift);
+    };
+  }, []);
 
   // Deletion confirmation state
   interface DeleteTarget {
@@ -111,8 +128,8 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
   const typedWordsCount = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
   const currentCount = manualWords ? (parseInt(manualWords, 10) || 0) : typedWordsCount;
 
-  // Calculate today's words from records
-  const todayStr = getLocalDateString();
+  // Calculate today's words from records (aligned with sunset rollover)
+  const todayStr = getDhakaLogicalDateKey().dateKey;
   const todayTotalWords = records
     .filter(r => r.date === todayStr)
     .reduce((acc, r) => acc + (r.words || 0), 0);
@@ -211,7 +228,7 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
     const entryTitle = title.trim() || (isBn ? 'দৈনিক লেখা' : 'Daily Writing');
     const newRec: WritingRecord = {
       id: String(Date.now()),
-      date: selectedDate || getLocalDateString(),
+      date: selectedDate || getActiveWritingDateKey(),
       title: entryTitle,
       words: currentCount || 1,
       createdAt: Date.now()

@@ -20,6 +20,7 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -49,20 +50,12 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
     return String(num).replace(/[0-9]/g, d => bnDigits[Number(d)]);
   };
 
-  const getLocalDateString = (d: Date = new Date()) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const getActiveStepsDateKey = () => getDhakaLogicalDateKey().dateKey;
 
   const formatHistoryDate = (dateStr: string) => {
     try {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const today = getLocalDateString(new Date());
-      const yesterdayDate = new Date();
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-      const yesterday = getLocalDateString(yesterdayDate);
+      const { dateKey: today, yesterdayDateKey: yesterday } = getDhakaLogicalDateKey();
 
       if (dateStr === today) return isBn ? 'আজ' : 'Today';
       if (dateStr === yesterday) return isBn ? 'গতকাল' : 'Yesterday';
@@ -87,14 +80,14 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
   const [todaySteps, setTodaySteps] = useState<number>(() => {
     const saved = localStorage.getItem('ratbod_steps_today');
     const savedDate = localStorage.getItem('ratbod_steps_today_date');
-    if (savedDate === getLocalDateString()) {
+    if (savedDate === getDhakaLogicalDateKey().dateKey) {
       return saved ? parseInt(saved, 10) || 0 : 0;
     }
     return 0;
   });
 
   const [customInput, setCustomInput] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
+  const [selectedDate, setSelectedDate] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
   const [savedToast, setSavedToast] = useState<boolean>(false);
   const [records, setRecords] = useState<StepRecord[]>(() => {
     try {
@@ -103,6 +96,37 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
     } catch (e) {}
     return [];
   });
+
+  // Keep StepsTracker date and daily resetting synchronized when sunset passes in real-time
+  useEffect(() => {
+    const checkSunsetShift = () => {
+      const currentLogical = getDhakaLogicalDateKey().dateKey;
+      const prevLogical = getDhakaLogicalDateKey(new Date(Date.now() - 30000)).dateKey;
+
+      const savedDate = localStorage.getItem('ratbod_steps_today_date');
+      if (savedDate && savedDate !== currentLogical) {
+        setTodaySteps(0);
+        localStorage.setItem('ratbod_steps_today', '0');
+        localStorage.setItem('ratbod_steps_today_date', currentLogical);
+      }
+
+      setSelectedDate((prev) => {
+        if (!prev || prev === prevLogical) {
+          return currentLogical;
+        }
+        return prev;
+      });
+    };
+
+    const interval = setInterval(checkSunsetShift, 15000);
+    window.addEventListener('focus', checkSunsetShift);
+    document.addEventListener('visibilitychange', checkSunsetShift);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkSunsetShift);
+      document.removeEventListener('visibilitychange', checkSunsetShift);
+    };
+  }, []);
 
   // Calculate distance (~0.762m/step) and calories (~0.04 kcal/step)
   const distanceKm = Number(((todaySteps * 0.762) / 1000).toFixed(2));
@@ -119,7 +143,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
           const data = snap.data();
           if (data.stepGoal) setStepGoal(data.stepGoal);
           if (Array.isArray(data.records)) setRecords(data.records);
-          if (data.todayDate === getLocalDateString() && typeof data.todaySteps === 'number') {
+          if (data.todayDate === getDhakaLogicalDateKey().dateKey && typeof data.todaySteps === 'number') {
             setTodaySteps(data.todaySteps);
           }
         }
@@ -132,7 +156,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
 
   const persistData = (steps: number, goal: number, updatedRecords: StepRecord[]) => {
     try {
-      const today = getLocalDateString();
+      const today = getDhakaLogicalDateKey().dateKey;
       localStorage.setItem('ratbod_steps_today', String(steps));
       localStorage.setItem('ratbod_steps_today_date', today);
       localStorage.setItem('ratbod_steps_goal', String(goal));
@@ -166,7 +190,7 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
   };
 
   const handleSaveDayLog = () => {
-    const targetDate = selectedDate || getLocalDateString();
+    const targetDate = selectedDate || getActiveStepsDateKey();
     const dist = Number(((todaySteps * 0.762) / 1000).toFixed(2));
     const cal = Math.round(todaySteps * 0.04);
     

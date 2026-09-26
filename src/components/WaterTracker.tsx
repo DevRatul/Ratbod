@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle, Sunset } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -7,7 +7,7 @@ import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { syncHabitsWithTrackers, markWaterHabitCompleted } from '../utils/habitSync';
-import { getDhakaLogicalDateKey, getDhakaSunsetTime } from '../utils/sunsetDate';
+import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -1147,30 +1147,18 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          <div className={cn(
-            "px-2 sm:px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1 shrink-0",
+        <button
+          type="button"
+          onClick={handleOpenGoalModal}
+          className={cn(
+            "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95 ml-auto",
             darkMode
-              ? "bg-amber-500/10 text-amber-300 border-amber-500/25"
-              : "bg-amber-50 text-amber-800 border-amber-200"
-          )}>
-            <Sunset size={13} className="text-amber-500 shrink-0" />
-            <span>{lang === 'bn' ? `সূর্যাস্ত: ${getDhakaSunsetTime().displayStr}` : `Sunset: ${getDhakaSunsetTime().displayStr}`}</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleOpenGoalModal}
-            className={cn(
-              "px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
-              darkMode
-                ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
-                : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
-            )}
-          >
-            <span>{lang === 'bn' ? 'লক্ষ্য নির্ধারণ' : 'Set Goal'}</span>
-          </button>
-        </div>
+              ? "bg-[#181a20] text-gray-300 border-gray-700/80 hover:bg-[#22252d] hover:text-gray-200"
+              : "bg-gray-100 text-gray-900 border-gray-300 hover:bg-gray-200"
+          )}
+        >
+          <span>{lang === 'bn' ? 'লক্ষ্য নির্ধারণ' : 'Set Goal'}</span>
+        </button>
       </div>
 
       {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}

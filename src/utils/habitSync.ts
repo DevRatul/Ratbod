@@ -226,7 +226,7 @@ export function isReadingLoggedForDate(dateKey: string): boolean {
 
 /**
  * Directly marks the "Drink Mineral Water" habit as ticked/completed.
- * Automatically covers target date, local today, and Dhaka logical today.
+ * Covers target date or current Dhaka logical today.
  */
 export function markWaterHabitCompleted(targetDate?: string): void {
   try {
@@ -239,21 +239,15 @@ export function markWaterHabitCompleted(targetDate?: string): void {
     }
 
     const { waterHabitIds } = findMatchingHabitIds();
-    const datesToMark = new Set<string>();
-    
-    if (targetDate) datesToMark.add(targetDate);
-    datesToMark.add(getLocalDateString());
-    datesToMark.add(getDhakaLogicalDateKey().dateKey);
+    const dKey = targetDate || getDhakaLogicalDateKey().dateKey;
 
     let changed = false;
-    datesToMark.forEach((dKey) => {
-      const currentList = logs[dKey] || [];
-      const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
-      if (toAdd.length > 0) {
-        logs[dKey] = [...currentList, ...toAdd];
-        changed = true;
-      }
-    });
+    const currentList = logs[dKey] || [];
+    const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
+    if (toAdd.length > 0) {
+      logs[dKey] = [...currentList, ...toAdd];
+      changed = true;
+    }
 
     if (changed) {
       const json = JSON.stringify(logs);
@@ -274,7 +268,7 @@ export function markWaterHabitCompleted(targetDate?: string): void {
 
 /**
  * Directly marks the "Read a Book" habit as ticked/completed for a reading session.
- * Automatically covers target date, local today, and Dhaka logical today.
+ * Ticked strictly on that particular date only when a log is entered for that date!
  */
 export function markReadingHabitCompleted(targetDate?: string): void {
   try {
@@ -287,31 +281,16 @@ export function markReadingHabitCompleted(targetDate?: string): void {
     }
 
     const { readingHabitIds } = findMatchingHabitIds();
-    const datesToMark = new Set<string>();
-
-    const localToday = getLocalDateString();
-    const dhakaToday = getDhakaLogicalDateKey().dateKey;
-
-    if (targetDate) {
-      datesToMark.add(targetDate);
-      if (targetDate === localToday || targetDate === dhakaToday) {
-        datesToMark.add(localToday);
-        datesToMark.add(dhakaToday);
-      }
-    } else {
-      datesToMark.add(localToday);
-      datesToMark.add(dhakaToday);
-    }
+    // Only mark that particular date!
+    const dateKeyToMark = targetDate || getDhakaLogicalDateKey().dateKey;
 
     let changed = false;
-    datesToMark.forEach((dKey) => {
-      const currentList = logs[dKey] || [];
-      const toAdd = readingHabitIds.filter(id => !currentList.includes(id));
-      if (toAdd.length > 0) {
-        logs[dKey] = [...currentList, ...toAdd];
-        changed = true;
-      }
-    });
+    const currentList = logs[dateKeyToMark] || [];
+    const toAdd = readingHabitIds.filter(id => !currentList.includes(id));
+    if (toAdd.length > 0) {
+      logs[dateKeyToMark] = [...currentList, ...toAdd];
+      changed = true;
+    }
 
     if (changed) {
       const json = JSON.stringify(logs);
@@ -333,7 +312,8 @@ export function markReadingHabitCompleted(targetDate?: string): void {
 /**
  * Scans Water & Reading logs and automatically ensures:
  * 1. "Drink Mineral Water" habit is ticked on any day the targeted water goal is met
- * 2. "Read a Book" habit is ticked on any day reading activity was logged
+ * 2. "Read a Book" habit is ticked on that particular date ONLY if a reading book log exists for that date!
+ *    When date changes or no reading log exists for a date, it is NOT ticked!
  */
 export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): HabitSyncResult {
   try {
@@ -356,7 +336,6 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
     const { waterHabitIds, readingHabitIds } = findMatchingHabitIds();
     let changed = false;
 
-    const localToday = getLocalDateString();
     const dhakaToday = getDhakaLogicalDateKey().dateKey;
 
     // 3. Scan Water tracker data
@@ -373,16 +352,12 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
           if (parsed.todayDate && Array.isArray(parsed.todayEntries)) {
             const todayTotal = parsed.todayEntries.reduce((acc: number, cur: any) => acc + (Number(cur?.amountMl) || 0), 0);
             if (todayTotal >= goalMl) {
-              // Ensure marked for todayDate, local device today, and Dhaka logical today
-              const todayKeys = [parsed.todayDate, localToday, dhakaToday];
-              todayKeys.forEach((k) => {
-                const currentList = logs[k] || [];
-                const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
-                if (toAdd.length > 0) {
-                  logs[k] = [...currentList, ...toAdd];
-                  changed = true;
-                }
-              });
+              const currentList = logs[parsed.todayDate] || [];
+              const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
+              if (toAdd.length > 0) {
+                logs[parsed.todayDate] = [...currentList, ...toAdd];
+                changed = true;
+              }
             }
           }
 
@@ -404,33 +379,44 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
     }
 
     // 4. Scan Reading tracker records
+    // Logic: Read a book habit is ticked on that particular date ONLY when a reading book log exists for that date!
     const rawReading = localStorage.getItem('ratbod_reading_records') || localStorage.getItem('ratool_reading_records');
+    const datesWithReading = new Set<string>();
     if (rawReading) {
       try {
         const records = JSON.parse(rawReading);
         if (Array.isArray(records)) {
           records.forEach((r: any) => {
             if (r && r.date && ((Number(r.pages) || 0) > 0 || (Number(r.minutes) || 0) > 0)) {
-              // Mark record date
-              const rDates = [r.date];
-              // If record was logged for today, also mark Dhaka today
-              if (r.date === localToday || r.date === dhakaToday) {
-                rDates.push(localToday, dhakaToday);
-              }
-
-              rDates.forEach((dKey) => {
-                const currentList = logs[dKey] || [];
-                const toAdd = readingHabitIds.filter(id => !currentList.includes(id));
-                if (toAdd.length > 0) {
-                  logs[dKey] = [...currentList, ...toAdd];
-                  changed = true;
-                }
-              });
+              datesWithReading.add(r.date);
             }
           });
         }
       } catch (e) {}
     }
+
+    // Ensure reading habit is ticked on dates that actually have reading logged
+    datesWithReading.forEach((dKey) => {
+      const currentList = logs[dKey] || [];
+      const toAdd = readingHabitIds.filter(id => !currentList.includes(id));
+      if (toAdd.length > 0) {
+        logs[dKey] = [...currentList, ...toAdd];
+        changed = true;
+      }
+    });
+
+    // Remove reading habit from dates that DO NOT have any reading records logged
+    // (Prevents auto-ticking on date change or rollover when no reading has taken place yet)
+    Object.keys(logs).forEach((dKey) => {
+      if (!datesWithReading.has(dKey)) {
+        const currentList = logs[dKey] || [];
+        const filtered = currentList.filter(id => !readingHabitIds.includes(id));
+        if (filtered.length !== currentList.length) {
+          logs[dKey] = filtered;
+          changed = true;
+        }
+      }
+    });
 
     // 5. Persist if changes occurred
     if (changed) {
