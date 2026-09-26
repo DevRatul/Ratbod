@@ -1106,10 +1106,18 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     // Calculate Body Fat if waist/neck provided
     const computedBodyFat = metrics?.bodyFat || 0;
 
+    const logical = getDhakaLogicalDate();
+    const now = new Date();
+    const logicalDateObj = new Date(now);
+    if (logical.isPastSunsetToday) {
+      logicalDateObj.setDate(logicalDateObj.getDate() + 1);
+    }
+
     const newEntry = {
       id: Date.now().toString(),
-      date: new Date().toISOString(),
-      dateKey: getDhakaLogicalDateKey().dateKey,
+      date: logicalDateObj.toISOString(),
+      rawDate: now.toISOString(),
+      dateKey: logical.dateKey,
       weight: weightInKg,
       bmi: computedBmi,
       bodyFat: computedBodyFat

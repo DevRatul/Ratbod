@@ -7,6 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import ViewAllHistoryModal from './ViewAllHistoryModal';
+import { getEntryLogicalDate } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -18,12 +19,16 @@ interface MetricEntry {
   weight: number;
   bmi: number;
   bodyFat: number;
+  dateKey?: string;
+  rawDate?: string;
 }
 
 interface StepEntry {
   id: string | number;
   date: string;
   steps: number;
+  dateKey?: string;
+  rawDate?: string;
 }
 
 interface HistoryProps {
@@ -64,7 +69,10 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
   }, [refreshTrigger, isLoggedIn]);
 
   const fetchHistory = async () => {
-    setIsLoading(true);
+    // Only show full loading spinner if history has not been loaded yet
+    if (history.length === 0 && stepsHistory.length === 0) {
+      setIsLoading(true);
+    }
     try {
       let data = null;
       let stepsData = null;
@@ -89,11 +97,11 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
       }
 
       if (!data) {
-        const localData = JSON.parse(localStorage.getItem('ratbod_history') || '[]');
+        const localData = JSON.parse(localStorage.getItem('ratbod_history') || localStorage.getItem('ratool_history') || '[]');
         data = localData;
       }
       if (!stepsData) {
-        const localSteps = JSON.parse(localStorage.getItem('ratbod_steps_history') || '[]');
+        const localSteps = JSON.parse(localStorage.getItem('ratbod_steps_history') || localStorage.getItem('ratool_steps_history') || '[]');
         stepsData = localSteps;
       }
       
@@ -109,8 +117,8 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
       
     } catch (error) {
       console.error('Failed to fetch history:', error);
-      setHistory([]);
-      setStepsHistory([]);
+      if (history.length === 0) setHistory([]);
+      if (stepsHistory.length === 0) setStepsHistory([]);
     } finally {
       setIsLoading(false);
     }
@@ -186,8 +194,8 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     return `${formatNum(kg * 2.20462)} ${lang === 'bn' ? 'পাউন্ড' : 'lb'}`;
   };
 
-  const formatDateWithDay = (dateString: string) => {
-    const d = new Date(dateString);
+  const formatDateWithDay = (dateString: string, dateKey?: string) => {
+    const { date: d } = getEntryLogicalDate(dateString, dateKey);
     const dayName = d.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long' });
     const monthDay = d.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, {
       month: 'short',
@@ -196,10 +204,11 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     return `${dayName}, ${formatNum(monthDay)}`;
   };
 
-  const formatTimeWithYear = (dateString: string) => {
-    const d = new Date(dateString);
-    const timeStr = formatNum(d.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' }));
-    const yearStr = formatNum(d.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { year: 'numeric' }));
+  const formatTimeWithYear = (dateString: string, dateKey?: string) => {
+    const rawD = new Date(dateString);
+    const { date: logicalD } = getEntryLogicalDate(dateString, dateKey);
+    const timeStr = formatNum(rawD.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' }));
+    const yearStr = formatNum(logicalD.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { year: 'numeric' }));
     return `${timeStr}, ${yearStr}`;
   };
 
@@ -277,10 +286,10 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
                   </div>
                   <div>
                     <div className={cn("font-bold text-xs", darkMode ? "text-white" : "text-gray-900")}>
-                      {formatDateWithDay(entry.date)}
+                      {formatDateWithDay(entry.date, (entry as any).dateKey)}
                     </div>
                     <div className="text-[10px] text-gray-500 font-bold">
-                      {formatTimeWithYear(entry.date)}
+                      {formatTimeWithYear(entry.date, (entry as any).dateKey)}
                     </div>
                   </div>
                 </div>

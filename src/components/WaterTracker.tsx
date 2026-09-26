@@ -624,9 +624,6 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return Math.floor(diffMs / (1000 * 60));
   };
 
-  const lastIntakeMinutes = getLastIntakeMinutes();
-  const isIntakeOverdue = lastIntakeMinutes !== null && lastIntakeMinutes >= 50;
-
   // Mobile Notification Permission State
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -648,8 +645,40 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return 'default';
   };
 
-  // Trigger mobile notification and alarm
-  const trigger50MinNotification = useCallback(() => {
+  // 15-Minute Hydration Alert Active state
+  const [isAlertEnabled, setIsAlertEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_water_15m_alert_enabled');
+      if (saved !== null) return saved === 'true';
+    } catch {}
+    return true;
+  });
+
+  const isAlertActive = notifPermission === 'granted' && isAlertEnabled;
+
+  const handleToggleAlert = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted') {
+        const res = await requestNotificationPermission();
+        if (res === 'granted') {
+          setIsAlertEnabled(true);
+          try { localStorage.setItem('ratbod_water_15m_alert_enabled', 'true'); } catch {}
+          return;
+        }
+      }
+    }
+    setIsAlertEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem('ratbod_water_15m_alert_enabled', String(next)); } catch {}
+      return next;
+    });
+  };
+
+  const lastIntakeMinutes = getLastIntakeMinutes();
+  const isIntakeOverdue = isAlertActive && lastIntakeMinutes !== null && lastIntakeMinutes >= 15;
+
+  // Trigger mobile notification and alarm (15-min interval)
+  const trigger15MinNotification = useCallback(() => {
     playHydrationAlarmSound();
 
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -658,10 +687,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       } catch {}
     }
 
-    const title = lang === 'bn' ? 'পানি পানের রিমাইন্ডার 💧 (৫০ মি.)' : 'Hydration Reminder 💧 (50 min)';
+    const title = lang === 'bn' ? 'পানি পানের রিমাইন্ডার 💧 (১৫ মি.)' : 'Hydration Reminder 💧 (15 min)';
     const body = lang === 'bn'
-      ? 'সর্বশেষ পানি পান করার পর ৫০ মিনিট অতিবাহিত হয়েছে। সতেজ ও সুস্থ থাকতে এখনই এক গ্লাস পানি পান করুন!'
-      : "It's been 50 minutes since your last water intake! Drink a fresh glass of water to keep your body hydrated.";
+      ? 'সর্বশেষ পানি পান করার পর ১৫ মিনিট অতিবাহিত হয়েছে। সতেজ ও সুস্থ থাকতে এখনই এক গ্লাস পানি পান করুন!'
+      : "It's been 15 minutes since your last water intake! Drink a fresh glass of water to keep your body hydrated.";
 
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       if ('serviceWorker' in navigator) {
@@ -670,7 +699,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             body,
             icon: '/icon-192.png',
             badge: '/icon-192.png',
-            tag: 'ratbod-water-50min-reminder',
+            tag: 'ratbod-water-15min-reminder',
             renotify: true,
             vibrate: [400, 200, 400, 200, 600],
             data: { url: '/' }
@@ -690,9 +719,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     setShowAlarmModal(true);
   }, [lang]);
 
-  // 50-minute notification scheduler: calculates exact time remaining and notifies
+  // 15-minute notification scheduler: calculates exact time remaining and notifies
   useEffect(() => {
-    if (entries.length === 0) return;
+    if (!isAlertActive || entries.length === 0) return;
     const lastEntry = entries[0];
     let entryTimeMs = lastEntry.createdAt;
     if (!entryTimeMs) {
@@ -703,7 +732,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
     if (!entryTimeMs) return;
 
-    const targetTimeMs = entryTimeMs + (50 * 60 * 1000); // exactly 50 minutes after last intake
+    const targetTimeMs = entryTimeMs + (15 * 60 * 1000); // 15 minutes after last intake
     const now = Date.now();
     const remainingMs = targetTimeMs - now;
 
@@ -711,7 +740,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       const lastNotifiedId = localStorage.getItem('ratbod_water_last_notified_id');
       if (lastNotifiedId !== lastEntry.id) {
         localStorage.setItem('ratbod_water_last_notified_id', lastEntry.id);
-        trigger50MinNotification();
+        trigger15MinNotification();
       }
     };
 
@@ -725,7 +754,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }, remainingMs);
 
     return () => clearTimeout(timerId);
-  }, [entries, trigger50MinNotification]);
+  }, [entries, isAlertActive, trigger15MinNotification]);
 
 
 
@@ -1166,15 +1195,39 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         "p-3 sm:p-6 rounded-2xl border space-y-3 sm:space-y-4 relative overflow-hidden transition-all shadow-xs w-full",
         darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
       )}>
-        {/* Header: Consumed Label (Left) + Last Water Intake with Clock Icon (Right - Bigger and More Highlighted) */}
-        <div className="w-full flex items-center justify-between border-b pb-2.5 sm:pb-3 border-gray-200/20 dark:border-white/5 gap-2 flex-wrap sm:flex-nowrap">
-          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5 shrink-0">
-            <Droplet size={16} className="text-blue-500 fill-blue-500/20" />
-            {labels.consumed}
-          </span>
+        {/* Header: Consumed Label (Left) + 15m Alert Active (Middle) + Last Intake Time Ago (Top Right Corner) */}
+        <div className="w-full flex items-center justify-between border-b pb-2.5 sm:pb-3 border-gray-200/20 dark:border-white/5 gap-1.5 sm:gap-2 relative">
+          {/* Left: Consumed Label */}
+          <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+            <Droplet size={16} className="text-blue-500 fill-blue-500/20 shrink-0" />
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white truncate">
+              {labels.consumed}
+            </span>
+          </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Last Water Intake with Clock Icon showing Time Ago (Acts as Red Theme / Red Button with Blinking Border when >= 50 minutes) */}
+          {/* Middle: 15m Alert Active */}
+          <div className="flex items-center justify-center shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleAlert}
+              className={cn(
+                "px-2.5 sm:px-3 py-1 rounded-xl text-xs sm:text-xs font-black border transition-all cursor-pointer select-none active:scale-95 leading-none",
+                isAlertActive
+                  ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border-emerald-500/40 shadow-xs shadow-emerald-500/20"
+                  : (darkMode 
+                      ? "bg-white/5 text-white border-white/20 hover:bg-white/10" 
+                      : "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200/80")
+              )}
+              title={isAlertActive 
+                ? (lang === 'bn' ? '১৫ মিনিট রিমাইন্ডার সক্রিয়' : '15m Alert Active') 
+                : (lang === 'bn' ? '১৫ মিনিট রিমাইন্ডার চালু করতে ক্লিক করুন' : 'Click to enable 15m alert')}
+            >
+              <span>{lang === 'bn' ? '১৫মি' : '15m'}</span>
+            </button>
+          </div>
+
+          {/* Top Right Corner: Last Water Intake with Clock Icon showing Time Ago */}
+          <div className="flex items-center justify-end shrink-0">
             <motion.button 
               type="button"
               whileHover={{ scale: 1.02 }}
@@ -1186,7 +1239,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 }
               }}
               className={cn(
-                "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate cursor-pointer",
+                "inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 max-w-full truncate cursor-pointer",
                 isIntakeOverdue
                   ? "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border-red-500 animate-blink-red shadow-md shadow-red-500/30"
                   : (entries.length > 0
@@ -1200,8 +1253,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               title={
                 isIntakeOverdue
                   ? (lang === 'bn' 
-                      ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ৫০ মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
-                      : `Alert: ${formatLastIntakeTimeAgo()} since last intake. Over 50 minutes—time to take water seriously! Tap to drink water.`)
+                      ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ১৫ মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
+                      : `Alert: ${formatLastIntakeTimeAgo()} since last intake. Over 15 minutes—time to drink water! Tap to drink water.`)
                   : (entries.length > 0 ? `${labels.lastIntake}: ${format12HourTime(entries[0].createdAt || entries[0].timestamp)}` : undefined)
               }
             >
@@ -1211,38 +1264,18 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                   </span>
-                  <Clock size={15} className="text-white shrink-0 animate-pulse" />
+                  <Clock size={14} className="text-white shrink-0 animate-pulse sm:w-3.5 sm:h-3.5" />
                   <span className="truncate tracking-tight font-black text-white drop-shadow-xs">
                     {formatLastIntakeTimeAgo()}
                   </span>
                 </>
               ) : (
                 <>
-                  <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-600 shrink-0")} />
+                  <Clock size={14} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse sm:w-3.5 sm:h-3.5" : "text-blue-600 shrink-0 animate-pulse sm:w-3.5 sm:h-3.5") : (darkMode ? "text-gray-400 shrink-0 sm:w-3.5 sm:h-3.5" : "text-gray-600 shrink-0 sm:w-3.5 sm:h-3.5")} />
                   <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
                 </>
               )}
             </motion.button>
-
-            {/* Mobile 50-Min Hydration Alert Toggle */}
-            <button
-              type="button"
-              onClick={requestNotificationPermission}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer shrink-0 active:scale-95",
-                notifPermission === 'granted'
-                  ? (darkMode ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200")
-                  : (darkMode ? "bg-blue-500/15 text-blue-300 border-blue-500/30 hover:bg-blue-500/25" : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100")
-              )}
-              title={lang === 'bn' ? 'সর্বশেষ গ্রহণের ৫০ মিনিট পর মোবাইল নোটিফিকেশন' : 'Mobile notification 50 minutes after last intake'}
-            >
-              <Bell size={12} className={notifPermission === 'granted' ? "text-emerald-500 fill-emerald-500/20 shrink-0" : "text-blue-500 shrink-0"} />
-              <span>
-                {notifPermission === 'granted'
-                  ? (lang === 'bn' ? '৫০মি. রিমাইন্ডার চালু ✓' : '50m Alert Active ✓')
-                  : (lang === 'bn' ? '৫০মি. নোটিফিকেশন চালু করুন' : 'Enable 50m Alert')}
-              </span>
-            </button>
           </div>
         </div>
 

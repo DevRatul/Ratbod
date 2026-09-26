@@ -3,6 +3,7 @@ import { ArrowLeft, Scale, Footprints, Trash2, Layers } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { getEntryLogicalDate } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -14,12 +15,16 @@ interface MetricEntry {
   weight: number;
   bmi: number;
   bodyFat: number;
+  dateKey?: string;
+  rawDate?: string;
 }
 
 interface StepEntry {
   id: string | number;
   date: string;
   steps: number;
+  dateKey?: string;
+  rawDate?: string;
 }
 
 interface ViewAllHistoryModalProps {
@@ -178,11 +183,12 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                   ) : (
                     weightHistory.map((entry) => {
                       const displayWeight = unit === 'metric' ? entry.weight : entry.weight * 2.20462;
-                      const dateObj = new Date(entry.date);
+                      const { date: dateObj } = getEntryLogicalDate(entry.date, (entry as any).dateKey);
+                      const rawDateObj = new Date(entry.date);
                       const dayName = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long' });
                       const monthDay = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric' });
                       const formattedDate = `${dayName}, ${formatNum(monthDay)}`;
-                      const formattedTime = dateObj.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' });
+                      const formattedTime = rawDateObj.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' });
                       const yearStr = formatNum(dateObj.getFullYear().toString());
 
                       return (
@@ -260,11 +266,12 @@ export default function ViewAllHistoryModal({ darkMode, unit, lang = 'en', onClo
                     </div>
                   ) : (
                     stepsHistory.map((entry) => {
-                      const dateObj = new Date(entry.date);
+                      const { date: dateObj } = getEntryLogicalDate(entry.date, (entry as any).dateKey);
+                      const rawDateObj = new Date(entry.date);
                       const dayName = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long' });
                       const monthDay = dateObj.toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric' });
                       const formattedDate = `${dayName}, ${formatNum(monthDay)}`;
-                      const formattedTime = dateObj.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' });
+                      const formattedTime = rawDateObj.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : undefined, { hour: '2-digit', minute: '2-digit' });
                       const yearStr = formatNum(dateObj.getFullYear().toString());
 
                       return (

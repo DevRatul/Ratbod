@@ -210,31 +210,68 @@ export function getLogicalDiffDays(pastDateStr?: string | null): number {
 }
 
 /**
+ * Resolves the logical Date object and day information for any history entry.
+ * If the entry was logged after sunset (or has a post-sunset dateKey), it correctly reflects the post-sunset date.
+ */
+export function getEntryLogicalDate(entryDateStr: string, entryDateKey?: string): {
+  date: Date;
+  dateKey: string;
+  dayOfWeek: number;
+} {
+  try {
+    if (entryDateKey && /^\d{4}-\d{2}-\d{2}$/.test(entryDateKey)) {
+      const [y, m, d] = entryDateKey.split('-').map(Number);
+      const logicalDate = new Date(y, m - 1, d);
+      return {
+        date: logicalDate,
+        dateKey: entryDateKey,
+        dayOfWeek: logicalDate.getDay()
+      };
+    }
+    const rawDate = new Date(entryDateStr);
+    if (!isNaN(rawDate.getTime())) {
+      const logicalInfo = getDhakaLogicalDate(rawDate);
+      return {
+        date: logicalInfo.date,
+        dateKey: logicalInfo.dateKey,
+        dayOfWeek: logicalInfo.dayOfWeek
+      };
+    }
+  } catch (e) {}
+
+  const fallback = new Date(entryDateStr);
+  return {
+    date: fallback,
+    dateKey: '',
+    dayOfWeek: fallback.getDay()
+  };
+}
+
+/**
  * Global subscriber for sunset date changes.
  * Dispatches and listens to real-time sunset date rollover events across the website.
+ * Only notifies subscribers when the logical dateKey actually changes!
  */
-let lastBroadcastedDateKey = '';
-
 export function subscribeToSunsetDateChange(callback: (info: DhakaLogicalDateInfo) => void): () => void {
+  let prevDateKey = getDhakaLogicalDate().dateKey;
+
   const checkAndNotify = () => {
     const info = getDhakaLogicalDate();
-    if (!lastBroadcastedDateKey) {
-      lastBroadcastedDateKey = info.dateKey;
-    } else if (lastBroadcastedDateKey !== info.dateKey) {
-      lastBroadcastedDateKey = info.dateKey;
+    if (info.dateKey !== prevDateKey) {
+      prevDateKey = info.dateKey;
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('ratool_sunset_day_reset', { detail: info }));
         window.dispatchEvent(new CustomEvent('ratbod_sunset_day_reset', { detail: info }));
       }
+      callback(info);
     }
-    callback(info);
   };
 
   const handleCustomEvent = (e: any) => {
-    if (e?.detail) {
-      callback(e.detail);
-    } else {
-      callback(getDhakaLogicalDate());
+    const info = e?.detail || getDhakaLogicalDate();
+    if (info.dateKey !== prevDateKey) {
+      prevDateKey = info.dateKey;
+      callback(info);
     }
   };
 

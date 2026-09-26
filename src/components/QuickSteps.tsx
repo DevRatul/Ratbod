@@ -4,7 +4,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
+import { getDhakaLogicalDate, getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -26,10 +26,17 @@ export default function QuickSteps({ darkMode, lang = 'en', onSave }: QuickSteps
     setIsSaving(true);
     try {
       const parsedSteps = parseInt(steps);
-      const logicalDateKey = getDhakaLogicalDateKey().dateKey;
+      const logical = getDhakaLogicalDate();
+      const logicalDateKey = logical.dateKey;
+      const now = new Date();
+      const logicalDateObj = new Date(now);
+      if (logical.isPastSunsetToday) {
+        logicalDateObj.setDate(logicalDateObj.getDate() + 1);
+      }
       const newEntry = {
         id: Date.now().toString(),
-        date: new Date().toISOString(),
+        date: logicalDateObj.toISOString(),
+        rawDate: now.toISOString(),
         dateKey: logicalDateKey,
         steps: parsedSteps
       };
