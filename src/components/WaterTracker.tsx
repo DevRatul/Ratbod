@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, BellOff, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { syncHabitsWithTrackers, markWaterHabitCompleted } from '../utils/habitSync';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
@@ -114,91 +114,111 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return getDhakaLogicalDateKey().dateKey;
   };
 
-  // Load from Firestore & LocalStorage (persists user-chosen goal strictly)
+  // Load from Firestore & LocalStorage with real-time onSnapshot sync across all devices
   useEffect(() => {
-    const loadData = async (userObj = auth.currentUser) => {
+    let unsubscribeSnapshot: (() => void) | null = null;
+
+    const applyParsedData = (parsed: any) => {
+      if (!parsed) return;
+      // Strictly respect user-configured target goal values
+      if (typeof parsed.goalGlasses === 'number' && parsed.goalGlasses > 0) {
+        setGoalGlasses(parsed.goalGlasses);
+      }
+      if (typeof parsed.glassVolumeMl === 'number' && parsed.glassVolumeMl > 0) {
+        setGlassVolumeMl(parsed.glassVolumeMl);
+      }
+      if (typeof parsed.alertIntervalMinutes === 'number' && [30, 45, 50, 60].includes(parsed.alertIntervalMinutes)) {
+        setAlertIntervalMinutes(parsed.alertIntervalMinutes);
+        try { localStorage.setItem('ratbod_water_alert_interval', String(parsed.alertIntervalMinutes)); } catch {}
+      }
+      if (parsed.isAlertEnabled !== undefined) {
+        setIsAlertEnabled(Boolean(parsed.isAlertEnabled));
+        try { localStorage.setItem('ratbod_water_alert_enabled', String(Boolean(parsed.isAlertEnabled))); } catch {}
+      }
+      if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
+
+      const currentToday = getDhakaLogicalDateKey().dateKey;
+      let loadedHistory: DayHistory[] = Array.isArray(parsed.history) ? [...parsed.history] : [];
+
+      if (parsed.todayDate === currentToday) {
+        // Same day: restore today's entries
+        if (Array.isArray(parsed.todayEntries)) {
+          setEntries(parsed.todayEntries);
+        }
+      } else {
+        // Date changed since last session (or sunset passed): archive previous day into history
+        if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
+          const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
+          const oldGoal = (parsed.goalGlasses || goalGlasses) * (parsed.glassVolumeMl || glassVolumeMl);
+          
+          const existingIdx = loadedHistory.findIndex(h => h.date === parsed.todayDate);
+          if (existingIdx >= 0) {
+            loadedHistory[existingIdx] = { date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal };
+          } else if (oldTotal > 0) {
+            loadedHistory.unshift({ date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
+          }
+        }
+        setEntries([]);
+      }
+
+      // Clean, deduplicate, and sort history chronologically descending (newest first)
+      const uniqueHistoryMap = new Map<string, DayHistory>();
+      loadedHistory.forEach(item => {
+        if (item && item.date && item.date !== currentToday) {
+          uniqueHistoryMap.set(item.date, item);
+        }
+      });
+      const sortedHistory = Array.from(uniqueHistoryMap.values()).sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+      setHistory(sortedHistory.slice(0, 60));
+    };
+
+    const setupSync = async (userObj = auth.currentUser) => {
+      // 1. Initial read from local cache
       try {
-        let parsed: any = null;
-        
-        if (userObj) {
-          try {
-            const docRef = doc(db, 'users', userObj.uid, 'appData', 'waterTracker');
-            const docSnap = await getDoc(docRef);
+        const savedData = localStorage.getItem('ratbod_water_tracker_data');
+        if (savedData) applyParsedData(JSON.parse(savedData));
+      } catch (e) {}
+
+      // 2. Attach real-time Firestore listener if user logged in
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+
+      if (userObj) {
+        try {
+          const docRef = doc(db, 'users', userObj.uid, 'appData', 'waterTracker');
+          unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
-              parsed = docSnap.data();
+              const data = docSnap.data();
+              applyParsedData(data);
+              try {
+                localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(data));
+                localStorage.setItem('ratool_water_tracker_data', JSON.stringify(data));
+              } catch {}
             }
-          } catch (e) {
-            console.error("Firestore read error:", e);
-          }
-        }
-
-        if (!parsed) {
-          const savedData = localStorage.getItem('ratbod_water_tracker_data');
-          if (savedData) parsed = JSON.parse(savedData);
-        }
-
-        if (parsed) {
-          // Strictly respect user-configured target goal values
-          if (typeof parsed.goalGlasses === 'number' && parsed.goalGlasses > 0) {
-            setGoalGlasses(parsed.goalGlasses);
-          }
-          if (typeof parsed.glassVolumeMl === 'number' && parsed.glassVolumeMl > 0) {
-            setGlassVolumeMl(parsed.glassVolumeMl);
-          }
-
-          const currentToday = getDhakaLogicalDateKey().dateKey;
-          let loadedHistory: DayHistory[] = Array.isArray(parsed.history) ? [...parsed.history] : [];
-
-          if (parsed.todayDate === currentToday) {
-            // Same day: restore today's entries
-            if (Array.isArray(parsed.todayEntries)) {
-              setEntries(parsed.todayEntries);
-            }
-          } else {
-            // Date changed since last session (or sunset passed): archive the previous day's intake into history
-            if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
-              const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
-              const oldGoal = (parsed.goalGlasses || goalGlasses) * (parsed.glassVolumeMl || glassVolumeMl);
-              
-              const existingIdx = loadedHistory.findIndex(h => h.date === parsed.todayDate);
-              if (existingIdx >= 0) {
-                loadedHistory[existingIdx] = { date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal };
-              } else if (oldTotal > 0) {
-                loadedHistory.unshift({ date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
-              }
-            }
-            setEntries([]);
-          }
-
-          // Clean, deduplicate, and sort history chronologically descending (newest first)
-          const uniqueHistoryMap = new Map<string, DayHistory>();
-          loadedHistory.forEach(item => {
-            if (item && item.date && item.date !== currentToday) {
-              uniqueHistoryMap.set(item.date, item);
-            }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${userObj.uid}/appData/waterTracker`);
           });
-          const sortedHistory = Array.from(uniqueHistoryMap.values()).sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
-
-          setHistory(sortedHistory.slice(0, 60));
-          if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
+        } catch (e) {
+          console.error("Failed to attach water tracker real-time sync:", e);
         }
-      } catch (e) {
-        console.error("Failed to load water tracker data", e);
       }
       setIsLoaded(true);
     };
 
     // Initial load
-    loadData();
+    setupSync();
 
     // Listen to Firebase Auth state updates
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        loadData(user);
-      }
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setupSync(user);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      unsubscribeAuth();
+    };
   }, []);
 
   // Real-time day rollover checker (archives previous day if sunset passes while app is open)
@@ -291,29 +311,67 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
   }, [isLoaded, goalGlasses, glassVolumeMl, entries, history, reminderActive]);
 
-  // Audio Alarm chime synthesizer
+  // Beautiful, attractive multi-harmonic hydration chime synthesizer
   const playHydrationAlarmSound = () => {
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      
-      [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75].forEach((delay) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(delay % 0.5 === 0 ? 880 : 1046.5, ctx.currentTime + delay);
-        
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 0.2);
-      });
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      const play = () => {
+        const now = ctx.currentTime;
+        // Pentatonic zen chime sequence: F#5 (739.99Hz), A#5 (932.33Hz), C#6 (1108.73Hz), F#6 (1479.98Hz), G#6 (1661.22Hz)
+        // Layered with warm sub-harmonics and crystalline shimmering decays
+        const chimes = [
+          { freq: 739.99, time: 0, dur: 0.8, gain: 0.22 },
+          { freq: 932.33, time: 0.16, dur: 0.85, gain: 0.24 },
+          { freq: 1108.73, time: 0.32, dur: 0.95, gain: 0.26 },
+          { freq: 1479.98, time: 0.50, dur: 1.15, gain: 0.28 },
+          { freq: 1661.22, time: 0.68, dur: 1.35, gain: 0.25 }
+        ];
+
+        chimes.forEach(({ freq, time, dur, gain: noteGain }) => {
+          const startTime = now + time;
+
+          // 1. Primary pure crystal tone (Sine)
+          const osc1 = ctx.createOscillator();
+          const gainNode1 = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(freq, startTime);
+
+          gainNode1.gain.setValueAtTime(0.0001, startTime);
+          gainNode1.gain.linearRampToValueAtTime(noteGain, startTime + 0.025);
+          gainNode1.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+          osc1.connect(gainNode1);
+          gainNode1.connect(ctx.destination);
+          osc1.start(startTime);
+          osc1.stop(startTime + dur + 0.05);
+
+          // 2. Harmonic warm bell chime resonance (Triangle overtone at octave + 5th)
+          const osc2 = ctx.createOscillator();
+          const gainNode2 = ctx.createGain();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(freq * 1.5, startTime);
+
+          gainNode2.gain.setValueAtTime(0.0001, startTime);
+          gainNode2.gain.linearRampToValueAtTime(noteGain * 0.35, startTime + 0.02);
+          gainNode2.gain.exponentialRampToValueAtTime(0.0001, startTime + dur * 0.7);
+
+          osc2.connect(gainNode2);
+          gainNode2.connect(ctx.destination);
+          osc2.start(startTime);
+          osc2.stop(startTime + dur * 0.7 + 0.05);
+        });
+      };
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(play).catch(play);
+      } else {
+        play();
+      }
     } catch (e) {
-      console.error("Failed to play alarm chime", e);
+      console.error("Failed to play attractive alarm chime", e);
     }
   };
 
@@ -690,24 +748,38 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const isAlertActive = isAlertEnabled;
 
   const handleSelectAlertOption = async (option: number | 'off') => {
+    let nextEnabled = true;
+    let nextInterval = alertIntervalMinutes;
+
     if (option === 'off' || (isAlertActive && alertIntervalMinutes === option)) {
+      nextEnabled = false;
       setIsAlertEnabled(false);
       try {
         localStorage.setItem('ratbod_water_alert_enabled', 'false');
       } catch {}
       setIsAlertMenuOpen(false);
-      return;
+    } else {
+      nextInterval = option;
+      setAlertIntervalMinutes(option);
+      setIsAlertEnabled(true);
+      try {
+        localStorage.setItem('ratbod_water_alert_interval', String(option));
+        localStorage.setItem('ratbod_water_alert_enabled', 'true');
+      } catch {}
+      setIsAlertMenuOpen(false);
     }
 
-    setAlertIntervalMinutes(option);
-    setIsAlertEnabled(true);
-    try {
-      localStorage.setItem('ratbod_water_alert_interval', String(option));
-      localStorage.setItem('ratbod_water_alert_enabled', 'true');
-    } catch {}
-    setIsAlertMenuOpen(false);
+    // Sync to Firestore for real-time multi-device sync
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), {
+        alertIntervalMinutes: nextInterval,
+        isAlertEnabled: nextEnabled,
+        updatedAt: Date.now()
+      }, { merge: true }).catch(() => {});
+    }
 
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+    if (nextEnabled && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       try {
         await requestNotificationPermission();
       } catch {}
@@ -1252,7 +1324,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             </span>
           </div>
 
-          {/* Middle: Last Water Intake Time Ago (replacing alert button position) */}
+          {/* Middle: Last Water Intake Time Ago (slightly bigger in size) */}
           <div className="flex items-center justify-center shrink-0 min-w-0">
             <motion.button 
               type="button"
@@ -1265,7 +1337,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 }
               }}
               className={cn(
-                "inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 rounded-xl text-xs font-black border transition-all shrink-0 cursor-pointer select-none leading-none shadow-2xs",
+                "inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm font-extrabold border transition-all shrink-0 cursor-pointer select-none leading-none shadow-xs",
                 isIntakeOverdue
                   ? "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border-red-500 animate-blink-red shadow-md shadow-red-500/30"
                   : (entries.length > 0
@@ -1286,31 +1358,31 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             >
               {isIntakeOverdue ? (
                 <>
-                  <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
                   </span>
-                  <Clock size={13} className="text-white shrink-0 animate-pulse" />
-                  <span className="truncate tracking-tight font-black text-white drop-shadow-xs">
+                  <Clock size={15} className="text-white shrink-0 animate-pulse" />
+                  <span className="truncate tracking-tight font-black text-white drop-shadow-xs text-xs sm:text-sm">
                     {formatLastIntakeTimeAgo()}
                   </span>
                 </>
               ) : (
                 <>
-                  <Clock size={13} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-500 shrink-0")} />
-                  <span className="truncate tracking-tight font-black">{formatLastIntakeTimeAgo()}</span>
+                  <Clock size={15} className={entries.length > 0 ? (darkMode ? "text-blue-400 shrink-0 animate-pulse" : "text-blue-600 shrink-0 animate-pulse") : (darkMode ? "text-gray-400 shrink-0" : "text-gray-500 shrink-0")} />
+                  <span className="truncate tracking-tight font-black text-xs sm:text-sm">{formatLastIntakeTimeAgo()}</span>
                 </>
               )}
             </motion.button>
           </div>
 
-          {/* Top Right Corner: Alert Button (replacing minute ago option) */}
+          {/* Top Right Corner: Alert Button (shows Bell when active, BellOff alarm off when off) */}
           <div className="relative flex items-center justify-end shrink-0" ref={alertMenuRef}>
             <button
               type="button"
               onClick={() => setIsAlertMenuOpen(prev => !prev)}
               className={cn(
-                "inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer select-none active:scale-95 leading-none shadow-2xs",
+                "inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer select-none active:scale-95 leading-none shadow-2xs",
                 isAlertActive
                   ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border-emerald-500/40 shadow-xs shadow-emerald-500/20"
                   : (darkMode 
@@ -1319,9 +1391,13 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               )}
               title={isAlertActive 
                 ? (lang === 'bn' ? `${alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০'} মিনিট রিমাইন্ডার সক্রিয়` : `${alertIntervalMinutes}m Alert Active`) 
-                : (lang === 'bn' ? 'রিমাইন্ডার মেনু খুলতে ক্লিক করুন' : 'Click to open alert menu')}
+                : (lang === 'bn' ? 'রিমাইন্ডার বন্ধ (মেনু খুলতে ক্লিক করুন)' : 'Alert Off (click to open menu)')}
             >
-              <Bell size={13} className={cn("shrink-0", isAlertActive ? "text-emerald-500 dark:text-emerald-400 fill-emerald-500/20" : "text-gray-400 dark:text-gray-300")} />
+              {isAlertActive ? (
+                <Bell size={13} className="shrink-0 text-emerald-500 dark:text-emerald-400 fill-emerald-500/20" />
+              ) : (
+                <BellOff size={13} className="shrink-0 text-gray-400 dark:text-gray-300" />
+              )}
               <span>{lang === 'bn' ? (alertIntervalMinutes === 50 ? '৫০মি' : alertIntervalMinutes === 30 ? '৩০মি' : alertIntervalMinutes === 45 ? '৪৫মি' : '৬০মি') : `${alertIntervalMinutes}m`}</span>
             </button>
 
@@ -1357,7 +1433,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                             : (darkMode ? "hover:bg-white/10 text-gray-200" : "hover:bg-gray-100 text-gray-700")
                         )}
                       >
-                        <span>{lang === 'bn' ? labelBn : labelEn}</span>
+                        <span className="flex items-center gap-1.5">
+                          <Bell size={12} className={cn("shrink-0", isSelected ? "text-emerald-500 dark:text-emerald-400" : "text-gray-400")} />
+                          <span>{lang === 'bn' ? labelBn : labelEn}</span>
+                        </span>
                         {isSelected && <Check size={14} className="text-emerald-500 dark:text-emerald-400 shrink-0" strokeWidth={3} />}
                       </button>
                     );
@@ -1365,7 +1444,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
                   <div className="my-1 border-t border-gray-200/40 dark:border-white/10" />
 
-                  {/* Option: Off */}
+                  {/* Option: Off with alarm off icon */}
                   <button
                     type="button"
                     onClick={() => handleSelectAlertOption('off')}
@@ -1376,7 +1455,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                         : (darkMode ? "hover:bg-white/10 text-rose-400" : "hover:bg-gray-100 text-rose-600")
                     )}
                   >
-                    <span>{lang === 'bn' ? 'বন্ধ (Off)' : 'Off'}</span>
+                    <span className="flex items-center gap-1.5">
+                      <BellOff size={13} className="shrink-0 text-gray-400" />
+                      <span>{lang === 'bn' ? 'বন্ধ (Off)' : 'Off'}</span>
+                    </span>
                     {!isAlertActive && <Check size={14} className="text-gray-400 shrink-0" strokeWidth={3} />}
                   </button>
                 </motion.div>

@@ -29,9 +29,9 @@ import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react'
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { syncHabitsWithTrackers } from '../utils/habitSync';
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -470,45 +470,76 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
     }
   }, [completedLogs, isLoaded]);
 
-  // Initial load and auth sync with Firestore
+  // Initial load and real-time auth sync with Firestore across all devices
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubHabits: (() => void) | null = null;
+    let unsubLogs: (() => void) | null = null;
+
+    const setupHabitsSync = (user = auth.currentUser) => {
+      // 1. Initial local cache
+      try {
+        const localHabits = localStorage.getItem('ratbod_habits_v1') || localStorage.getItem('ratool_habits_v1');
+        if (localHabits) {
+          const parsed = JSON.parse(localHabits);
+          if (Array.isArray(parsed) && parsed.length > 0) setHabits(parsed);
+        }
+        const localLogs = localStorage.getItem('ratbod_habit_logs_v1') || localStorage.getItem('ratool_habit_logs_v1');
+        if (localLogs) {
+          const parsed = JSON.parse(localLogs);
+          if (parsed && typeof parsed === 'object') setCompletedLogs(parsed);
+        }
+      } catch (e) {}
+
+      if (unsubHabits) { unsubHabits(); unsubHabits = null; }
+      if (unsubLogs) { unsubLogs(); unsubLogs = null; }
+
       if (user) {
         try {
-          // Load Habits
-          const habitsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habits'));
-          if (habitsDoc.exists()) {
-            const data = habitsDoc.data();
-            if (data.habits && Array.isArray(data.habits)) {
-              setHabits(data.habits);
-              localStorage.setItem('ratool_habits_v1', JSON.stringify(data.habits));
-              localStorage.setItem('ratbod_habits_v1', JSON.stringify(data.habits));
+          const habitsDocRef = doc(db, 'users', user.uid, 'appData', 'habits');
+          unsubHabits = onSnapshot(habitsDocRef, (docSnap) => {
+            if (docSnap.exists() && Array.isArray(docSnap.data().habits)) {
+              const liveHabits = docSnap.data().habits;
+              setHabits(liveHabits);
+              try {
+                localStorage.setItem('ratool_habits_v1', JSON.stringify(liveHabits));
+                localStorage.setItem('ratbod_habits_v1', JSON.stringify(liveHabits));
+              } catch {}
             }
-          } else {
-            // First time login - upload existing local habits to firestore
-            setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits }, { merge: true }).catch(e => {});
-          }
-          
-          // Load Logs
-          const logsDoc = await getDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'));
-          if (logsDoc.exists()) {
-            const data = logsDoc.data();
-            if (data.completedLogs) {
-              setCompletedLogs(data.completedLogs);
-              localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(data.completedLogs));
-              localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(data.completedLogs));
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/habits`);
+          });
+
+          const logsDocRef = doc(db, 'users', user.uid, 'appData', 'habitLogs');
+          unsubLogs = onSnapshot(logsDocRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().completedLogs) {
+              const liveLogs = docSnap.data().completedLogs;
+              setCompletedLogs(liveLogs);
+              try {
+                localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(liveLogs));
+                localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(liveLogs));
+              } catch {}
             }
-          } else {
-            setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs }, { merge: true }).catch(e => {});
-          }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/habitLogs`);
+          });
         } catch (e) {
-          console.error("Failed to load habits from firestore", e);
+          console.error("Failed to attach habit real-time sync:", e);
         }
       }
       setIsLoaded(true);
+    };
+
+    setupHabitsSync();
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setupHabitsSync(u || undefined);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubHabits) unsubHabits();
+      if (unsubLogs) unsubLogs();
+      unsubAuth();
+    };
   }, []);
 
   // Real-time listener for tracker auto-sync events (Water & Reading goals)

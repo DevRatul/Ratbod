@@ -3,8 +3,9 @@ import { ShoppingBag, Trash2, Plus, RefreshCw, HelpCircle, Download } from 'luci
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getDhakaLogicalDate } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
@@ -38,36 +39,52 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
   const [desiredUnit, setDesiredUnit] = useState('kg');
   const [lastModified, setLastModified] = useState<'qty' | 'price'>('qty');
 
-  // Load items from localStorage & Firestore on mount
+  // Load items from localStorage & Firestore with real-time onSnapshot sync across all devices
   useEffect(() => {
-    const loadItems = async () => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const setupGrocerySync = (user = auth.currentUser) => {
+      // 1. Initial local cache
       try {
-        let loadedItems = null;
-        const user = auth.currentUser;
-        
-        if (user) {
-          try {
-            const docRef = doc(db, 'users', user.uid, 'appData', 'grocery');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-              loadedItems = docSnap.data().items;
+        const stored = localStorage.getItem('ratbod_grocery_items');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) setItems(parsed);
+        }
+      } catch (e) {}
+
+      if (unsubSnapshot) { unsubSnapshot(); unsubSnapshot = null; }
+
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid, 'appData', 'grocery');
+          unsubSnapshot = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists() && Array.isArray(docSnap.data().items)) {
+              const liveItems = docSnap.data().items;
+              setItems(liveItems);
+              try {
+                localStorage.setItem('ratbod_grocery_items', JSON.stringify(liveItems));
+              } catch {}
             }
-          } catch (e) {}
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/grocery`);
+          });
+        } catch (e) {
+          console.error('Failed to attach grocery real-time sync:', e);
         }
-
-        if (!loadedItems) {
-          const stored = localStorage.getItem('ratbod_grocery_items');
-          if (stored) loadedItems = JSON.parse(stored);
-        }
-
-        if (loadedItems) {
-          setItems(loadedItems);
-        }
-      } catch (e) {
-        console.error('Failed to load grocery items:', e);
       }
     };
-    loadItems();
+
+    setupGrocerySync();
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setupGrocerySync(u || undefined);
+    });
+
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsubAuth();
+    };
   }, []);
 
   // Save items to localStorage & Firestore whenever they change

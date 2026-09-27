@@ -34,8 +34,8 @@ import {
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey, getDhakaSunsetTime } from '../utils/sunsetDate';
 
@@ -1114,31 +1114,47 @@ export default function SalahTracker({
       console.error('Error reading localStorage for Salah Tracker:', e);
     }
 
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const setupSalahSync = (user = auth.currentUser) => {
+      if (unsubSnapshot) { unsubSnapshot(); unsubSnapshot = null; }
       if (user) {
         try {
-          const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'salahTracker'));
-          if (snap.exists()) {
-            const data = snap.data();
-            if (data.recordsMap && typeof data.recordsMap === 'object') {
-              setRecordsMap(prev => {
-                const merged = { ...prev, ...data.recordsMap };
-                localStorage.setItem('ratbod_salah_records_map', JSON.stringify(merged));
-                return merged;
-              });
+          const docRef = doc(db, 'users', user.uid, 'appData', 'salahTracker');
+          unsubSnapshot = onSnapshot(docRef, (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              if (data.recordsMap && typeof data.recordsMap === 'object') {
+                setRecordsMap(prev => {
+                  const merged = { ...prev, ...data.recordsMap };
+                  try { localStorage.setItem('ratbod_salah_records_map', JSON.stringify(merged)); } catch {}
+                  return merged;
+                });
+              }
+              if (Array.isArray(data.customDhikrs)) {
+                setUserCustomDhikrs(data.customDhikrs);
+                try { localStorage.setItem('ratbod_user_custom_dhikrs', JSON.stringify(data.customDhikrs)); } catch {}
+              }
             }
-            if (Array.isArray(data.customDhikrs)) {
-              setUserCustomDhikrs(data.customDhikrs);
-              localStorage.setItem('ratbod_user_custom_dhikrs', JSON.stringify(data.customDhikrs));
-            }
-          }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/salahTracker`);
+          });
         } catch (e) {
-          console.error('Error fetching Firestore salah data:', e);
+          console.error('Error setting up salah snapshot sync:', e);
         }
       }
+    };
+
+    setupSalahSync();
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setupSalahSync(user || undefined);
     });
 
-    return () => unsub();
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsub();
+    };
   }, []);
 
   // Save changes to LocalStorage & Firestore

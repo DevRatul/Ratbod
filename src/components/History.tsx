@@ -4,8 +4,9 @@ import { Calendar, Scale, Activity, TrendingDown, TrendingUp, Minus, Trash2, His
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import ViewAllHistoryModal from './ViewAllHistoryModal';
 import { getEntryLogicalDate } from '../utils/sunsetDate';
 
@@ -65,64 +66,80 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
   };
 
   useEffect(() => {
-    fetchHistory();
-  }, [refreshTrigger, isLoggedIn]);
+    let unsubHist: (() => void) | null = null;
+    let unsubSteps: (() => void) | null = null;
 
-  const fetchHistory = async () => {
-    // Only show full loading spinner if history has not been loaded yet
-    if (history.length === 0 && stepsHistory.length === 0) {
-      setIsLoading(true);
-    }
-    try {
-      let data = null;
-      let stepsData = null;
-      const user = auth.currentUser;
-      
+    const setupHistorySync = (user = auth.currentUser) => {
+      // 1. Initial local cache read
+      try {
+        const localData = JSON.parse(localStorage.getItem('ratbod_history') || localStorage.getItem('ratool_history') || '[]');
+        if (Array.isArray(localData) && localData.length > 0) {
+          const sorted = localData.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setHistory(sorted);
+        }
+        const localSteps = JSON.parse(localStorage.getItem('ratbod_steps_history') || localStorage.getItem('ratool_steps_history') || '[]');
+        if (Array.isArray(localSteps) && localSteps.length > 0) {
+          const sortedSteps = localSteps.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setStepsHistory(sortedSteps);
+        }
+      } catch (e) {}
+
+      if (unsubHist) { unsubHist(); unsubHist = null; }
+      if (unsubSteps) { unsubSteps(); unsubSteps = null; }
+
       if (user) {
         try {
-          // Fetch weight history
           const docRef = doc(db, 'users', user.uid, 'appData', 'history');
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            data = docSnap.data().history;
-          }
-          
-          // Fetch steps history
-          const stepsDocRef = doc(db, 'users', user.uid);
-          const stepsDocSnap = await getDoc(stepsDocRef);
-          if (stepsDocSnap.exists()) {
-            stepsData = stepsDocSnap.data().stepsHistory;
-          }
-        } catch (e) {}
-      }
+          unsubHist = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists() && Array.isArray(docSnap.data().history)) {
+              const liveData = docSnap.data().history;
+              const sorted = liveData.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              setHistory(sorted);
+              try {
+                localStorage.setItem('ratbod_history', JSON.stringify(liveData));
+                localStorage.setItem('ratool_history', JSON.stringify(liveData));
+              } catch {}
+            }
+            setIsLoading(false);
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/history`);
+            setIsLoading(false);
+          });
 
-      if (!data) {
-        const localData = JSON.parse(localStorage.getItem('ratbod_history') || localStorage.getItem('ratool_history') || '[]');
-        data = localData;
+          const stepsDocRef = doc(db, 'users', user.uid);
+          unsubSteps = onSnapshot(stepsDocRef, (stepsDocSnap) => {
+            if (stepsDocSnap.exists() && Array.isArray(stepsDocSnap.data().stepsHistory)) {
+              const liveSteps = stepsDocSnap.data().stepsHistory;
+              const sortedSteps = liveSteps.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              setStepsHistory(sortedSteps);
+              try {
+                localStorage.setItem('ratbod_steps_history', JSON.stringify(liveSteps));
+                localStorage.setItem('ratool_steps_history', JSON.stringify(liveSteps));
+              } catch {}
+            }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+          });
+        } catch (e) {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
       }
-      if (!stepsData) {
-        const localSteps = JSON.parse(localStorage.getItem('ratbod_steps_history') || localStorage.getItem('ratool_steps_history') || '[]');
-        stepsData = localSteps;
-      }
-      
-      const sorted = data.sort((a: any, b: any) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setHistory(sorted);
-      
-      const sortedSteps = stepsData.sort((a: any, b: any) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setStepsHistory(sortedSteps);
-      
-    } catch (error) {
-      console.error('Failed to fetch history:', error);
-      if (history.length === 0) setHistory([]);
-      if (stepsHistory.length === 0) setStepsHistory([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    setupHistorySync();
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setupHistorySync(u || undefined);
+    });
+
+    return () => {
+      if (unsubHist) unsubHist();
+      if (unsubSteps) unsubSteps();
+      unsubAuth();
+    };
+  }, [refreshTrigger, isLoggedIn]);
 
 
 

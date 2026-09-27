@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
@@ -133,25 +133,37 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
   const caloriesBurned = Math.round(todaySteps * 0.04);
   const percentComplete = Math.min(100, Math.round((todaySteps / (stepGoal || 1)) * 100));
 
-  // Load from Firestore
+  // Load from Firestore with real-time onSnapshot sync across all devices
   useEffect(() => {
-    const load = async (user = auth.currentUser) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const setupStepsSync = (user = auth.currentUser) => {
+      if (unsubSnapshot) { unsubSnapshot(); unsubSnapshot = null; }
       if (!user) return;
+
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'stepsTracker'));
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data.stepGoal) setStepGoal(data.stepGoal);
-          if (Array.isArray(data.records)) setRecords(data.records);
-          if (data.todayDate === getDhakaLogicalDateKey().dateKey && typeof data.todaySteps === 'number') {
-            setTodaySteps(data.todaySteps);
+        const docRef = doc(db, 'users', user.uid, 'appData', 'stepsTracker');
+        unsubSnapshot = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.stepGoal) setStepGoal(data.stepGoal);
+            if (Array.isArray(data.records)) setRecords(data.records);
+            if (data.todayDate === getDhakaLogicalDateKey().dateKey && typeof data.todaySteps === 'number') {
+              setTodaySteps(data.todaySteps);
+            }
           }
-        }
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/stepsTracker`);
+        });
       } catch (e) {}
     };
-    load();
-    const unsub = onAuthStateChanged(auth, (u) => { if (u) load(u); });
-    return () => unsub();
+
+    setupStepsSync();
+    const unsub = onAuthStateChanged(auth, (u) => { setupStepsSync(u || undefined); });
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsub();
+    };
   }, []);
 
   const persistData = (steps: number, goal: number, updatedRecords: StepRecord[]) => {

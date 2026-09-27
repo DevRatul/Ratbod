@@ -529,12 +529,102 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             localStorage.setItem('ratbod_week_start_day', String(data.weekStartDay));
           } catch (e) {}
         }
+
+        // Real-time synchronization of profile settings & preferences across devices
+        if (data.name !== undefined && data.name !== name) {
+          setName(data.name);
+          try {
+            localStorage.setItem('ratool_name', data.name);
+            localStorage.setItem('ratbod_name', data.name);
+          } catch (e) {}
+        }
+        if (data.gender !== undefined && data.gender !== gender) {
+          setGender(data.gender);
+          try {
+            localStorage.setItem('ratool_gender', data.gender);
+            localStorage.setItem('ratbod_gender', data.gender);
+          } catch (e) {}
+        }
+        if (data.birthdate !== undefined && data.birthdate !== birthdate) {
+          setBirthdate(data.birthdate);
+          try {
+            localStorage.setItem('ratool_birthdate', data.birthdate);
+            localStorage.setItem('ratbod_birthdate', data.birthdate);
+          } catch (e) {}
+        }
+        if (data.age !== undefined && data.age !== age) {
+          setAge(data.age);
+          try {
+            localStorage.setItem('ratool_age', data.age);
+            localStorage.setItem('ratbod_age', data.age);
+          } catch (e) {}
+        }
+        if (data.height !== undefined && data.height !== height) {
+          setHeight(data.height);
+          try {
+            localStorage.setItem('ratool_height', data.height);
+            localStorage.setItem('ratbod_height', data.height);
+          } catch (e) {}
+        }
+        if (data.activityLevel !== undefined && data.activityLevel !== activityLevel) {
+          setActivityLevel(data.activityLevel);
+          try {
+            localStorage.setItem('ratool_activity', data.activityLevel);
+            localStorage.setItem('ratbod_activity', data.activityLevel);
+          } catch (e) {}
+        }
+        if (data.unit !== undefined && data.unit !== unit) {
+          setUnit(data.unit);
+          try {
+            localStorage.setItem('ratool_unit', data.unit);
+            localStorage.setItem('ratbod_unit', data.unit);
+          } catch (e) {}
+        }
+        if (data.lang !== undefined && data.lang !== lang) {
+          setLang(data.lang);
+          try {
+            localStorage.setItem('ratool_lang', data.lang);
+            localStorage.setItem('ratbod_lang', data.lang);
+          } catch (e) {}
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}`);
     });
 
-    return () => unsubscribe();
+    // Real-time synchronization of history logs across all devices
+    const histRef = doc(db, 'users', authUser.uid, 'appData', 'history');
+    const unsubHist = onSnapshot(histRef, (snap) => {
+      if (snap.exists() && Array.isArray(snap.data().history)) {
+        setHistoryList(snap.data().history);
+        try {
+          localStorage.setItem('ratool_history', JSON.stringify(snap.data().history));
+          localStorage.setItem('ratbod_history', JSON.stringify(snap.data().history));
+        } catch {}
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}/appData/history`);
+    });
+
+    // Real-time synchronization of goals across all devices
+    const goalRef = doc(db, 'users', authUser.uid, 'appData', 'goals');
+    const unsubGoal = onSnapshot(goalRef, (snap) => {
+      if (snap.exists() && snap.data().goal) {
+        setSavedGoal(snap.data().goal);
+        try {
+          localStorage.setItem('ratool_goals', JSON.stringify(snap.data().goal));
+          localStorage.setItem('ratbod_goals', JSON.stringify(snap.data().goal));
+        } catch {}
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}/appData/goals`);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubHist();
+      unsubGoal();
+    };
   }, [authUser, darkMode, propSetDarkMode]);
 
   // Handle device wakeup / tab focus / visibility change to instantly pull latest menu tab & theme

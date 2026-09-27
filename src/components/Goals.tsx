@@ -8,8 +8,9 @@ import { Target, Trophy, Calendar, ArrowRight, Save, RefreshCw, TrendingDown, Tr
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getLogicalDaysRemaining } from '../utils/sunsetDate';
 
 function cn(...inputs: ClassValue[]) {
@@ -65,52 +66,68 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
   const [weeklyStepsGoal, setWeeklyStepsGoal] = useState('');
 
   useEffect(() => {
-    fetchGoal();
-  }, []);
+    let unsubGoal: (() => void) | null = null;
 
-  useEffect(() => {
-    if (goal) {
-      setTargetWeight(unit === 'metric' ? goal.targetWeight.toString() : (goal.targetWeight * 2.20462).toFixed(1));
-    }
-  }, [unit]);
+    const setupGoalSync = (user = auth.currentUser) => {
+      // 1. Initial local cache
+      try {
+        const savedGoalJson = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
+        if (savedGoalJson) {
+          const parsed = JSON.parse(savedGoalJson);
+          setGoal(parsed);
+          setTargetWeight(unit === 'metric' ? parsed.targetWeight?.toString() || '' : (parsed.targetWeight ? (parsed.targetWeight * 2.20462).toFixed(1) : ''));
+          if (parsed.targetBodyFat) setTargetBodyFat(parsed.targetBodyFat.toString());
+          if (parsed.dailyCalorieGoal) setDailyCalorieGoal(parsed.dailyCalorieGoal.toString());
+          if (parsed.targetDate) setTargetDate(parsed.targetDate.split('T')[0]);
+          if (parsed.weeklyStepsGoal) setWeeklyStepsGoal(parsed.weeklyStepsGoal.toString());
+        }
+      } catch (e) {}
 
-  const fetchGoal = async () => {
-    setIsLoading(true);
-    try {
-      let data = null;
-      const user = auth.currentUser;
-      
+      if (unsubGoal) { unsubGoal(); unsubGoal = null; }
+
       if (user) {
         try {
           const docRef = doc(db, 'users', user.uid, 'appData', 'goals');
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            data = docSnap.data().goal;
-          }
-        } catch (e) {}
-      }
+          unsubGoal = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().goal) {
+              const liveGoal = docSnap.data().goal;
+              setGoal(liveGoal);
+              if (onGoalUpdate) onGoalUpdate();
+              setTargetWeight(unit === 'metric' ? liveGoal.targetWeight?.toString() || '' : (liveGoal.targetWeight ? (liveGoal.targetWeight * 2.20462).toFixed(1) : ''));
+              if (liveGoal.targetBodyFat) setTargetBodyFat(liveGoal.targetBodyFat.toString());
+              if (liveGoal.dailyCalorieGoal) setDailyCalorieGoal(liveGoal.dailyCalorieGoal.toString());
+              if (liveGoal.targetDate) setTargetDate(liveGoal.targetDate.split('T')[0]);
+              if (liveGoal.weeklyStepsGoal) setWeeklyStepsGoal(liveGoal.weeklyStepsGoal.toString());
 
-      if (!data) {
-        const savedGoalJson = localStorage.getItem('ratool_goals') || localStorage.getItem('ratbod_goals');
-        if (savedGoalJson) data = JSON.parse(savedGoalJson);
+              try {
+                localStorage.setItem('ratool_goals', JSON.stringify(liveGoal));
+                localStorage.setItem('ratbod_goals', JSON.stringify(liveGoal));
+              } catch {}
+            }
+            setIsLoading(false);
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/goals`);
+            setIsLoading(false);
+          });
+        } catch (e) {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
       }
+    };
 
-      if (data) {
-        localStorage.setItem('ratool_goals', JSON.stringify(data));
-        localStorage.setItem('ratbod_goals', JSON.stringify(data));
-        setGoal(data);
-        if (onGoalUpdate) onGoalUpdate();
-        setTargetWeight(unit === 'metric' ? data.targetWeight.toString() : (data.targetWeight * 2.20462).toFixed(1));
-        setTargetBodyFat(data.targetBodyFat.toString());
-        setDailyCalorieGoal(data.dailyCalorieGoal.toString());
-        setTargetDate(data.targetDate ? data.targetDate.split('T')[0] : '');
-      }
-    } catch (error) {
-      console.error('Failed to fetch goals:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setupGoalSync();
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setupGoalSync(u || undefined);
+    });
+
+    return () => {
+      if (unsubGoal) unsubGoal();
+      unsubAuth();
+    };
+  }, [unit]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
