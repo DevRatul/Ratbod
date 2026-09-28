@@ -793,7 +793,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={cn(
-                "w-full max-w-md max-h-[78vh] sm:max-h-[92vh] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl my-auto",
+                "w-full max-w-md max-h-[72vh] sm:max-h-[90vh] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl my-auto",
                 darkMode ? "bg-[#0c101c] border-indigo-500/30 text-white" : "bg-white border-gray-200 text-gray-900"
               )}
             >

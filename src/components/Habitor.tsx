@@ -449,26 +449,24 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
 
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Sync state to localStorage & Firestore
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('ratool_habits_v1', JSON.stringify(habits));
-    localStorage.setItem('ratbod_habits_v1', JSON.stringify(habits));
-    const user = auth.currentUser;
-    if (user) {
-      setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits }, { merge: true }).catch(e => {});
-    }
-  }, [habits, isLoaded]);
+  // Real-time reorder handler: preserves exact custom positions across devices
+  const handleReorder = (newHabits: HabitItem[]) => {
+    setHabits(newHabits);
+    try {
+      localStorage.setItem('ratool_habits_v1', JSON.stringify(newHabits));
+      localStorage.setItem('ratbod_habits_v1', JSON.stringify(newHabits));
+    } catch (e) {}
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(completedLogs));
-    localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(completedLogs));
     const user = auth.currentUser;
     if (user) {
-      setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs }, { merge: true }).catch(e => {});
+      setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { 
+        habits: newHabits, 
+        updatedAt: Date.now() 
+      }, { merge: true }).catch(err => {
+        console.error("Failed to save reordered habits to Firestore:", err);
+      });
     }
-  }, [completedLogs, isLoaded]);
+  };
 
   // Initial load and real-time auth sync with Firestore across all devices
   useEffect(() => {
@@ -497,13 +495,16 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         try {
           const habitsDocRef = doc(db, 'users', user.uid, 'appData', 'habits');
           unsubHabits = onSnapshot(habitsDocRef, (docSnap) => {
-            if (docSnap.exists() && Array.isArray(docSnap.data().habits)) {
+            if (docSnap.exists() && Array.isArray(docSnap.data().habits) && docSnap.data().habits.length > 0) {
               const liveHabits = docSnap.data().habits;
               setHabits(liveHabits);
               try {
                 localStorage.setItem('ratool_habits_v1', JSON.stringify(liveHabits));
                 localStorage.setItem('ratbod_habits_v1', JSON.stringify(liveHabits));
               } catch {}
+            } else if (!docSnap.exists()) {
+              // Only on first setup save initial habits
+              setDoc(habitsDocRef, { habits, updatedAt: Date.now() }, { merge: true }).catch(() => {});
             }
           }, (error) => {
             handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/habits`);
@@ -513,11 +514,45 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
           unsubLogs = onSnapshot(logsDocRef, (docSnap) => {
             if (docSnap.exists() && docSnap.data().completedLogs) {
               const liveLogs = docSnap.data().completedLogs;
-              setCompletedLogs(liveLogs);
-              try {
-                localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(liveLogs));
-                localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(liveLogs));
-              } catch {}
+              setCompletedLogs(prev => {
+                const merged: Record<string, string[]> = { ...liveLogs };
+                // Ensure no local toggles are accidentally dropped
+                Object.keys(prev).forEach(dKey => {
+                  const setOfIds = new Set(merged[dKey] || []);
+                  (prev[dKey] || []).forEach(id => setOfIds.add(id));
+                  merged[dKey] = Array.from(setOfIds);
+                });
+
+                // Auto-restore Drink Mineral Water (h3) if water goal was consumed
+                try {
+                  const rawWater = localStorage.getItem('ratbod_water_tracker_data') || localStorage.getItem('ratool_water_tracker_data');
+                  if (rawWater) {
+                    const parsedWater = JSON.parse(rawWater);
+                    const goalMl = (Number(parsedWater.goalGlasses) || 12) * (Number(parsedWater.glassVolumeMl) || 250);
+                    if (parsedWater.todayDate && Array.isArray(parsedWater.todayEntries)) {
+                      const todayTot = parsedWater.todayEntries.reduce((a: number, c: any) => a + (Number(c?.amountMl) || 0), 0);
+                      if (todayTot >= goalMl && goalMl > 0) {
+                        const cur = merged[parsedWater.todayDate] || [];
+                        if (!cur.includes('h3')) merged[parsedWater.todayDate] = [...cur, 'h3'];
+                      }
+                    }
+                    if (Array.isArray(parsedWater.history)) {
+                      parsedWater.history.forEach((h: any) => {
+                        if (h && h.date && Number(h.consumedMl) >= Number(h.goalMl) && Number(h.goalMl) > 0) {
+                          const cur = merged[h.date] || [];
+                          if (!cur.includes('h3')) merged[h.date] = [...cur, 'h3'];
+                        }
+                      });
+                    }
+                  }
+                } catch (e) {}
+
+                try {
+                  localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(merged));
+                  localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(merged));
+                } catch {}
+                return merged;
+              });
             }
           }, (error) => {
             handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/habitLogs`);
@@ -757,10 +792,29 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         updatedList = [...currentList, id];
         playHabitCheckSound();
       }
-      return {
+      const nextLogs = {
         ...prev,
         [targetDateKey]: updatedList
       };
+
+      try {
+        localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(nextLogs));
+        localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(nextLogs));
+      } catch (e) {}
+
+      const user = auth.currentUser;
+      if (user) {
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), {
+          completedLogs: nextLogs,
+          updatedAt: Date.now()
+        }, { merge: true }).catch(err => {
+          console.error("Failed to persist habit toggle to Firestore:", err);
+        });
+      }
+
+      window.dispatchEvent(new CustomEvent('ratbod_habit_logs_updated', { detail: { completedLogs: nextLogs } }));
+
+      return nextLogs;
     });
   };
 
@@ -955,7 +1009,7 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         <Reorder.Group
           axis="y"
           values={habits}
-          onReorder={setHabits}
+          onReorder={handleReorder}
           className="space-y-2 list-none p-0 m-0"
         >
           <AnimatePresence initial={false}>

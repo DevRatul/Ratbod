@@ -261,6 +261,45 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
   const activeSubTabRef = useRef<LogifyTab>(activeSubTab);
   activeSubTabRef.current = activeSubTab;
 
+  // Real-time synchronization of Salah sub nav tab across all user devices
+  const VALID_SALAH_SUB_TABS = ['zikar', 'salah', 'adhkar'] as const;
+  type SalahSubTab = typeof VALID_SALAH_SUB_TABS[number];
+  const isSalahSubTabSyncingFromRemote = useRef(false);
+  const lastSyncedSalahSubTabRef = useRef<string | null>(null);
+  const [salahSubTab, setSalahSubTab] = useState<SalahSubTab>(() => {
+    try {
+      const saved = localStorage.getItem('ratool_salah_subtab') || localStorage.getItem('ratbod_salah_subtab');
+      if (saved && (VALID_SALAH_SUB_TABS as readonly string[]).includes(saved as any)) {
+        return saved as SalahSubTab;
+      }
+    } catch (e) {}
+    return 'salah';
+  });
+  const salahSubTabRef = useRef<SalahSubTab>(salahSubTab);
+  salahSubTabRef.current = salahSubTab;
+
+  const handleSalahSubTabChange = (newSubTab: SalahSubTab) => {
+    setSalahSubTab(newSubTab);
+    salahSubTabRef.current = newSubTab;
+    lastSyncedSalahSubTabRef.current = newSubTab;
+    try {
+      localStorage.setItem('ratool_salah_subtab', newSubTab);
+      localStorage.setItem('ratbod_salah_subtab', newSubTab);
+    } catch (e) {}
+    const user = authUser || auth.currentUser;
+    if (user && !isSalahSubTabSyncingFromRemote.current) {
+      setDoc(doc(db, 'users', user.uid), {
+        lastSalahSubTab: newSubTab,
+        lastActivityAt: Date.now()
+      }, { merge: true }).catch(() => {});
+      setDoc(doc(db, 'users', user.uid, 'appData', 'salahTracker'), {
+        activeSubTab: newSubTab,
+        updatedAt: Date.now()
+      }, { merge: true }).catch(() => {});
+    }
+    isSalahSubTabSyncingFromRemote.current = false;
+  };
+
   const [authUser, setAuthUser] = useState(auth.currentUser);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
@@ -523,10 +562,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
         // Real-time synchronization of Salah sub nav tab across devices
         if (data.lastSalahSubTab && ['zikar', 'salah', 'adhkar'].includes(data.lastSalahSubTab)) {
-          try {
-            localStorage.setItem('ratool_salah_subtab', data.lastSalahSubTab);
-            localStorage.setItem('ratbod_salah_subtab', data.lastSalahSubTab);
-          } catch (e) {}
+          if (data.lastSalahSubTab !== lastSyncedSalahSubTabRef.current && data.lastSalahSubTab !== salahSubTabRef.current) {
+            isSalahSubTabSyncingFromRemote.current = true;
+            lastSyncedSalahSubTabRef.current = data.lastSalahSubTab;
+            salahSubTabRef.current = data.lastSalahSubTab as SalahSubTab;
+            try {
+              localStorage.setItem('ratool_salah_subtab', data.lastSalahSubTab);
+              localStorage.setItem('ratbod_salah_subtab', data.lastSalahSubTab);
+            } catch (e) {}
+            setSalahSubTab(data.lastSalahSubTab as SalahSubTab);
+          }
         }
 
         // Real-time synchronization of week start day
@@ -2269,7 +2314,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[20px] sm:pb-12",
         activeTab === 'salah' ? "block" : "hidden"
       )}>
-        <SalahTracker darkMode={darkMode} lang={lang} weekStartDay={weekStartDay} />
+        <SalahTracker 
+          darkMode={darkMode} 
+          lang={lang} 
+          weekStartDay={weekStartDay} 
+          activeSubTab={salahSubTab}
+          onSubTabChange={handleSalahSubTabChange}
+        />
       </div>
 
       {/* Groceries Tab Content */}
