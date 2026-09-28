@@ -806,7 +806,23 @@ export default function SalahTracker({
     setInternalActiveSubTab(newTab);
     try {
       localStorage.setItem('ratool_salah_subtab', newTab);
+      localStorage.setItem('ratbod_salah_subtab', newTab);
     } catch (e) {}
+
+    // Save to Firestore for real-time synchronization across all devices
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'salahTracker'), {
+        activeSubTab: newTab,
+        updatedAt: Date.now()
+      }, { merge: true }).catch(() => {});
+
+      setDoc(doc(db, 'users', user.uid), {
+        lastSalahSubTab: newTab,
+        lastActivityAt: Date.now()
+      }, { merge: true }).catch(() => {});
+    }
+
     if (onSubTabChange) {
       onSubTabChange(newTab);
     }
@@ -1115,15 +1131,30 @@ export default function SalahTracker({
     }
 
     let unsubSnapshot: (() => void) | null = null;
+    let unsubUserDoc: (() => void) | null = null;
 
     const setupSalahSync = (user = auth.currentUser) => {
       if (unsubSnapshot) { unsubSnapshot(); unsubSnapshot = null; }
+      if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
       if (user) {
         try {
           const docRef = doc(db, 'users', user.uid, 'appData', 'salahTracker');
           unsubSnapshot = onSnapshot(docRef, (snap) => {
             if (snap.exists()) {
               const data = snap.data();
+              if (data.activeSubTab && ['zikar', 'salah', 'adhkar'].includes(data.activeSubTab)) {
+                setInternalActiveSubTab(prev => {
+                  if (prev !== data.activeSubTab) {
+                    try {
+                      localStorage.setItem('ratool_salah_subtab', data.activeSubTab);
+                      localStorage.setItem('ratbod_salah_subtab', data.activeSubTab);
+                    } catch {}
+                    if (onSubTabChange) onSubTabChange(data.activeSubTab);
+                    return data.activeSubTab;
+                  }
+                  return prev;
+                });
+              }
               if (data.recordsMap && typeof data.recordsMap === 'object') {
                 setRecordsMap(prev => {
                   const merged = { ...prev, ...data.recordsMap };
@@ -1139,6 +1170,29 @@ export default function SalahTracker({
           }, (error) => {
             handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/salahTracker`);
           });
+
+          // Also listen to users/{uid} for top-level lastSalahSubTab updates across devices
+          const userDocRef = doc(db, 'users', user.uid);
+          unsubUserDoc = onSnapshot(userDocRef, (userSnap) => {
+            if (userSnap.exists()) {
+              const uData = userSnap.data();
+              if (uData.lastSalahSubTab && ['zikar', 'salah', 'adhkar'].includes(uData.lastSalahSubTab)) {
+                setInternalActiveSubTab(prev => {
+                  if (prev !== uData.lastSalahSubTab) {
+                    try {
+                      localStorage.setItem('ratool_salah_subtab', uData.lastSalahSubTab);
+                      localStorage.setItem('ratbod_salah_subtab', uData.lastSalahSubTab);
+                    } catch {}
+                    if (onSubTabChange) onSubTabChange(uData.lastSalahSubTab);
+                    return uData.lastSalahSubTab;
+                  }
+                  return prev;
+                });
+              }
+            }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+          });
         } catch (e) {
           console.error('Error setting up salah snapshot sync:', e);
         }
@@ -1153,6 +1207,7 @@ export default function SalahTracker({
 
     return () => {
       if (unsubSnapshot) unsubSnapshot();
+      if (unsubUserDoc) unsubUserDoc();
       unsub();
     };
   }, []);

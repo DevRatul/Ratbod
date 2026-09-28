@@ -151,6 +151,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
     if (!deleteConfirmId) return;
     try {
       let data = history.filter((entry: MetricEntry) => entry.id !== deleteConfirmId);
+      setHistory(data);
       localStorage.setItem('ratbod_history', JSON.stringify(data));
       
       const user = auth.currentUser;
@@ -158,8 +159,6 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
         await setDoc(doc(db, 'users', user.uid, 'appData', 'history'), { history: data }, { merge: true }).catch(e => {});
       }
       
-      // Refresh history
-      fetchHistory();
       if (onUpdate) onUpdate();
       setDeleteConfirmId(null);
     } catch (error) {
@@ -175,6 +174,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
   const deleteStep = async (id: string | number) => {
     try {
       let data = stepsHistory.filter((entry: StepEntry) => entry.id !== id);
+      setStepsHistory(data);
       localStorage.setItem('ratbod_steps_history', JSON.stringify(data));
       
       const user = auth.currentUser;
@@ -182,7 +182,6 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
         await setDoc(doc(db, 'users', user.uid), { stepsHistory: data }, { merge: true }).catch(e => {});
       }
       
-      fetchHistory();
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to delete steps:', error);
@@ -192,6 +191,7 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
   const deleteWeight = async (id: string | number) => {
     try {
       let data = history.filter((entry: MetricEntry) => entry.id !== id);
+      setHistory(data);
       localStorage.setItem('ratbod_history', JSON.stringify(data));
       
       const user = auth.currentUser;
@@ -199,7 +199,6 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
         await setDoc(doc(db, 'users', user.uid, 'appData', 'history'), { history: data }, { merge: true }).catch(e => {});
       }
       
-      fetchHistory();
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to delete weight:', error);

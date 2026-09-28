@@ -23,8 +23,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 import CircularSleepDial from './CircularSleepDial';
@@ -119,43 +119,59 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   const [sleepSavedToast, setSleepSavedToast] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
-  // Load from Firestore if user logged in
+  // Load from Firestore with real-time onSnapshot sync across all devices
   useEffect(() => {
-    const loadData = async (user = auth.currentUser) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const setupSleepSync = (user = auth.currentUser) => {
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
+
       if (!user) {
         setIsLoaded(true);
         return;
       }
+
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'sleepTracker'));
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data.sleepBedTime) setSleepBedTime(data.sleepBedTime);
-          if (data.sleepWakeTime) setSleepWakeTime(data.sleepWakeTime);
-          if (Array.isArray(data.sleepRecords)) setSleepRecords(data.sleepRecords);
-        } else {
-          // Check waterTracker document as fallback
-          const waterSnap = await getDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'));
-          if (waterSnap.exists()) {
-            const wData = waterSnap.data();
-            if (wData.sleepBedTime) setSleepBedTime(wData.sleepBedTime);
-            if (wData.sleepWakeTime) setSleepWakeTime(wData.sleepWakeTime);
-            if (Array.isArray(wData.sleepRecords) && wData.sleepRecords.length > 0) {
-              setSleepRecords(wData.sleepRecords);
+        const docRef = doc(db, 'users', user.uid, 'appData', 'sleepTracker');
+        unsubSnapshot = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.sleepBedTime) {
+              setSleepBedTime(data.sleepBedTime);
+              try { localStorage.setItem('ratbod_sleep_bed', data.sleepBedTime); } catch {}
+            }
+            if (data.sleepWakeTime) {
+              setSleepWakeTime(data.sleepWakeTime);
+              try { localStorage.setItem('ratbod_sleep_wake', data.sleepWakeTime); } catch {}
+            }
+            if (Array.isArray(data.sleepRecords)) {
+              setSleepRecords(data.sleepRecords);
+              try { localStorage.setItem('ratbod_sleep_records', JSON.stringify(data.sleepRecords)); } catch {}
             }
           }
-        }
+          setIsLoaded(true);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/sleepTracker`);
+          setIsLoaded(true);
+        });
       } catch (e) {
-        console.error("Error loading sleep tracker data", e);
+        console.error("Error setting up sleep tracker real-time sync", e);
+        setIsLoaded(true);
       }
-      setIsLoaded(true);
     };
 
-    loadData();
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) loadData(user);
+    setupSleepSync();
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setupSleepSync(user || undefined);
     });
-    return () => unsub();
+
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      unsubAuth();
+    };
   }, []);
 
   // Save to localStorage and Firestore
@@ -777,7 +793,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={cn(
-                "w-full max-w-md max-h-[92vh] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl my-auto",
+                "w-full max-w-md max-h-[78vh] sm:max-h-[92vh] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl my-auto",
                 darkMode ? "bg-[#0c101c] border-indigo-500/30 text-white" : "bg-white border-gray-200 text-gray-900"
               )}
             >

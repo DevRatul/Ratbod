@@ -521,6 +521,14 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           }
         }
 
+        // Real-time synchronization of Salah sub nav tab across devices
+        if (data.lastSalahSubTab && ['zikar', 'salah', 'adhkar'].includes(data.lastSalahSubTab)) {
+          try {
+            localStorage.setItem('ratool_salah_subtab', data.lastSalahSubTab);
+            localStorage.setItem('ratbod_salah_subtab', data.lastSalahSubTab);
+          } catch (e) {}
+        }
+
         // Real-time synchronization of week start day
         if (data.weekStartDay !== undefined && typeof data.weekStartDay === 'number') {
           setWeekStartDay(data.weekStartDay);
