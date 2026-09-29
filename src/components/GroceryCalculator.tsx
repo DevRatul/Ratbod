@@ -7,6 +7,7 @@ import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getDhakaLogicalDate } from '../utils/sunsetDate';
+import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offlineSync';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -92,9 +93,12 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
     setItems(updatedItems);
     try {
       localStorage.setItem('ratbod_grocery_items', JSON.stringify(updatedItems));
+      recordOfflineChange('grocery', { items: updatedItems, updatedAt: Date.now() });
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'grocery'), { items: updatedItems }, { merge: true }).catch(e => {});
+        setDoc(doc(db, 'users', user.uid, 'appData', 'grocery'), { items: updatedItems }, { merge: true })
+          .then(() => clearPendingOfflineChange('grocery'))
+          .catch(e => {});
       }
     } catch (e) {
       console.error('Failed to save grocery items:', e);

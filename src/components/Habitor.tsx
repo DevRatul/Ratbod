@@ -29,6 +29,7 @@ import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react'
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { syncHabitsWithTrackers } from '../utils/habitSync';
+import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offlineSync';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -457,13 +458,17 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(newHabits));
     } catch (e) {}
 
+    recordOfflineChange('habits', { habits: newHabits, updatedAt: Date.now() });
+
     const user = auth.currentUser;
     if (user) {
       setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { 
         habits: newHabits, 
         updatedAt: Date.now() 
-      }, { merge: true }).catch(err => {
-        console.error("Failed to save reordered habits to Firestore:", err);
+      }, { merge: true })
+      .then(() => clearPendingOfflineChange('habits'))
+      .catch(err => {
+        console.warn("Reordered habits stored offline, queued for sync:", err);
       });
     }
   };
@@ -587,10 +592,20 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         if (changed) setCompletedLogs(updatedLogs);
       }
     };
+    const handleHabitsSync = (e: any) => {
+      if (e?.detail?.habits) {
+        setHabits(e.detail.habits);
+      }
+      if (e?.detail?.completedLogs) {
+        setCompletedLogs(e.detail.completedLogs);
+      }
+    };
     window.addEventListener('ratbod_habit_logs_updated', handleAutoSync);
+    window.addEventListener('ratbod_habits_sync', handleHabitsSync);
     window.addEventListener('storage', handleAutoSync);
     return () => {
       window.removeEventListener('ratbod_habit_logs_updated', handleAutoSync);
+      window.removeEventListener('ratbod_habits_sync', handleHabitsSync);
       window.removeEventListener('storage', handleAutoSync);
     };
   }, []);
@@ -802,13 +817,18 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(nextLogs));
       } catch (e) {}
 
+      // Track in offline sync manager
+      recordOfflineChange('habitLogs', { completedLogs: nextLogs, updatedAt: Date.now() });
+
       const user = auth.currentUser;
       if (user) {
         setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), {
           completedLogs: nextLogs,
           updatedAt: Date.now()
-        }, { merge: true }).catch(err => {
-          console.error("Failed to persist habit toggle to Firestore:", err);
+        }, { merge: true })
+        .then(() => clearPendingOfflineChange('habitLogs'))
+        .catch(err => {
+          console.warn("Habit toggle saved offline, queued for online sync:", err);
         });
       }
 
@@ -836,11 +856,15 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       localStorage.setItem('ratool_habits_v1', JSON.stringify(updatedHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
 
+      recordOfflineChange('habits', { habits: updatedHabits, updatedAt: Date.now() });
+
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true }).catch(err => {
-          console.error("Failed to save habit to firestore:", err);
-        });
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true })
+          .then(() => clearPendingOfflineChange('habits'))
+          .catch(err => {
+            console.warn("Habit saved offline, queued for sync:", err);
+          });
       }
 
       setNewTitle('');
@@ -869,11 +893,15 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       localStorage.setItem('ratool_habits_v1', JSON.stringify(updatedHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
 
+      recordOfflineChange('habits', { habits: updatedHabits, updatedAt: Date.now() });
+
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true }).catch(err => {
-          console.error("Failed to update habit in firestore:", err);
-        });
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true })
+          .then(() => clearPendingOfflineChange('habits'))
+          .catch(err => {
+            console.warn("Habit update saved offline, queued for sync:", err);
+          });
       }
 
       setEditingHabit(null);
@@ -891,11 +919,15 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       localStorage.setItem('ratool_habits_v1', JSON.stringify(updatedHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(updatedHabits));
 
+      recordOfflineChange('habits', { habits: updatedHabits, updatedAt: Date.now() });
+
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true }).catch(err => {
-          console.error("Failed to delete habit from firestore:", err);
-        });
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habits'), { habits: updatedHabits }, { merge: true })
+          .then(() => clearPendingOfflineChange('habits'))
+          .catch(err => {
+            console.warn("Habit delete saved offline, queued for sync:", err);
+          });
       }
 
       setDeletingHabit(null);

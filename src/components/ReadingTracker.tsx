@@ -245,6 +245,13 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const [newBookAuthor, setNewBookAuthor] = useState<string>('');
   const [newBookCurrentPage, setNewBookCurrentPage] = useState<string>('0');
 
+  // State: Edit book mode
+  const [editingBookId, setEditingBookId] = useState<string | null>(null);
+  const [editBookTitle, setEditBookTitle] = useState<string>('');
+  const [editBookTotalPages, setEditBookTotalPages] = useState<string>('');
+  const [editBookAuthor, setEditBookAuthor] = useState<string>('');
+  const [editBookCurrentPage, setEditBookCurrentPage] = useState<string>('');
+
   // State: Goal popover / inline edit
   const [isEditingGoal, setIsEditingGoal] = useState<boolean>(false);
   const [pageGoal, setPageGoal] = useState<number>(() => {
@@ -766,6 +773,86 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
     setIsAddBookMode(false);
   };
 
+  // Start editing an existing book
+  const handleStartEditBook = (book: BookItem) => {
+    setEditingBookId(book.id);
+    setEditBookTitle(book.title || '');
+    setEditBookAuthor(book.author || '');
+    setEditBookTotalPages(String(book.totalPages || 250));
+    setEditBookCurrentPage(String(book.initialPages ?? book.currentPage ?? 0));
+    setIsAddBookMode(false);
+  };
+
+  const handleCancelEditBook = () => {
+    setEditingBookId(null);
+    setEditBookTitle('');
+    setEditBookAuthor('');
+    setEditBookTotalPages('');
+    setEditBookCurrentPage('');
+  };
+
+  // Save changes to edited book details (name, author, total pages, start pages)
+  const handleSaveEditBook = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBookId) return;
+
+    const title = editBookTitle.trim();
+    const totalP = parseInt(editBookTotalPages, 10) || 0;
+    if (!title || totalP <= 0) return;
+
+    const currentBooks = booksRef.current.length > 0 ? booksRef.current : books;
+    const targetBook = currentBooks.find(b => b.id === editingBookId);
+    if (!targetBook) return;
+
+    const startP = Math.min(totalP, Math.max(0, parseInt(editBookCurrentPage, 10) || 0));
+
+    const updatedBooks = currentBooks.map(b => {
+      if (b.id !== editingBookId) return b;
+      const updated: BookItem = {
+        ...b,
+        title,
+        totalPages: totalP,
+        initialPages: startP,
+        status: (b.currentPage || startP) >= totalP ? 'completed' : 'reading'
+      };
+      if (editBookAuthor.trim()) {
+        updated.author = editBookAuthor.trim();
+      } else {
+        delete updated.author;
+      }
+      return updated;
+    });
+
+    // Update records referencing this book
+    const currentRecs = recordsRef.current.length > 0 ? recordsRef.current : records;
+    const updatedRecs = currentRecs.map(r => {
+      if (r.bookId === editingBookId || (r.bookTitle && r.bookTitle === targetBook.title)) {
+        return { ...r, bookTitle: title, bookId: editingBookId };
+      }
+      return r;
+    });
+
+    setBooks(updatedBooks);
+    setRecords(updatedRecs);
+    persistData(pageGoal, updatedRecs, updatedBooks, selectedBookId);
+
+    // If currently active book was edited, adjust page range limits if needed
+    if (selectedBookId === editingBookId) {
+      setToPageInput(prev => {
+        const val = parseInt(prev, 10) || 20;
+        return String(Math.min(totalP, val));
+      });
+      setFromPageInput(prev => {
+        const val = parseInt(prev, 10) || 1;
+        return String(Math.min(totalP, val));
+      });
+    }
+
+    setEditingBookId(null);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2000);
+  };
+
   const handleDeleteBook = (bookId: string) => {
     const nextDeleted = new Set([...Array.from(deletedBookIdsRef.current), bookId]);
     setDeletedBookIds(nextDeleted);
@@ -1086,25 +1173,47 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
             </div>
           </div>
 
-          {/* Switch book / Library button */}
-          <button
-            id="open_reading_library_btn"
-            type="button"
-            onClick={() => {
-              setIsLibraryOpen(true);
-              setIsAddBookMode(false);
-            }}
-            className={cn(
-              "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border",
-              darkMode 
-                ? "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10" 
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+          {/* Book action buttons: Edit Active Book & Switch Library */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {activeBook && selectedBookId !== 'custom' && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleStartEditBook(activeBook);
+                  setIsLibraryOpen(true);
+                }}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border",
+                  darkMode 
+                    ? "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-indigo-400" 
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-indigo-600"
+                )}
+                title={isBn ? 'এই বইটির বিবরণ সম্পাদনা করুন' : 'Edit this book details'}
+              >
+                <Edit3 size={12} className="text-indigo-500" />
+                <span>{isBn ? 'সম্পাদনা' : 'Edit'}</span>
+              </button>
             )}
-          >
-            <Library size={12} className="text-indigo-500" />
-            <span>{isBn ? 'বই বদলান' : 'Switch'}</span>
-            <span className="text-[10px] opacity-60 font-mono">({formatNum(books.length)})</span>
-          </button>
+            <button
+              id="open_reading_library_btn"
+              type="button"
+              onClick={() => {
+                setIsLibraryOpen(true);
+                setIsAddBookMode(false);
+                setEditingBookId(null);
+              }}
+              className={cn(
+                "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border",
+                darkMode 
+                  ? "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10" 
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              )}
+            >
+              <Library size={12} className="text-indigo-500" />
+              <span>{isBn ? 'বই বদলান' : 'Switch'}</span>
+              <span className="text-[10px] opacity-60 font-mono">({formatNum(books.length)})</span>
+            </button>
+          </div>
         </div>
 
         {/* Current Book Progress */}
@@ -1476,14 +1585,20 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 <div className="flex items-center gap-2">
                   <Library size={16} className="text-indigo-500" />
                   <h3 className="font-bold text-sm">
-                    {isAddBookMode 
-                      ? (isBn ? 'নতুন বই যুক্ত করুন' : 'Add New Book') 
-                      : (isBn ? 'বইয়ের লাইব্রেরি' : 'Your Book Library')}
+                    {editingBookId
+                      ? (isBn ? 'বইয়ের তথ্য সম্পাদনা' : 'Edit Book Details')
+                      : isAddBookMode 
+                        ? (isBn ? 'নতুন বই যুক্ত করুন' : 'Add New Book') 
+                        : (isBn ? 'বইয়ের লাইব্রেরি' : 'Your Book Library')}
                   </h3>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsLibraryOpen(false)}
+                  onClick={() => {
+                    setIsLibraryOpen(false);
+                    setIsAddBookMode(false);
+                    setEditingBookId(null);
+                  }}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white cursor-pointer"
                 >
                   <X size={16} />
@@ -1492,7 +1607,105 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
               {/* Modal Body */}
               <div className="overflow-y-auto flex-1 space-y-3 pr-1">
-                {isAddBookMode ? (
+                {editingBookId ? (
+                  /* Edit Book Form */
+                  <form onSubmit={handleSaveEditBook} className="space-y-3">
+                    <div className="flex items-center gap-1.5 p-2 rounded-xl bg-indigo-500/10 text-indigo-400 text-[11px] font-semibold">
+                      <Edit3 size={13} className="shrink-0 text-indigo-500" />
+                      <span>{isBn ? 'বইয়ের নাম, লেখক ও পৃষ্ঠা সংখ্যা পরিবর্তন করুন' : 'Update book title, author, or page numbers'}</span>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+                        {isBn ? 'বইয়ের নাম (আবশ্যক):' : 'Book Title / Name (Required):'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        placeholder={isBn ? 'যেমন: পারমাণবিক অভ্যাস' : 'e.g. Deep Work, Sapiens...'}
+                        value={editBookTitle}
+                        onChange={(e) => setEditBookTitle(e.target.value)}
+                        className={cn(
+                          "w-full px-3 py-2 rounded-xl text-xs font-bold border focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-300 text-gray-900"
+                        )}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+                        {isBn ? 'লেখকের নাম:' : 'Author Name:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isBn ? 'যেমন: জেমস ক্লিয়ার' : 'e.g. Cal Newport'}
+                        value={editBookAuthor}
+                        onChange={(e) => setEditBookAuthor(e.target.value)}
+                        className={cn(
+                          "w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                          darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-300 text-gray-900"
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+                          {isBn ? 'মোট পৃষ্ঠা (আবশ্যক):' : 'Total Pages (Required):'}
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          placeholder="300"
+                          value={editBookTotalPages}
+                          onChange={(e) => setEditBookTotalPages(e.target.value)}
+                          className={cn(
+                            "w-full px-3 py-2 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                            darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-300 text-gray-900"
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-gray-400 block mb-1">
+                          {isBn ? 'শুরুর পৃষ্ঠা:' : 'Start Page:'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={editBookCurrentPage}
+                          onChange={(e) => setEditBookCurrentPage(e.target.value)}
+                          className={cn(
+                            "w-full px-3 py-2 rounded-xl text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                            darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-300 text-gray-900"
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelEditBook}
+                        className={cn(
+                          "flex-1 py-2 rounded-xl text-xs font-semibold border cursor-pointer transition-all",
+                          darkMode ? "border-white/10 text-gray-300 hover:bg-white/5" : "border-slate-200 text-gray-600 hover:bg-slate-100"
+                        )}
+                      >
+                        {isBn ? 'বাতিল' : 'Cancel'}
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Check size={14} />
+                        <span>{isBn ? 'আপডেট করুন' : 'Update Book'}</span>
+                      </button>
+                    </div>
+                  </form>
+                ) : isAddBookMode ? (
                   /* Add Book Form */
                   <form onSubmit={handleAddNewBook} className="space-y-3">
                     <div>
@@ -1657,6 +1870,14 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                                 {isBn ? 'পড়ুন' : 'Select'}
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditBook(b)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                              title={isBn ? 'বইয়ের বিবরণ সম্পাদনা করুন' : 'Edit Book Details'}
+                            >
+                              <Edit3 size={13} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => requestDeleteBook(b)}

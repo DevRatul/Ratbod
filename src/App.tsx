@@ -82,6 +82,8 @@ import ProfileModal from './components/ProfileModal';
 import DashboardModal from './components/DashboardModal';
 import LandingPage from './components/LandingPage';
 import ThemeToggle from './components/ThemeToggle';
+import { initOfflineSyncManager } from './utils/offlineSync';
+import { NetworkStatusIndicator } from './components/NetworkStatusIndicator';
 import { translations } from './utils/translations';
 import { 
   getInitialTheme, 
@@ -350,6 +352,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       setDhakaLogicalDate(info);
       setHistoryRefreshTrigger(prev => prev + 1);
     });
+  }, []);
+
+  // Initialize offline-first sync manager for auto-pushing offline edits upon reconnect
+  useEffect(() => {
+    return initOfflineSyncManager();
   }, []);
 
   const handleToggleSunriseSunset = () => {
@@ -3114,6 +3121,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           </button>
         </div>
       </div>
+
+      {/* Network Status & Offline Sync Confirmation */}
+      <NetworkStatusIndicator darkMode={darkMode} lang={lang} />
     </>
   );
 }

@@ -112,6 +112,72 @@ interface BreathingTimerProps {
 }
 
 const bnNumbers = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', '১০', '১১', '১২'];
+const bnNumberWords = ['০', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়', 'দশ', 'এগারো', 'বারো'];
+
+// Helper to choose the most natural female voice available in the browser/OS
+function getFemaleVoice(synth: SpeechSynthesis, lang: Language): SpeechSynthesisVoice | null {
+  const voices = synth.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  const femaleKeywords = [
+    'female', 'woman', 'girl',
+    'zira', 'samantha', 'victoria', 'karen', 'susan', 'ava', 'allison', 
+    'jenny', 'aria', 'serena', 'fiona', 'moira', 'veena', 'shravya', 
+    'aditi', 'tessa', 'nour', 'monica', 'carmen', 'alva', 'google us english'
+  ];
+  
+  const maleKeywords = ['male', 'man', 'david', 'mark', 'george', 'guy', 'richard', 'daniel', 'oliver'];
+
+  if (lang === 'bn') {
+    const bnFemale = voices.find(v => 
+      (v.lang.startsWith('bn') || v.lang.startsWith('in')) &&
+      (femaleKeywords.some(k => v.name.toLowerCase().includes(k)) || !maleKeywords.some(k => v.name.toLowerCase().includes(k)))
+    );
+    if (bnFemale) return bnFemale;
+    const bnAny = voices.find(v => v.lang.startsWith('bn') || v.lang.startsWith('in'));
+    if (bnAny) return bnAny;
+  }
+
+  // 1. Explicit female keyword in name
+  const explicitFemale = voices.find(v => 
+    v.lang.startsWith('en') && 
+    femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+  );
+  if (explicitFemale) return explicitFemale;
+
+  // 2. Google US English (Standard high-quality female voice in Chrome)
+  const googleVoice = voices.find(v => 
+    v.lang.startsWith('en') && 
+    v.name.toLowerCase().includes('google') && 
+    !maleKeywords.some(k => v.name.toLowerCase().includes(k))
+  );
+  if (googleVoice) return googleVoice;
+
+  // 3. Natural / Online voice that is not marked male
+  const naturalNonMale = voices.find(v => 
+    v.lang.startsWith('en') && 
+    (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('online')) &&
+    !maleKeywords.some(k => v.name.toLowerCase().includes(k))
+  );
+  if (naturalNonMale) return naturalNonMale;
+
+  // 4. Any English voice that is not explicitly named male
+  const nonMale = voices.find(v => 
+    v.lang.startsWith('en') && 
+    !maleKeywords.some(k => v.name.toLowerCase().includes(k))
+  );
+  if (nonMale) return nonMale;
+
+  return voices.find(v => v.lang.startsWith('en')) || voices[0] || null;
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  try {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices();
+    };
+  } catch (e) {}
+}
 
 function speakText(text: string, lang: Language) {
   if (typeof window === 'undefined') return;
@@ -120,16 +186,13 @@ function speakText(text: string, lang: Language) {
     if (!synth) return;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.volume = 0.9;
-    utterance.rate = 0.88;
+    utterance.volume = 0.95;
+    // Set female pitch and soothing rate
+    utterance.pitch = 1.15; 
+    utterance.rate = 0.95;
     utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
     
-    const voices = synth.getVoices();
-    const desiredVoice = voices.find(v => 
-      lang === 'bn' 
-        ? v.lang.startsWith('bn') || v.lang.startsWith('in')
-        : (v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('en-US')))
-    );
+    const desiredVoice = getFemaleVoice(synth, lang);
     if (desiredVoice) {
       utterance.voice = desiredVoice;
     }
@@ -223,7 +286,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
   const triggerVocalCount = useCallback((countNum: number) => {
     if (soundMode !== 'voice') return;
-    const voiceText = lang === 'bn' && countNum < bnNumbers.length ? bnNumbers[countNum] : countNum.toString();
+    const voiceText = lang === 'bn' && countNum < bnNumberWords.length ? bnNumberWords[countNum] : countNum.toString();
     speakText(voiceText, lang);
   }, [soundMode, lang]);
 
@@ -333,8 +396,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
         lastSecondTickedRef.current = secsLeft;
         if (soundMode !== 'muted') {
           triggerAudioTick('tick', 0.04);
-          const currentCount = durationSec - secsLeft + 1;
-          triggerVocalCount(currentCount);
+          triggerVocalCount(secsLeft);
         }
       }
 

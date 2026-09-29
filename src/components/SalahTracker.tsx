@@ -38,6 +38,7 @@ import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey, getDhakaSunsetTime } from '../utils/sunsetDate';
+import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offlineSync';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -1205,9 +1206,21 @@ export default function SalahTracker({
       setupSalahSync(user || undefined);
     });
 
+    const handleSalahSync = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      if (customEvt.detail?.recordsMap) {
+        setRecordsMap(prev => ({ ...prev, ...customEvt.detail.recordsMap }));
+      }
+      if (Array.isArray(customEvt.detail?.customDhikrs)) {
+        setUserCustomDhikrs(customEvt.detail.customDhikrs);
+      }
+    };
+    window.addEventListener('ratbod_salah_sync', handleSalahSync);
+
     return () => {
       if (unsubSnapshot) unsubSnapshot();
       if (unsubUserDoc) unsubUserDoc();
+      window.removeEventListener('ratbod_salah_sync', handleSalahSync);
       unsub();
     };
   }, []);
@@ -1220,13 +1233,22 @@ export default function SalahTracker({
         localStorage.setItem('ratbod_salah_records_map', JSON.stringify(nextMap));
       } catch (e) {}
 
+      recordOfflineChange('salahTracker', {
+        recordsMap: nextMap,
+        customDhikrs: userCustomDhikrs,
+        activeSubTab: internalActiveSubTab,
+        updatedAt: Date.now()
+      });
+
       const user = auth.currentUser;
       if (user) {
         setDoc(doc(db, 'users', user.uid, 'appData', 'salahTracker'), {
           recordsMap: nextMap,
           customDhikrs: userCustomDhikrs,
           updatedAt: Date.now()
-        }, { merge: true }).catch(err => console.error('Firestore save failed:', err));
+        }, { merge: true })
+        .then(() => clearPendingOfflineChange('salahTracker'))
+        .catch(err => console.warn('Salah records saved offline, queued for sync:', err));
       }
 
       return nextMap;

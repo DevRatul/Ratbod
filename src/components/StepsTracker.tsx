@@ -21,6 +21,7 @@ import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
+import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offlineSync';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -160,8 +161,17 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
 
     setupStepsSync();
     const unsub = onAuthStateChanged(auth, (u) => { setupStepsSync(u || undefined); });
+    const handleStepsSync = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail?.todaySteps === 'number') setTodaySteps(detail.todaySteps);
+      if (typeof detail?.stepGoal === 'number') setStepGoal(detail.stepGoal);
+      if (Array.isArray(detail?.records)) setRecords(detail.records);
+    };
+    window.addEventListener('ratbod_steps_sync', handleStepsSync);
+
     return () => {
       if (unsubSnapshot) unsubSnapshot();
+      window.removeEventListener('ratbod_steps_sync', handleStepsSync);
       unsub();
     };
   }, []);
@@ -174,15 +184,21 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
       localStorage.setItem('ratbod_steps_goal', String(goal));
       localStorage.setItem('ratbod_steps_records', JSON.stringify(updatedRecords));
 
+      const payload = {
+        todaySteps: steps,
+        todayDate: today,
+        stepGoal: goal,
+        records: updatedRecords,
+        updatedAt: Date.now()
+      };
+
+      recordOfflineChange('stepsTracker', payload);
+
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'stepsTracker'), {
-          todaySteps: steps,
-          todayDate: today,
-          stepGoal: goal,
-          records: updatedRecords,
-          updatedAt: Date.now()
-        }, { merge: true }).catch(() => {});
+        setDoc(doc(db, 'users', user.uid, 'appData', 'stepsTracker'), payload, { merge: true })
+          .then(() => clearPendingOfflineChange('stepsTracker'))
+          .catch(() => {});
       }
     } catch (e) {}
   };

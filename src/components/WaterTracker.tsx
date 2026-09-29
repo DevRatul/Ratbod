@@ -8,6 +8,12 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { syncHabitsWithTrackers, markWaterHabitCompleted } from '../utils/habitSync';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
+import { 
+  recordOfflineChange, 
+  hasPendingOfflineChange, 
+  clearPendingOfflineChange, 
+  syncPendingOfflineData 
+} from '../utils/offlineSync';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -214,11 +220,18 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         localStorage.setItem('ratool_water_tracker_data', JSON.stringify(payload));
       } catch (e) {}
 
+      // Register change in offline sync manager
+      recordOfflineChange('waterTracker', payload);
+
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), payload, { merge: true }).catch((err) => {
-          console.error("Failed to sync water data to Firestore:", err);
-        });
+        setDoc(doc(db, 'users', user.uid, 'appData', 'waterTracker'), payload, { merge: true })
+          .then(() => {
+            clearPendingOfflineChange('waterTracker');
+          })
+          .catch((err) => {
+            console.warn("Water data saved offline, queued for online sync:", err);
+          });
       }
 
       // Auto-sync Habitor: if water target goal is consumed, auto-tick the Drink Mineral Water habit
@@ -306,11 +319,51 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           const docRef = doc(db, 'users', userObj.uid, 'appData', 'waterTracker');
           unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
-              const data = docSnap.data();
-              const mergedHist = applyParsedData(data);
+              const remoteData = docSnap.data();
+
+              // If user made offline modifications that haven't been pushed yet,
+              // merge remote data with local offline entries so offline data is NEVER discarded!
+              if (hasPendingOfflineChange('waterTracker')) {
+                const currentToday = getDhakaLogicalDateKey().dateKey;
+                const localRaw = localStorage.getItem('ratbod_water_tracker_data');
+                if (localRaw) {
+                  try {
+                    const localData = JSON.parse(localRaw);
+                    const mergedHist = recoverAndMergeHistory([
+                      ...(Array.isArray(localData.history) ? localData.history : []),
+                      ...(Array.isArray(remoteData.history) ? remoteData.history : [])
+                    ]);
+                    
+                    // Merge today entries if both have them
+                    let mergedTodayEntries = localData.todayEntries || [];
+                    if (Array.isArray(remoteData.todayEntries) && remoteData.todayDate === currentToday) {
+                      const entryMap = new Map();
+                      remoteData.todayEntries.forEach((e: any) => { if (e?.id) entryMap.set(String(e.id), e); });
+                      (localData.todayEntries || []).forEach((e: any) => { if (e?.id) entryMap.set(String(e.id), e); });
+                      mergedTodayEntries = Array.from(entryMap.values()).sort((a: any, b: any) => {
+                        return (Number(b.createdAt || b.id) || 0) - (Number(a.createdAt || a.id) || 0);
+                      });
+                    }
+
+                    const combinedPayload = {
+                      ...remoteData,
+                      ...localData,
+                      todayEntries: mergedTodayEntries,
+                      history: mergedHist,
+                      todayDate: currentToday
+                    };
+                    applyParsedData(combinedPayload);
+                    syncPendingOfflineData().catch(() => {});
+                    setIsLoaded(true);
+                    return;
+                  } catch (e) {}
+                }
+              }
+
+              const mergedHist = applyParsedData(remoteData);
               try {
-                localStorage.setItem('ratbod_water_tracker_data', JSON.stringify({ ...data, history: mergedHist }));
-                localStorage.setItem('ratool_water_tracker_data', JSON.stringify({ ...data, history: mergedHist }));
+                localStorage.setItem('ratbod_water_tracker_data', JSON.stringify({ ...remoteData, history: mergedHist }));
+                localStorage.setItem('ratool_water_tracker_data', JSON.stringify({ ...remoteData, history: mergedHist }));
               } catch {}
             } else {
               // Brand new user or first setup: persist initial restored history
@@ -335,6 +388,15 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     // Initial load
     setupSync();
 
+    // Listen for offline-to-online sync updates dispatched from offlineSync engine
+    const handleWaterSyncEvent = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      if (customEvt.detail) {
+        applyParsedData(customEvt.detail);
+      }
+    };
+    window.addEventListener('ratbod_water_sync', handleWaterSyncEvent);
+
     // Listen to Firebase Auth state updates
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setupSync(user);
@@ -342,6 +404,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
     return () => {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
+      window.removeEventListener('ratbod_water_sync', handleWaterSyncEvent);
       unsubscribeAuth();
     };
   }, []);
@@ -529,7 +592,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       glassesUnit: "glasses",
       mlUnit: "ml",
       litersUnit: "L",
-      consumed: "Consumed Today",
+      consumed: "Today's Intake",
       lastIntake: "Last Intake",
       noneToday: "None today",
       justNow: "Just now",
@@ -579,7 +642,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       glassesUnit: "গ্লাস",
       mlUnit: "মিলি",
       litersUnit: "লিটার",
-      consumed: "আজ পান করেছেন",
+      consumed: "আজকের গ্রহণ",
       lastIntake: "শেষ গ্রহণ",
       noneToday: "আজকে এখনও নেই",
       justNow: "এইমাত্র",
@@ -1378,14 +1441,14 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         </button>
       </div>
 
-      {/* Single Consolidated Card: Consumed Today, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}
+      {/* Single Consolidated Card: Today's Intake, Quick Glass Buttons, Progress Stats, Custom Amount & Actions */}
       <div className={cn(
         "p-3 sm:p-6 rounded-2xl border space-y-3 sm:space-y-4 relative overflow-visible transition-all shadow-xs w-full",
         darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5"
       )}>
-        {/* Header: Consumed Label (Left) + 50m Alert with Icon & Popup (Middle) + Last Intake Time Ago (Top Right Corner) */}
+        {/* Header: Today's Intake Label (Left) + 50m Alert with Icon & Popup (Middle) + Last Intake Time Ago (Top Right Corner) */}
         <div className="w-full flex items-center justify-between border-b pb-2.5 sm:pb-3 border-gray-200/20 dark:border-white/5 gap-1.5 sm:gap-2 relative">
-          {/* Left: Consumed Label */}
+          {/* Left: Today's Intake Label */}
           <div className="flex items-center gap-1.5 shrink-0 min-w-0">
             <Droplet size={16} className="text-blue-500 fill-blue-500/20 shrink-0" />
             <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white truncate">
@@ -1683,9 +1746,12 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
           )}>
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-              {lang === 'bn' ? 'পান করা হয়েছে' : 'Consumed'}
+              {lang === 'bn' ? 'আজকের গ্রহণ' : "Today's Intake"}
             </span>
-            <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
+            <span 
+              className="text-[14px] leading-[18.67px] font-extrabold text-blue-600 dark:text-blue-400 mt-0.5"
+              style={{ fontSize: '14px', lineHeight: '18.6667px' }}
+            >
               {formatNum(totalConsumedMl)} {labels.mlUnit}
             </span>
           </div>
@@ -1697,7 +1763,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">
               {lang === 'bn' ? 'বাকি আছে' : 'Remaining'}
             </span>
-            <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 mt-0.5">
+            <span 
+              className="text-[14px] font-extrabold text-gray-700 dark:text-gray-300 mt-0.5"
+              style={{ fontSize: '14px' }}
+            >
               {formatNum(Math.max(0, goalMl - totalConsumedMl))} {labels.mlUnit}
             </span>
           </div>
@@ -1838,11 +1907,17 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                       </div>
                       <div>
                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
-                          +{formatNum(item.amountMl)} {labels.mlUnit} ({formatNum(item.glasses, 1)} {labels.glassesUnit})
+                          +{formatNum(item.amountMl)} {labels.mlUnit}
                         </span>
-                        <span className="text-[10px] text-gray-900 dark:text-white font-bold font-mono">
-                          {format12HourTime(item.createdAt || item.timestamp)}
-                        </span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Clock size={11} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                          <span 
+                            className="text-[11px] text-gray-500 dark:text-gray-400 font-sans font-medium tracking-tight"
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            {format12HourTime(item.createdAt || item.timestamp)}
+                          </span>
+                        </div>
                       </div>
                     </div>
 

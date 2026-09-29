@@ -27,6 +27,7 @@ import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
+import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offlineSync';
 import CircularSleepDial from './CircularSleepDial';
 import { triggerHaptic, initHapticAudio } from '../utils/haptics';
 
@@ -168,8 +169,17 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
       setupSleepSync(user || undefined);
     });
 
+    const handleSleepSync = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.sleepBedTime) setSleepBedTime(detail.sleepBedTime);
+      if (detail?.sleepWakeTime) setSleepWakeTime(detail.sleepWakeTime);
+      if (Array.isArray(detail?.sleepRecords)) setSleepRecords(detail.sleepRecords);
+    };
+    window.addEventListener('ratbod_sleep_sync', handleSleepSync);
+
     return () => {
       if (unsubSnapshot) unsubSnapshot();
+      window.removeEventListener('ratbod_sleep_sync', handleSleepSync);
       unsubAuth();
     };
   }, []);
@@ -181,14 +191,20 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
       localStorage.setItem('ratbod_sleep_wake', wake);
       localStorage.setItem('ratbod_sleep_records', JSON.stringify(records));
       
+      const payload = {
+        sleepBedTime: bed,
+        sleepWakeTime: wake,
+        sleepRecords: records,
+        updatedAt: Date.now()
+      };
+
+      recordOfflineChange('sleepTracker', payload);
+
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'sleepTracker'), {
-          sleepBedTime: bed,
-          sleepWakeTime: wake,
-          sleepRecords: records,
-          updatedAt: Date.now()
-        }, { merge: true }).catch(() => {});
+        setDoc(doc(db, 'users', user.uid, 'appData', 'sleepTracker'), payload, { merge: true })
+          .then(() => clearPendingOfflineChange('sleepTracker'))
+          .catch(() => {});
       }
     } catch (e) {}
   };
