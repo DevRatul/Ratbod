@@ -66,7 +66,57 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return 250;
   });
   const [entries, setEntries] = useState<WaterEntry[]>([]);
-  const [redoStack, setRedoStack] = useState<WaterEntry[]>([]);
+  const entriesRef = useRef<WaterEntry[]>(entries);
+  entriesRef.current = entries;
+
+  const [redoStack, setRedoStack] = useState<WaterEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_water_redo_stack');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ratbod_water_redo_stack', JSON.stringify(redoStack));
+    } catch {}
+  }, [redoStack]);
+
+  const [deletedEntryIds, setDeletedEntryIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('ratbod_water_deleted_entry_ids');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set();
+  });
+  const deletedEntryIdsRef = useRef<Set<string>>(deletedEntryIds);
+  deletedEntryIdsRef.current = deletedEntryIds;
+
+  const markEntryDeleted = useCallback((id: string) => {
+    setDeletedEntryIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem('ratbod_water_deleted_entry_ids', JSON.stringify(Array.from(next)));
+      } catch {}
+      deletedEntryIdsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const unmarkEntryDeleted = useCallback((id: string) => {
+    setDeletedEntryIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      try {
+        localStorage.setItem('ratbod_water_deleted_entry_ids', JSON.stringify(Array.from(next)));
+      } catch {}
+      deletedEntryIdsRef.current = next;
+      return next;
+    });
+  }, []);
+
   const [history, setHistory] = useState<DayHistory[]>([]);
   const [reminderActive, setReminderActive] = useState<boolean>(false);
   const [customMlInput, setCustomMlInput] = useState<string>('');
@@ -212,6 +262,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         reminderActive: finalReminderActive,
         alertIntervalMinutes,
         isAlertEnabled,
+        deletedEntryIds: Array.from(deletedEntryIdsRef.current),
         updatedAt: Date.now()
       };
 
@@ -274,12 +325,18 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       let loadedHistory: DayHistory[] = Array.isArray(parsed.history) ? [...parsed.history] : [];
 
       if (parsed.todayDate === currentToday) {
-        // Same day: restore today's entries
+        // Same day: restore today's entries, strictly filtering out any deleted/undone entries
         if (Array.isArray(parsed.todayEntries)) {
-          setEntries(parsed.todayEntries);
+          const valid = parsed.todayEntries.filter((e: WaterEntry) => e && e.id && !deletedEntryIdsRef.current.has(String(e.id)));
+          setEntries(valid);
         }
       } else {
-        // Date changed since last session (or sunset passed): archive previous day into history
+        // Date changed since last session (or sunset passed): reset deletedEntryIds and redo stack
+        setDeletedEntryIds(new Set());
+        try { localStorage.removeItem('ratbod_water_deleted_entry_ids'); } catch {}
+        setRedoStack([]);
+        try { localStorage.removeItem('ratbod_water_redo_stack'); } catch {}
+
         if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
           const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
           const oldGoal = (parsed.goalGlasses || goalGlasses) * (parsed.glassVolumeMl || glassVolumeMl);
@@ -321,43 +378,32 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
             if (docSnap.exists()) {
               const remoteData = docSnap.data();
 
-              // If user made offline modifications that haven't been pushed yet,
-              // merge remote data with local offline entries so offline data is NEVER discarded!
-              if (hasPendingOfflineChange('waterTracker')) {
-                const currentToday = getDhakaLogicalDateKey().dateKey;
-                const localRaw = localStorage.getItem('ratbod_water_tracker_data');
-                if (localRaw) {
-                  try {
-                    const localData = JSON.parse(localRaw);
-                    const mergedHist = recoverAndMergeHistory([
-                      ...(Array.isArray(localData.history) ? localData.history : []),
-                      ...(Array.isArray(remoteData.history) ? remoteData.history : [])
-                    ]);
-                    
-                    // Merge today entries if both have them
-                    let mergedTodayEntries = localData.todayEntries || [];
-                    if (Array.isArray(remoteData.todayEntries) && remoteData.todayDate === currentToday) {
-                      const entryMap = new Map();
-                      remoteData.todayEntries.forEach((e: any) => { if (e?.id) entryMap.set(String(e.id), e); });
-                      (localData.todayEntries || []).forEach((e: any) => { if (e?.id) entryMap.set(String(e.id), e); });
-                      mergedTodayEntries = Array.from(entryMap.values()).sort((a: any, b: any) => {
-                        return (Number(b.createdAt || b.id) || 0) - (Number(a.createdAt || a.id) || 0);
-                      });
-                    }
+              // Filter out any tombstoned / deleted IDs from remote entries
+              if (Array.isArray(remoteData.todayEntries)) {
+                remoteData.todayEntries = remoteData.todayEntries.filter(
+                  (e: any) => e && e.id && !deletedEntryIdsRef.current.has(String(e.id))
+                );
+              }
 
-                    const combinedPayload = {
-                      ...remoteData,
-                      ...localData,
-                      todayEntries: mergedTodayEntries,
-                      history: mergedHist,
-                      todayDate: currentToday
-                    };
-                    applyParsedData(combinedPayload);
-                    syncPendingOfflineData().catch(() => {});
-                    setIsLoaded(true);
-                    return;
-                  } catch (e) {}
-                }
+              const localRaw = localStorage.getItem('ratbod_water_tracker_data');
+              let localData: any = null;
+              try { if (localRaw) localData = JSON.parse(localRaw); } catch {}
+              const localUpdatedAt = Number(localData?.updatedAt) || 0;
+              const remoteUpdatedAt = Number(remoteData?.updatedAt) || 0;
+
+              // If this local client has pending writes in flight, or local state has newer or equal updatedAt:
+              // keep local entries authoritative so undos and deletes are never undone!
+              if (docSnap.metadata.hasPendingWrites || localUpdatedAt >= remoteUpdatedAt) {
+                const activeEntries = (localData?.todayEntries || entriesRef.current).filter(
+                  (e: any) => e && e.id && !deletedEntryIdsRef.current.has(String(e.id))
+                );
+                applyParsedData({
+                  ...remoteData,
+                  ...(localData || {}),
+                  todayEntries: activeEntries
+                });
+                setIsLoaded(true);
+                return;
               }
 
               const mergedHist = applyParsedData(remoteData);
@@ -1272,9 +1318,11 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       timestamp: format12HourTime(now),
       createdAt: now
     };
+    unmarkEntryDeleted(newEntry.id);
     const updatedEntries = [newEntry, ...entries];
     setEntries(updatedEntries);
     setRedoStack([]); // Clear redo stack on new water entry
+    try { localStorage.removeItem('ratbod_water_redo_stack'); } catch {}
 
     // Persist immediately to Firestore and localStorage
     persistWaterData(updatedEntries);
@@ -1301,6 +1349,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     if (found) {
       setRedoStack(prev => [found, ...prev]);
     }
+    markEntryDeleted(id);
     const updatedEntries = entries.filter(item => item.id !== id);
     setEntries(updatedEntries);
     persistWaterData(updatedEntries);
@@ -1311,6 +1360,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       playUndoSound();
       const removed = entries[0];
       setRedoStack(prev => [removed, ...prev]);
+      markEntryDeleted(removed.id);
       const updatedEntries = entries.slice(1);
       setEntries(updatedEntries);
       persistWaterData(updatedEntries);
@@ -1322,6 +1372,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       playRedoSound();
       const [restored, ...rest] = redoStack;
       setRedoStack(rest);
+      unmarkEntryDeleted(restored.id);
       const updatedEntries = [restored, ...entries];
       setEntries(updatedEntries);
       persistWaterData(updatedEntries);
@@ -1331,7 +1382,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const handleResetToday = () => {
     if (entries.length === 0) return;
     playUndoSound();
-    setRedoStack(entries);
+    setRedoStack(prev => [...entries, ...prev]);
+    entries.forEach(e => markEntryDeleted(e.id));
     setEntries([]);
     persistWaterData([]);
   };

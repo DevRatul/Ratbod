@@ -114,21 +114,31 @@ export function clearPendingOfflineChange(key: SyncCollectionKey): void {
  * Deduplicates and sorts water entries by timestamp/id (newest first).
  */
 function mergeWaterEntries(localEntries: any[] = [], remoteEntries: any[] = []): any[] {
+  let deletedSet = new Set<string>();
+  try {
+    const rawDel = localStorage.getItem('ratbod_water_deleted_entry_ids');
+    if (rawDel) deletedSet = new Set(JSON.parse(rawDel));
+  } catch {}
+
   const map = new Map<string, any>();
 
-  // Add remote entries first
+  // Add remote entries first (ignoring deleted/undone)
   remoteEntries.forEach((entry) => {
     if (entry && (entry.id || entry.createdAt)) {
       const idKey = String(entry.id || entry.createdAt);
-      map.set(idKey, entry);
+      if (!deletedSet.has(idKey)) {
+        map.set(idKey, entry);
+      }
     }
   });
 
-  // Add local entries (preserves offline additions and takes local updates)
+  // Add local entries (preserves additions and updates, ignoring deleted/undone)
   localEntries.forEach((entry) => {
     if (entry && (entry.id || entry.createdAt)) {
       const idKey = String(entry.id || entry.createdAt);
-      map.set(idKey, entry);
+      if (!deletedSet.has(idKey)) {
+        map.set(idKey, entry);
+      }
     }
   });
 
@@ -227,7 +237,19 @@ export async function syncPendingOfflineData(): Promise<boolean> {
 
             let finalEntries: any[] = [];
             if (isLocalToday && isRemoteToday) {
-              finalEntries = mergeWaterEntries(localData.todayEntries || [], remoteData.todayEntries || []);
+              const localTime = Number(localData.updatedAt) || 0;
+              const remoteTime = Number(remoteData.updatedAt) || 0;
+              if (localTime >= remoteTime) {
+                // Local state is newer, use local entries (preserves undos and deletes)
+                let deletedSet = new Set<string>();
+                try {
+                  const rawDel = localStorage.getItem('ratbod_water_deleted_entry_ids');
+                  if (rawDel) deletedSet = new Set(JSON.parse(rawDel));
+                } catch {}
+                finalEntries = (localData.todayEntries || []).filter((e: any) => e && e.id && !deletedSet.has(String(e.id)));
+              } else {
+                finalEntries = mergeWaterEntries(localData.todayEntries || [], remoteData.todayEntries || []);
+              }
             } else if (isLocalToday) {
               finalEntries = localData.todayEntries || [];
             } else if (isRemoteToday) {

@@ -114,19 +114,19 @@ interface BreathingTimerProps {
 const bnNumbers = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', '১০', '১১', '১২'];
 const bnNumberWords = ['০', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়', 'দশ', 'এগারো', 'বারো'];
 
-// Helper to choose the most natural female voice available in the browser/OS
+// Helper to choose the most natural Irish English female voice available in the browser/OS for a calm, serene tone
 function getFemaleVoice(synth: SpeechSynthesis, lang: Language): SpeechSynthesisVoice | null {
   const voices = synth.getVoices();
   if (!voices || voices.length === 0) return null;
 
   const femaleKeywords = [
     'female', 'woman', 'girl',
-    'zira', 'samantha', 'victoria', 'karen', 'susan', 'ava', 'allison', 
-    'jenny', 'aria', 'serena', 'fiona', 'moira', 'veena', 'shravya', 
-    'aditi', 'tessa', 'nour', 'monica', 'carmen', 'alva', 'google us english'
+    'moira', 'emily', 'niamh', 'aoife', 'ciara', 'saoirse', 'roisin', 'clodagh',
+    'fiona', 'serena', 'samantha', 'victoria', 'karen', 'susan', 'ava', 'allison', 
+    'jenny', 'aria', 'tessa', 'nour', 'monica', 'carmen', 'alva', 'google us english'
   ];
   
-  const maleKeywords = ['male', 'man', 'david', 'mark', 'george', 'guy', 'richard', 'daniel', 'oliver'];
+  const maleKeywords = ['male', 'man', 'david', 'mark', 'george', 'guy', 'richard', 'daniel', 'oliver', 'conor', 'sean'];
 
   if (lang === 'bn') {
     const bnFemale = voices.find(v => 
@@ -138,14 +138,44 @@ function getFemaleVoice(synth: SpeechSynthesis, lang: Language): SpeechSynthesis
     if (bnAny) return bnAny;
   }
 
-  // 1. Explicit female keyword in name
+  // 1. Primary Priority: Irish English (en-IE) Female voice (e.g. Moira, Emily, or en-IE voice)
+  const irishVoices = voices.filter(v => {
+    const l = (v.lang || '').toLowerCase().replace('_', '-');
+    const n = (v.name || '').toLowerCase();
+    return l.startsWith('en-ie') || n.includes('ireland') || n.includes('irish');
+  });
+
+  if (irishVoices.length > 0) {
+    const femaleIrish = irishVoices.find(v => {
+      const n = v.name.toLowerCase();
+      return femaleKeywords.some(k => n.includes(k)) || !maleKeywords.some(k => n.includes(k));
+    });
+    if (femaleIrish) return femaleIrish;
+    return irishVoices[0];
+  }
+
+  // 2. Celtic / UK calm female voices (e.g. Moira, Fiona, British natural)
+  const celticUkVoices = voices.filter(v => {
+    const l = (v.lang || '').toLowerCase().replace('_', '-');
+    return l.startsWith('en-gb') || l.startsWith('en-scotland');
+  });
+  if (celticUkVoices.length > 0) {
+    const femaleCeltic = celticUkVoices.find(v => {
+      const n = v.name.toLowerCase();
+      return femaleKeywords.some(k => n.includes(k)) || !maleKeywords.some(k => n.includes(k));
+    });
+    if (femaleCeltic) return femaleCeltic;
+  }
+
+  // 3. Explicit female keyword in name
   const explicitFemale = voices.find(v => 
     v.lang.startsWith('en') && 
-    femaleKeywords.some(k => v.name.toLowerCase().includes(k))
+    femaleKeywords.some(k => v.name.toLowerCase().includes(k)) &&
+    !maleKeywords.some(k => v.name.toLowerCase().includes(k))
   );
   if (explicitFemale) return explicitFemale;
 
-  // 2. Google US English (Standard high-quality female voice in Chrome)
+  // 4. Google US English / Natural Female
   const googleVoice = voices.find(v => 
     v.lang.startsWith('en') && 
     v.name.toLowerCase().includes('google') && 
@@ -153,7 +183,7 @@ function getFemaleVoice(synth: SpeechSynthesis, lang: Language): SpeechSynthesis
   );
   if (googleVoice) return googleVoice;
 
-  // 3. Natural / Online voice that is not marked male
+  // 5. Natural / Online voice that is not marked male
   const naturalNonMale = voices.find(v => 
     v.lang.startsWith('en') && 
     (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('online')) &&
@@ -161,7 +191,7 @@ function getFemaleVoice(synth: SpeechSynthesis, lang: Language): SpeechSynthesis
   );
   if (naturalNonMale) return naturalNonMale;
 
-  // 4. Any English voice that is not explicitly named male
+  // 6. Any English voice that is not explicitly named male
   const nonMale = voices.find(v => 
     v.lang.startsWith('en') && 
     !maleKeywords.some(k => v.name.toLowerCase().includes(k))
@@ -186,11 +216,11 @@ function speakText(text: string, lang: Language) {
     if (!synth) return;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.volume = 0.95;
-    // Set female pitch and soothing rate
-    utterance.pitch = 1.15; 
-    utterance.rate = 0.95;
-    utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
+    utterance.volume = 0.92;
+    // Set calm, soothing Irish feminine tone: gentle pitch, unhurried meditative rate
+    utterance.pitch = 1.04; 
+    utterance.rate = 0.86;
+    utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-IE';
     
     const desiredVoice = getFemaleVoice(synth, lang);
     if (desiredVoice) {
@@ -252,6 +282,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
   // Precision animation state
   const [progress, setProgress] = useState<number>(0); // 0.0 to 1.0 continuously
   const [secondsRemaining, setSecondsRemaining] = useState<number>(PATTERN.inhale);
+  const [currentCount, setCurrentCount] = useState<number>(1);
   const [visualScale, setVisualScale] = useState<number>(1.0);
   const [interactiveRipples, setInteractiveRipples] = useState<{ id: number; x: number; y: number }[]>([]);
 
@@ -387,16 +418,29 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
       const elapsedMs = now - phaseStartTimeRef.current;
       const rawProgress = Math.min(1, Math.max(0, elapsedMs / durationMs));
       const secsLeft = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
+      const count = Math.min(durationSec, Math.max(1, durationSec - secsLeft + 1));
 
       setProgress(rawProgress);
       setSecondsRemaining(secsLeft);
+      setCurrentCount(count);
 
       // Sound ticks on second transitions
       if (secsLeft !== lastSecondTickedRef.current && secsLeft > 0) {
         lastSecondTickedRef.current = secsLeft;
         if (soundMode !== 'muted') {
           triggerAudioTick('tick', 0.04);
-          triggerVocalCount(secsLeft);
+          if (count === 1) {
+            // First second of phase: speak "Inhale", "Hold", or "Exhale"
+            const phaseWord = phase === 'inhale'
+              ? (lang === 'bn' ? 'শ্বাস নিন' : 'Inhale')
+              : phase === 'hold'
+              ? (lang === 'bn' ? 'ধরে রাখুন' : 'Hold')
+              : (lang === 'bn' ? 'শ্বাস ছাড়ুন' : 'Exhale');
+            speakText(phaseWord, lang);
+          } else {
+            // Consequent seconds: count 2, 3, 4, 5...
+            triggerVocalCount(count);
+          }
         }
       }
 
@@ -459,8 +503,8 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     const dur = getPhaseDuration(nextPhase);
     setPhase(nextPhase);
     setSecondsRemaining(dur);
+    setCurrentCount(1);
     triggerAudioTick(nextPhase, dur);
-    triggerVocalPhase(nextPhase);
   };
 
   const finishSession = () => {
@@ -468,6 +512,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     setIsActive(false);
     setVisualScale(1.0);
     setProgress(1);
+    setCurrentCount(1);
     triggerAudioTick('finish', 1);
     triggerVocalPhase('finish');
     const newCount = completedSessionsCount + 1;
@@ -532,13 +577,14 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     if (phase === 'idle' || phase === 'completed') {
       setPhase('inhale');
       setCurrentCycle(1);
+      setSecondsRemaining(PATTERN.inhale);
+      setCurrentCount(1);
       phaseStartTimeRef.current = 0;
       pausedTimeElapsedRef.current = 0;
       lastSecondTickedRef.current = -1;
       setIsActive(true);
       const dur = PATTERN.inhale;
       triggerAudioTick('inhale', dur);
-      triggerVocalPhase('inhale');
       return;
     }
 
@@ -557,6 +603,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
     setIsActive(false);
     setPhase('idle');
     setSecondsRemaining(PATTERN.inhale);
+    setCurrentCount(1);
     setCurrentCycle(1);
     setProgress(0);
     setVisualScale(1.0);
@@ -857,7 +904,7 @@ export default function BreathingTimer({ darkMode, lang = 'en' }: BreathingTimer
 
                 {phase !== 'completed' && isActive && (
                   <span className="text-3xl sm:text-4xl font-black tracking-tight font-mono mt-0.5 drop-shadow-md">
-                    {formatNum(secondsRemaining)}s
+                    {formatNum(currentCount)}s
                   </span>
                 )}
 
