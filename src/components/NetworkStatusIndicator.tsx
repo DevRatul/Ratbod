@@ -35,14 +35,10 @@ export const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> = ({
         timerRef.current = setTimeout(() => {
           setShowOfflineToast(false);
         }, 1000);
-      } else if (isNowOnline && !wasOnline) {
-        // Transitioned to Online: Pop "Updated" at top for exactly 1 second
-        setShowOfflineToast(false);
-        setShowOnlineToast(true);
-        timerRef.current = setTimeout(() => {
-          setShowOnlineToast(false);
-        }, 1000);
       }
+      // Note: Transitioning to online alone does NOT show "Updated".
+      // "Updated" pop message only appears when new offline data is saved for the first time
+      // after establishing an online connection (listened via ratbod_offline_sync_success).
     });
 
     const handleSyncSuccess = () => {
@@ -51,7 +47,7 @@ export const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> = ({
       setShowOnlineToast(true);
       timerRef.current = setTimeout(() => {
         setShowOnlineToast(false);
-      }, 1000);
+      }, 1200);
     };
 
     window.addEventListener('ratbod_offline_sync_success', handleSyncSuccess);

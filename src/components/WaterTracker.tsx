@@ -939,7 +939,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     let nextEnabled = true;
     let nextInterval = alertIntervalMinutes;
 
-    if (option === 'off' || (isAlertActive && alertIntervalMinutes === option)) {
+    if (option === 'off') {
       nextEnabled = false;
       setIsAlertEnabled(false);
       try {
@@ -956,6 +956,17 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       } catch {}
       setIsAlertMenuOpen(false);
     }
+
+    // Immediately update local data so real-time onSnapshot never reverts to stale state
+    try {
+      const localRaw = localStorage.getItem('ratbod_water_tracker_data');
+      const localData = localRaw ? JSON.parse(localRaw) : {};
+      localData.alertIntervalMinutes = nextInterval;
+      localData.isAlertEnabled = nextEnabled;
+      localData.updatedAt = Date.now();
+      localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(localData));
+      localStorage.setItem('ratool_water_tracker_data', JSON.stringify(localData));
+    } catch {}
 
     // Sync to Firestore for real-time multi-device sync
     const user = auth.currentUser;
@@ -1570,8 +1581,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 isAlertActive
                   ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border-emerald-500/40 shadow-xs shadow-emerald-500/20"
                   : (darkMode 
-                      ? "bg-white/5 text-gray-300 border-white/20 hover:bg-white/10" 
-                      : "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200/80")
+                      ? "bg-white/5 text-gray-400 border-white/20 hover:bg-white/10" 
+                      : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200/80")
               )}
               title={isAlertActive 
                 ? (lang === 'bn' ? `${alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০'} মিনিট রিমাইন্ডার সক্রিয়` : `${alertIntervalMinutes}m Alert Active`) 
@@ -1580,9 +1591,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               {isAlertActive ? (
                 <Bell size={13} className="shrink-0 text-emerald-500 dark:text-emerald-400 fill-emerald-500/20" />
               ) : (
-                <BellOff size={13} className="shrink-0 text-gray-400 dark:text-gray-300" />
+                <BellOff size={13} className="shrink-0 text-gray-400 dark:text-gray-400" />
               )}
-              <span>{lang === 'bn' ? (alertIntervalMinutes === 50 ? '৫০মি' : alertIntervalMinutes === 30 ? '৩০মি' : alertIntervalMinutes === 45 ? '৪৫মি' : '৬০মি') : `${alertIntervalMinutes}m`}</span>
+              <span>{isAlertActive ? (lang === 'bn' ? (alertIntervalMinutes === 50 ? '৫০মি' : alertIntervalMinutes === 30 ? '৩০মি' : alertIntervalMinutes === 45 ? '৪৫মি' : '৬০মি') : `${alertIntervalMinutes}m`) : (lang === 'bn' ? 'বন্ধ' : 'Off')}</span>
+              <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-60 ml-0.5", isAlertMenuOpen ? "rotate-180" : "")} />
             </button>
 
             {/* Small Popup Menu with 30, 45, 50, 60 minutes and Off */}

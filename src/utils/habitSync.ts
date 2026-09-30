@@ -241,6 +241,18 @@ export function markWaterHabitCompleted(targetDate?: string): void {
     const { waterHabitIds } = findMatchingHabitIds();
     const dKey = targetDate || getDhakaLogicalDateKey().dateKey;
 
+    // Clear any manual untick flags when explicitly marked complete
+    try {
+      const raw = localStorage.getItem('ratbod_habit_manual_unticked');
+      if (raw) {
+        const manualUnticked = JSON.parse(raw);
+        if (manualUnticked[dKey]) {
+          manualUnticked[dKey] = manualUnticked[dKey].filter((id: string) => !waterHabitIds.includes(id));
+          localStorage.setItem('ratbod_habit_manual_unticked', JSON.stringify(manualUnticked));
+        }
+      }
+    } catch (e) {}
+
     let changed = false;
     const currentList = logs[dKey] || [];
     const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
@@ -256,7 +268,7 @@ export function markWaterHabitCompleted(targetDate?: string): void {
 
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs: logs }, { merge: true }).catch(() => {});
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs: logs, updatedAt: Date.now() }, { merge: true }).catch(() => {});
       }
 
       window.dispatchEvent(new CustomEvent('ratbod_habit_logs_updated', { detail: { completedLogs: logs } }));
@@ -284,6 +296,18 @@ export function markReadingHabitCompleted(targetDate?: string): void {
     // Only mark that particular date!
     const dateKeyToMark = targetDate || getDhakaLogicalDateKey().dateKey;
 
+    // Clear manual untick flags for reading on this date
+    try {
+      const raw = localStorage.getItem('ratbod_habit_manual_unticked');
+      if (raw) {
+        const manualUnticked = JSON.parse(raw);
+        if (manualUnticked[dateKeyToMark]) {
+          manualUnticked[dateKeyToMark] = manualUnticked[dateKeyToMark].filter((id: string) => !readingHabitIds.includes(id));
+          localStorage.setItem('ratbod_habit_manual_unticked', JSON.stringify(manualUnticked));
+        }
+      }
+    } catch (e) {}
+
     let changed = false;
     const currentList = logs[dateKeyToMark] || [];
     const toAdd = readingHabitIds.filter(id => !currentList.includes(id));
@@ -299,7 +323,7 @@ export function markReadingHabitCompleted(targetDate?: string): void {
 
       const user = auth.currentUser;
       if (user) {
-        setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs: logs }, { merge: true }).catch(() => {});
+        setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs: logs, updatedAt: Date.now() }, { merge: true }).catch(() => {});
       }
 
       window.dispatchEvent(new CustomEvent('ratbod_habit_logs_updated', { detail: { completedLogs: logs } }));
@@ -311,7 +335,7 @@ export function markReadingHabitCompleted(targetDate?: string): void {
 
 /**
  * Scans Water & Reading logs and automatically ensures:
- * 1. "Drink Mineral Water" habit is ticked on any day the targeted water goal is met
+ * 1. "Drink Mineral Water" habit is ticked on any day the targeted water goal is met (unless manually unticked by user)
  * 2. "Read a Book" habit is ticked on that particular date ONLY if a reading book log exists for that date!
  *    When date changes or no reading log exists for a date, it is NOT ticked!
  */
@@ -331,6 +355,16 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
         }
       }
     }
+
+    // Load manual untick overrides
+    let manualUnticked: Record<string, string[]> = {};
+    try {
+      const raw = localStorage.getItem('ratbod_habit_manual_unticked');
+      if (raw) manualUnticked = JSON.parse(raw);
+    } catch (e) {}
+    const isManuallyUnticked = (dKey: string, habitId: string) => {
+      return (manualUnticked[dKey] || []).includes(habitId);
+    };
 
     // 2. Identify Water Habit IDs and Reading Habit IDs
     const { waterHabitIds, readingHabitIds } = findMatchingHabitIds();
@@ -353,7 +387,7 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
             const todayTotal = parsed.todayEntries.reduce((acc: number, cur: any) => acc + (Number(cur?.amountMl) || 0), 0);
             if (todayTotal >= goalMl) {
               const currentList = logs[parsed.todayDate] || [];
-              const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
+              const toAdd = waterHabitIds.filter(id => !currentList.includes(id) && !isManuallyUnticked(parsed.todayDate, id));
               if (toAdd.length > 0) {
                 logs[parsed.todayDate] = [...currentList, ...toAdd];
                 changed = true;
@@ -366,7 +400,7 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
             parsed.history.forEach((h: any) => {
               if (h && h.date && Number(h.consumedMl) >= Number(h.goalMl) && Number(h.goalMl) > 0) {
                 const currentList = logs[h.date] || [];
-                const toAdd = waterHabitIds.filter(id => !currentList.includes(id));
+                const toAdd = waterHabitIds.filter(id => !currentList.includes(id) && !isManuallyUnticked(h.date, id));
                 if (toAdd.length > 0) {
                   logs[h.date] = [...currentList, ...toAdd];
                   changed = true;
@@ -395,10 +429,10 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
       } catch (e) {}
     }
 
-    // Ensure reading habit is ticked on dates that actually have reading logged
+    // Ensure reading habit is ticked on dates that actually have reading logged (unless manually unticked)
     datesWithReading.forEach((dKey) => {
       const currentList = logs[dKey] || [];
-      const toAdd = readingHabitIds.filter(id => !currentList.includes(id));
+      const toAdd = readingHabitIds.filter(id => !currentList.includes(id) && !isManuallyUnticked(dKey, id));
       if (toAdd.length > 0) {
         logs[dKey] = [...currentList, ...toAdd];
         changed = true;
@@ -427,7 +461,7 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
         
         const user = auth.currentUser;
         if (user) {
-          setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs: logs }, { merge: true }).catch(() => {});
+          setDoc(doc(db, 'users', user.uid, 'appData', 'habitLogs'), { completedLogs: logs, updatedAt: Date.now() }, { merge: true }).catch(() => {});
         }
 
         window.dispatchEvent(new CustomEvent('ratbod_habit_logs_updated', { detail: { completedLogs: logs } }));

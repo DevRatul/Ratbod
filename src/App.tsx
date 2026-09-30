@@ -1719,7 +1719,11 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     let targetTab: TabType = 'calculator';
     let targetSubTab: LogifyTab | undefined = undefined;
 
-    if (tab === 'water' || tab === 'reading' || tab === 'sleep' || tab === 'steps' || tab === 'calm') {
+    if (tab === 'salah' || subTab === 'salah') {
+      targetTab = 'salah';
+    } else if (tab === 'habits' || tab === 'results' || subTab === 'habits') {
+      targetTab = 'results';
+    } else if (tab === 'water' || tab === 'reading' || tab === 'sleep' || tab === 'steps' || tab === 'calm') {
       targetTab = 'logify';
       targetSubTab = tab as LogifyTab;
     } else if (tab === 'breathing') {

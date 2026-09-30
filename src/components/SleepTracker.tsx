@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Moon, 
   Clock, 
@@ -120,6 +120,11 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   const [sleepSavedToast, setSleepSavedToast] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
+  // References to guard against dial resets from Firestore echoes or events while dragging
+  const isDraggingRef = useRef<boolean>(false);
+  const lastLocalWriteRef = useRef<number>(0);
+  const dialSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Load from Firestore with real-time onSnapshot sync across all devices
   useEffect(() => {
     let unsubSnapshot: (() => void) | null = null;
@@ -140,13 +145,17 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
         unsubSnapshot = onSnapshot(docRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            if (data.sleepBedTime) {
-              setSleepBedTime(data.sleepBedTime);
-              try { localStorage.setItem('ratbod_sleep_bed', data.sleepBedTime); } catch {}
-            }
-            if (data.sleepWakeTime) {
-              setSleepWakeTime(data.sleepWakeTime);
-              try { localStorage.setItem('ratbod_sleep_wake', data.sleepWakeTime); } catch {}
+            const isRecentLocalWrite = Date.now() - lastLocalWriteRef.current < 2500;
+            // Never overwrite the dial time if user is actively dragging or just made a local adjustment
+            if (!isDraggingRef.current && !isRecentLocalWrite) {
+              if (data.sleepBedTime) {
+                setSleepBedTime(data.sleepBedTime);
+                try { localStorage.setItem('ratbod_sleep_bed', data.sleepBedTime); } catch {}
+              }
+              if (data.sleepWakeTime) {
+                setSleepWakeTime(data.sleepWakeTime);
+                try { localStorage.setItem('ratbod_sleep_wake', data.sleepWakeTime); } catch {}
+              }
             }
             if (Array.isArray(data.sleepRecords)) {
               setSleepRecords(data.sleepRecords);
@@ -170,6 +179,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
     });
 
     const handleSleepSync = (e: Event) => {
+      if (isDraggingRef.current || Date.now() - lastLocalWriteRef.current < 2500) return;
       const detail = (e as CustomEvent).detail;
       if (detail?.sleepBedTime) setSleepBedTime(detail.sleepBedTime);
       if (detail?.sleepWakeTime) setSleepWakeTime(detail.sleepWakeTime);
@@ -181,11 +191,13 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
       if (unsubSnapshot) unsubSnapshot();
       window.removeEventListener('ratbod_sleep_sync', handleSleepSync);
       unsubAuth();
+      if (dialSaveTimeoutRef.current) clearTimeout(dialSaveTimeoutRef.current);
     };
   }, []);
 
   // Save to localStorage and Firestore
   const persistSleepData = (bed: string, wake: string, records: SleepRecord[]) => {
+    lastLocalWriteRef.current = Date.now();
     try {
       localStorage.setItem('ratbod_sleep_bed', bed);
       localStorage.setItem('ratbod_sleep_wake', wake);
@@ -319,9 +331,30 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
   };
 
   const handleDialChange = (newBed: string, newWake: string) => {
+    isDraggingRef.current = true;
+    lastLocalWriteRef.current = Date.now();
     setSleepBedTime(newBed);
     setSleepWakeTime(newWake);
-    persistSleepData(newBed, newWake, sleepRecords);
+    try {
+      localStorage.setItem('ratbod_sleep_bed', newBed);
+      localStorage.setItem('ratbod_sleep_wake', newWake);
+    } catch {}
+
+    // Debounced safety save in case onDragEnd doesn't fire
+    if (dialSaveTimeoutRef.current) clearTimeout(dialSaveTimeoutRef.current);
+    dialSaveTimeoutRef.current = setTimeout(() => {
+      isDraggingRef.current = false;
+      persistSleepData(newBed, newWake, sleepRecords);
+    }, 1000);
+  };
+
+  const handleDialDragEnd = (finalBed: string, finalWake: string) => {
+    if (dialSaveTimeoutRef.current) clearTimeout(dialSaveTimeoutRef.current);
+    isDraggingRef.current = false;
+    lastLocalWriteRef.current = Date.now();
+    setSleepBedTime(finalBed);
+    setSleepWakeTime(finalWake);
+    persistSleepData(finalBed, finalWake, sleepRecords);
   };
 
   const sleepDuration = calculateSleepDuration(sleepBedTime, sleepWakeTime);
@@ -567,6 +600,7 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
             bedTime={sleepBedTime}
             wakeTime={sleepWakeTime}
             onChange={handleDialChange}
+            onDragEnd={handleDialDragEnd}
             darkMode={darkMode}
             lang={lang}
             formatNum={formatNum}

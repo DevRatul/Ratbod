@@ -74,6 +74,7 @@ export interface HabitItem {
   subtitle?: string;
   emoji?: string;
   createdAt: string;
+  order?: number;
 }
 
 export interface HabitorProps {
@@ -82,23 +83,41 @@ export interface HabitorProps {
   weekStartDay?: number; // 0=Sun, 1=Mon, ..., 6=Sat. Default: 6 (Saturday)
 }
 
+export const DEFAULT_HABIT_ORDER_MAP: Record<string, number> = {
+  h1: 1,
+  h2: 2,
+  h3: 3,
+  h4: 4,
+  h5: 5,
+  h6: 6,
+  h7: 7,
+  h8: 8,
+  h9: 9,
+  h10: 10,
+  h11: 11,
+  h12: 12,
+  h13: 13,
+  h14: 14,
+  h15: 15,
+};
+
 // Default initial habits matching screenshot
 const DEFAULT_HABITS: HabitItem[] = [
-  { id: 'h1', title: 'Post-Maghrib Dinner', subtitle: 'Within 6-7 Pm', emoji: '🥗', createdAt: new Date().toISOString() },
-  { id: 'h2', title: 'Esa Jamat', subtitle: 'With Witr / Tarawee', emoji: '🤲', createdAt: new Date().toISOString() },
-  { id: 'h3', title: 'Drink Mineral Water', subtitle: '13 Glass ( 3-4 Ltr ) Detox, Alkaline', emoji: '💧', createdAt: new Date().toISOString() },
-  { id: 'h4', title: 'PlanNextDay', subtitle: 'Before Sleep', emoji: '📝', createdAt: new Date().toISOString() },
-  { id: 'h5', title: 'Read a Book', subtitle: '10 Pages', emoji: '📗', createdAt: new Date().toISOString() },
-  { id: 'h6', title: 'Avoid Hjobs', subtitle: '', emoji: '🍌', createdAt: new Date().toISOString() },
-  { id: 'h7', title: 'Sleep Early', subtitle: '@ 9pm | Do Sleep Ritual |', emoji: '🛌', createdAt: new Date().toISOString() },
-  { id: 'h8', title: 'Tahajjud/ Suhur', subtitle: '', emoji: '🧎', createdAt: new Date().toISOString() },
-  { id: 'h9', title: 'Fazr Jamat', subtitle: '', emoji: '🤲', createdAt: new Date().toISOString() },
-  { id: 'h10', title: 'Quran Recitation', subtitle: '30 Min', emoji: '📖', createdAt: new Date().toISOString() },
-  { id: 'h11', title: 'Zikr Adhkar', subtitle: 'Before Sunrise & Sunset', emoji: '📿', createdAt: new Date().toISOString() },
-  { id: 'h12', title: 'Deep Work', subtitle: '4 Focused Hrs ( 8-13 Pm )', emoji: '👨‍💻', createdAt: new Date().toISOString() },
-  { id: 'h13', title: 'Dhikr - Walk', subtitle: '10,000 Steps (Sun & Grass)', emoji: '🚶', createdAt: new Date().toISOString() },
-  { id: 'h14', title: 'Strength Exercise', subtitle: 'Resistance / Dumbbell Strength Full Body', emoji: '🏋️', createdAt: new Date().toISOString() },
-  { id: 'h15', title: 'Breathing With Dhikr', subtitle: 'Wim Hoff, 4:7:8, Humming', emoji: '🫁', createdAt: new Date().toISOString() },
+  { id: 'h1', order: 1, title: 'Post-Maghrib Dinner', subtitle: 'Within 6-7 Pm', emoji: '🥗', createdAt: new Date().toISOString() },
+  { id: 'h2', order: 2, title: 'Esa Jamat', subtitle: 'With Witr / Tarawee', emoji: '🤲', createdAt: new Date().toISOString() },
+  { id: 'h3', order: 3, title: 'Drink Mineral Water', subtitle: '13 Glass ( 3-4 Ltr ) Detox, Alkaline', emoji: '💧', createdAt: new Date().toISOString() },
+  { id: 'h4', order: 4, title: 'PlanNextDay', subtitle: 'Before Sleep', emoji: '📝', createdAt: new Date().toISOString() },
+  { id: 'h5', order: 5, title: 'Read a Book', subtitle: '10 Pages', emoji: '📗', createdAt: new Date().toISOString() },
+  { id: 'h6', order: 6, title: 'Avoid Hjobs', subtitle: '', emoji: '🍌', createdAt: new Date().toISOString() },
+  { id: 'h7', order: 7, title: 'Sleep Early', subtitle: '@ 9pm | Do Sleep Ritual |', emoji: '🛌', createdAt: new Date().toISOString() },
+  { id: 'h8', order: 8, title: 'Tahajjud/ Suhur', subtitle: '', emoji: '🧎', createdAt: new Date().toISOString() },
+  { id: 'h9', order: 9, title: 'Fazr Jamat', subtitle: '', emoji: '🤲', createdAt: new Date().toISOString() },
+  { id: 'h10', order: 10, title: 'Quran Recitation', subtitle: '30 Min', emoji: '📖', createdAt: new Date().toISOString() },
+  { id: 'h11', order: 11, title: 'Zikr Adhkar', subtitle: 'Before Sunrise & Sunset', emoji: '📿', createdAt: new Date().toISOString() },
+  { id: 'h12', order: 12, title: 'Deep Work', subtitle: '4 Focused Hrs ( 8-13 Pm )', emoji: '👨‍💻', createdAt: new Date().toISOString() },
+  { id: 'h13', order: 13, title: 'Dhikr - Walk', subtitle: '10,000 Steps (Sun & Grass)', emoji: '🚶', createdAt: new Date().toISOString() },
+  { id: 'h14', order: 14, title: 'Strength Exercise', subtitle: 'Resistance / Dumbbell Strength Full Body', emoji: '🏋️', createdAt: new Date().toISOString() },
+  { id: 'h15', order: 15, title: 'Breathing With Dhikr', subtitle: 'Wim Hoff, 4:7:8, Humming', emoji: '🫁', createdAt: new Date().toISOString() },
 ];
 
 import { getDhakaSunsetTime, getDhakaLogicalDateKey } from '../utils/sunsetDate';
@@ -228,6 +247,7 @@ function HabitRowItem({
       key={habit.id}
       value={habit}
       id={habit.id}
+      layout
       dragListener={false}
       dragControls={dragControls}
       initial={{ opacity: 0, y: 8 }}
@@ -384,12 +404,17 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           let needsUpdate = false;
-          const migratedParsed = parsed.map(h => {
+          const migratedParsed = parsed.map((h, idx) => {
+            let updated = { ...h };
             if ((h.id === 'h6' || h.id === 'h8' || h.id === 'h9') && h.subtitle !== '') {
               needsUpdate = true;
-              return { ...h, subtitle: '' };
+              updated.subtitle = '';
             }
-            return h;
+            if (updated.order === undefined) {
+              needsUpdate = true;
+              updated.order = DEFAULT_HABIT_ORDER_MAP[h.id] ?? (idx + 1);
+            }
+            return updated;
           });
 
           // Merge missing default habits if we have fewer than 15
@@ -450,9 +475,7 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
 
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Real-time reorder handler: preserves exact custom positions across devices
-  const handleReorder = (newHabits: HabitItem[]) => {
-    setHabits(newHabits);
+  const persistHabitsOrder = (newHabits: HabitItem[]) => {
     try {
       localStorage.setItem('ratool_habits_v1', JSON.stringify(newHabits));
       localStorage.setItem('ratbod_habits_v1', JSON.stringify(newHabits));
@@ -484,7 +507,13 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         const localHabits = localStorage.getItem('ratbod_habits_v1') || localStorage.getItem('ratool_habits_v1');
         if (localHabits) {
           const parsed = JSON.parse(localHabits);
-          if (Array.isArray(parsed) && parsed.length > 0) setHabits(parsed);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const normalized = parsed.map((h: any, idx: number) => ({
+              ...h,
+              order: h.order !== undefined ? h.order : (DEFAULT_HABIT_ORDER_MAP[h.id] ?? (idx + 1))
+            }));
+            setHabits(normalized);
+          }
         }
         const localLogs = localStorage.getItem('ratbod_habit_logs_v1') || localStorage.getItem('ratool_habit_logs_v1');
         if (localLogs) {
@@ -501,7 +530,10 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
           const habitsDocRef = doc(db, 'users', user.uid, 'appData', 'habits');
           unsubHabits = onSnapshot(habitsDocRef, (docSnap) => {
             if (docSnap.exists() && Array.isArray(docSnap.data().habits) && docSnap.data().habits.length > 0) {
-              const liveHabits = docSnap.data().habits;
+              const liveHabits = docSnap.data().habits.map((h: any, idx: number) => ({
+                ...h,
+                order: h.order !== undefined ? h.order : (DEFAULT_HABIT_ORDER_MAP[h.id] ?? (idx + 1))
+              }));
               setHabits(liveHabits);
               try {
                 localStorage.setItem('ratool_habits_v1', JSON.stringify(liveHabits));
@@ -519,45 +551,12 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
           unsubLogs = onSnapshot(logsDocRef, (docSnap) => {
             if (docSnap.exists() && docSnap.data().completedLogs) {
               const liveLogs = docSnap.data().completedLogs;
-              setCompletedLogs(prev => {
-                const merged: Record<string, string[]> = { ...liveLogs };
-                // Ensure no local toggles are accidentally dropped
-                Object.keys(prev).forEach(dKey => {
-                  const setOfIds = new Set(merged[dKey] || []);
-                  (prev[dKey] || []).forEach(id => setOfIds.add(id));
-                  merged[dKey] = Array.from(setOfIds);
-                });
-
-                // Auto-restore Drink Mineral Water (h3) if water goal was consumed
-                try {
-                  const rawWater = localStorage.getItem('ratbod_water_tracker_data') || localStorage.getItem('ratool_water_tracker_data');
-                  if (rawWater) {
-                    const parsedWater = JSON.parse(rawWater);
-                    const goalMl = (Number(parsedWater.goalGlasses) || 12) * (Number(parsedWater.glassVolumeMl) || 250);
-                    if (parsedWater.todayDate && Array.isArray(parsedWater.todayEntries)) {
-                      const todayTot = parsedWater.todayEntries.reduce((a: number, c: any) => a + (Number(c?.amountMl) || 0), 0);
-                      if (todayTot >= goalMl && goalMl > 0) {
-                        const cur = merged[parsedWater.todayDate] || [];
-                        if (!cur.includes('h3')) merged[parsedWater.todayDate] = [...cur, 'h3'];
-                      }
-                    }
-                    if (Array.isArray(parsedWater.history)) {
-                      parsedWater.history.forEach((h: any) => {
-                        if (h && h.date && Number(h.consumedMl) >= Number(h.goalMl) && Number(h.goalMl) > 0) {
-                          const cur = merged[h.date] || [];
-                          if (!cur.includes('h3')) merged[h.date] = [...cur, 'h3'];
-                        }
-                      });
-                    }
-                  }
-                } catch (e) {}
-
-                try {
-                  localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(merged));
-                  localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(merged));
-                } catch {}
-                return merged;
-              });
+              // Accept remote snapshot without resurrecting unticked habits
+              setCompletedLogs(liveLogs);
+              try {
+                localStorage.setItem('ratool_habit_logs_v1', JSON.stringify(liveLogs));
+                localStorage.setItem('ratbod_habit_logs_v1', JSON.stringify(liveLogs));
+              } catch {}
             }
           }, (error) => {
             handleFirestoreError(error, OperationType.GET, `users/${user.uid}/appData/habitLogs`);
@@ -791,10 +790,65 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
     };
   }, [analyticsHabit, completedLogs, selectedDateKey, lang, weekStartDay]);
 
+  // Stable base habits in their canonical/user-defined order
+  const baseHabits = useMemo(() => {
+    return [...habits].sort((a, b) => {
+      const orderA = a.order ?? DEFAULT_HABIT_ORDER_MAP[a.id] ?? 999;
+      const orderB = b.order ?? DEFAULT_HABIT_ORDER_MAP[b.id] ?? 999;
+      return orderA - orderB;
+    });
+  }, [habits]);
+
   // Active completed array for selected date
   const completedTodaySet = useMemo(() => {
     return new Set(completedLogs[selectedDateKey] || []);
   }, [completedLogs, selectedDateKey]);
+
+  // Completed or ticked habits placed on top according to their position one after one.
+  // Incomplete/unticked habits remain below in their original positions.
+  // When an unticked habit is unticked, it repositions right back to its original slot!
+  const orderedHabits = useMemo(() => {
+    const completed: HabitItem[] = [];
+    const incomplete: HabitItem[] = [];
+    for (const habit of baseHabits) {
+      if (completedTodaySet.has(habit.id)) {
+        completed.push(habit);
+      } else {
+        incomplete.push(habit);
+      }
+    }
+    return [...completed, ...incomplete];
+  }, [baseHabits, completedTodaySet]);
+
+  // Real-time reorder handler: preserves exact custom positions across devices
+  const handleReorder = (newVisualOrder: HabitItem[]) => {
+    // If no habits are completed, visual order is exactly the base habits order
+    if (completedTodaySet.size === 0) {
+      const updated = newVisualOrder.map((h, idx) => ({ ...h, order: idx + 1 }));
+      setHabits(updated);
+      persistHabitsOrder(updated);
+      return;
+    }
+
+    // When habits are completed (placed at the top), we preserve their original base slots:
+    const completedItems = newVisualOrder.filter(h => completedTodaySet.has(h.id));
+    const incompleteItems = newVisualOrder.filter(h => !completedTodaySet.has(h.id));
+
+    let compIdx = 0;
+    let incompIdx = 0;
+    const reconstructed: HabitItem[] = baseHabits.map((h, i) => {
+      let item: HabitItem;
+      if (completedTodaySet.has(h.id)) {
+        item = completedItems[compIdx++] || h;
+      } else {
+        item = incompleteItems[incompIdx++] || h;
+      }
+      return { ...item, order: i + 1 };
+    });
+
+    setHabits(reconstructed);
+    persistHabitsOrder(reconstructed);
+  };
 
   const toggleHabit = (id: string, dateKey?: string) => {
     const targetDateKey = dateKey || selectedDateKey;
@@ -802,10 +856,33 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       const currentList = prev[targetDateKey] || [];
       let updatedList: string[];
       if (currentList.includes(id)) {
+        // UNTICK: remove from completed list
         updatedList = currentList.filter(item => item !== id);
+        // Record manual untick in localStorage so auto-sync never re-ticks it
+        try {
+          const raw = localStorage.getItem('ratbod_habit_manual_unticked');
+          const manualUnticked: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+          const currentUnticked = manualUnticked[targetDateKey] || [];
+          if (!currentUnticked.includes(id)) {
+            manualUnticked[targetDateKey] = [...currentUnticked, id];
+            localStorage.setItem('ratbod_habit_manual_unticked', JSON.stringify(manualUnticked));
+          }
+        } catch (e) {}
       } else {
+        // TICK: add to completed list
         updatedList = [...currentList, id];
         playHabitCheckSound();
+        // Clear from manual unticked
+        try {
+          const raw = localStorage.getItem('ratbod_habit_manual_unticked');
+          if (raw) {
+            const manualUnticked: Record<string, string[]> = JSON.parse(raw);
+            if (manualUnticked[targetDateKey]) {
+              manualUnticked[targetDateKey] = manualUnticked[targetDateKey].filter(item => item !== id);
+              localStorage.setItem('ratbod_habit_manual_unticked', JSON.stringify(manualUnticked));
+            }
+          }
+        } catch (e) {}
       }
       const nextLogs = {
         ...prev,
@@ -843,12 +920,14 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
     if (!newTitle.trim()) return;
 
     try {
+      const maxOrder = habits.reduce((max, h) => Math.max(max, h.order ?? DEFAULT_HABIT_ORDER_MAP[h.id] ?? 0), 0);
       const newItem: HabitItem = {
         id: 'h_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
         title: newTitle.trim(),
         subtitle: newSubtitle.trim() || undefined,
         emoji: newEmoji.trim() || undefined,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        order: maxOrder + 1,
       };
 
       const updatedHabits = [...habits, newItem];
@@ -1040,12 +1119,12 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       <div className="space-y-2">
         <Reorder.Group
           axis="y"
-          values={habits}
+          values={orderedHabits}
           onReorder={handleReorder}
           className="space-y-2 list-none p-0 m-0"
         >
           <AnimatePresence initial={false}>
-            {habits.map((habit) => (
+            {orderedHabits.map((habit) => (
               <HabitRowItem
                 key={habit.id}
                 habit={habit}

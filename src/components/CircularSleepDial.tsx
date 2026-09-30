@@ -11,6 +11,7 @@ interface CircularSleepDialProps {
   bedTime: string; // "HH:MM" (24h storage format)
   wakeTime: string; // "HH:MM" (24h storage format)
   onChange: (bedTime: string, wakeTime: string) => void;
+  onDragEnd?: (bedTime: string, wakeTime: string) => void;
   darkMode: boolean;
   lang?: 'en' | 'bn' | string;
   formatNum?: (val: number | string) => string;
@@ -47,6 +48,7 @@ export default function CircularSleepDial({
   bedTime,
   wakeTime,
   onChange,
+  onDragEnd,
   darkMode,
   lang = 'en',
   formatNum = (v) => String(v),
@@ -56,6 +58,12 @@ export default function CircularSleepDial({
 
   // Interaction dragging state
   const [dragTarget, setDragTarget] = useState<'bed' | 'wake' | 'arc' | null>(null);
+
+  // Internal active time overrides during dragging to prevent any parent/echo reset
+  const [draggingTimes, setDraggingTimes] = useState<{ bed: string; wake: string } | null>(null);
+
+  const activeBedTime = draggingTimes ? draggingTimes.bed : bedTime;
+  const activeWakeTime = draggingTimes ? draggingTimes.wake : wakeTime;
 
   // Ref tracking smooth relative rotational movement
   const dragStateRef = useRef<{
@@ -79,8 +87,8 @@ export default function CircularSleepDial({
   const trackStrokeWidth = 32;
   const handleRadius = 18;
 
-  const bedMinutes = useMemo(() => timeToMinutes(bedTime), [bedTime]);
-  const wakeMinutes = useMemo(() => timeToMinutes(wakeTime), [wakeTime]);
+  const bedMinutes = useMemo(() => timeToMinutes(activeBedTime), [activeBedTime]);
+  const wakeMinutes = useMemo(() => timeToMinutes(activeWakeTime), [activeWakeTime]);
 
   // Total duration in minutes (in 24-hour cycle)
   const durationMinutes = useMemo(() => {
@@ -90,8 +98,8 @@ export default function CircularSleepDial({
   }, [bedMinutes, wakeMinutes]);
 
   // 12-Hour Clock Angles measured clockwise from Top (12 o'clock is angle 0°)
-  const bedAngle = useMemo(() => timeTo12HourAngle(bedTime), [bedTime]);
-  const wakeAngle = useMemo(() => timeTo12HourAngle(wakeTime), [wakeTime]);
+  const bedAngle = useMemo(() => timeTo12HourAngle(activeBedTime), [activeBedTime]);
+  const wakeAngle = useMemo(() => timeTo12HourAngle(activeWakeTime), [activeWakeTime]);
 
   // Clockwise sweep angle from bed to wake on the 12-hour clock
   // E.g., from 8 o'clock (240°) to 3 o'clock (90°) = (90 - 240 + 360) % 360 = 210° (7 hours)
@@ -192,6 +200,7 @@ export default function CircularSleepDial({
     triggerHaptic('selection', true);
 
     setDragTarget(resolvedTarget);
+    setDraggingTimes({ bed: activeBedTime, wake: activeWakeTime });
     dragStateRef.current = {
       lastAngle: currentAngle,
       currentBedMinutes: bedMinutes,
@@ -231,26 +240,53 @@ export default function CircularSleepDial({
 
       let isHourMark = false;
       let isPrimeBoundary = false;
+
+      let curBed = dragStateRef.current.currentBedMinutes;
+      let curWake = dragStateRef.current.currentWakeMinutes;
+
       if (dragTarget === 'bed') {
-        const nextBed = ((dragStateRef.current.currentBedMinutes + step) % 1440 + 1440) % 1440;
+        let nextBed = ((curBed + step) % 1440 + 1440) % 1440;
+        // Maintain minimum 30 min duration: if nextBed gets within 30 min of wake, push wake forward
+        let dur = (curWake - nextBed) % 1440;
+        if (dur <= 0) dur += 1440;
+        if (dur < 30) {
+          curWake = (nextBed + 30) % 1440;
+          dragStateRef.current.currentWakeMinutes = curWake;
+        }
         dragStateRef.current.currentBedMinutes = nextBed;
         isHourMark = nextBed % 60 === 0;
         isPrimeBoundary = nextBed === 22 * 60 || nextBed === 2 * 60;
-        onChange(minutesToTime(nextBed), minutesToTime(dragStateRef.current.currentWakeMinutes));
+        const newBedStr = minutesToTime(nextBed);
+        const newWakeStr = minutesToTime(curWake);
+        setDraggingTimes({ bed: newBedStr, wake: newWakeStr });
+        onChange(newBedStr, newWakeStr);
       } else if (dragTarget === 'wake') {
-        const nextWake = ((dragStateRef.current.currentWakeMinutes + step) % 1440 + 1440) % 1440;
+        let nextWake = ((curWake + step) % 1440 + 1440) % 1440;
+        // Maintain minimum 30 min duration: if nextWake gets within 30 min of bed, push bed backward
+        let dur = (nextWake - curBed) % 1440;
+        if (dur <= 0) dur += 1440;
+        if (dur < 30) {
+          curBed = (nextWake - 30 + 1440) % 1440;
+          dragStateRef.current.currentBedMinutes = curBed;
+        }
         dragStateRef.current.currentWakeMinutes = nextWake;
         isHourMark = nextWake % 60 === 0;
         isPrimeBoundary = nextWake === 22 * 60 || nextWake === 2 * 60;
-        onChange(minutesToTime(dragStateRef.current.currentBedMinutes), minutesToTime(nextWake));
+        const newBedStr = minutesToTime(curBed);
+        const newWakeStr = minutesToTime(nextWake);
+        setDraggingTimes({ bed: newBedStr, wake: newWakeStr });
+        onChange(newBedStr, newWakeStr);
       } else if (dragTarget === 'arc') {
-        const nextBed = ((dragStateRef.current.currentBedMinutes + step) % 1440 + 1440) % 1440;
+        const nextBed = ((curBed + step) % 1440 + 1440) % 1440;
         const nextWake = ((nextBed + dragStateRef.current.durationMinutes) % 1440 + 1440) % 1440;
         dragStateRef.current.currentBedMinutes = nextBed;
         dragStateRef.current.currentWakeMinutes = nextWake;
         isHourMark = nextBed % 60 === 0 || nextWake % 60 === 0;
         isPrimeBoundary = nextBed === 22 * 60 || nextBed === 2 * 60 || nextWake === 22 * 60 || nextWake === 2 * 60;
-        onChange(minutesToTime(nextBed), minutesToTime(nextWake));
+        const newBedStr = minutesToTime(nextBed);
+        const newWakeStr = minutesToTime(nextWake);
+        setDraggingTimes({ bed: newBedStr, wake: newWakeStr });
+        onChange(newBedStr, newWakeStr);
       }
 
       // Authentic gear notch haptic feedback on every 5-min step, with distinct pulse on hour/prime marks
@@ -267,6 +303,9 @@ export default function CircularSleepDial({
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     if (dragTarget) {
       triggerHaptic('light', true);
+      const finalBed = minutesToTime(dragStateRef.current.currentBedMinutes);
+      const finalWake = minutesToTime(dragStateRef.current.currentWakeMinutes);
+      onDragEnd?.(finalBed, finalWake);
     }
     if (dragTarget && svgRef.current) {
       try {
@@ -274,6 +313,7 @@ export default function CircularSleepDial({
       } catch (err) {}
     }
     setDragTarget(null);
+    setDraggingTimes(null);
   };
 
   // 12-Hour Clock Numbers: 12 at top (0°), 1, 2, 3 (90°), 4, 5, 6 (180°), 7, 8, 9 (270°), 10, 11

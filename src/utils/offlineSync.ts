@@ -22,6 +22,7 @@ export type SyncCollectionKey =
 
 const PENDING_KEYS_STORAGE_KEY = 'ratbod_offline_pending_keys';
 const PENDING_PREFIX = 'ratbod_pending_data_';
+const HAS_UNSYNCED_OFFLINE_DATA_KEY = 'ratbod_has_unsynced_offline_data';
 
 /**
  * Returns whether the device currently has network connectivity.
@@ -31,6 +32,35 @@ export function isOnline(): boolean {
     return navigator.onLine;
   }
   return true;
+}
+
+/**
+ * Marks that new offline data was saved locally and needs to be pushed to cloud upon reconnect.
+ */
+export function markHasUnsyncedOfflineData(): void {
+  try {
+    localStorage.setItem(HAS_UNSYNCED_OFFLINE_DATA_KEY, 'true');
+  } catch {}
+}
+
+/**
+ * Clears the unsynced offline data indicator.
+ */
+export function clearHasUnsyncedOfflineData(): void {
+  try {
+    localStorage.removeItem(HAS_UNSYNCED_OFFLINE_DATA_KEY);
+  } catch {}
+}
+
+/**
+ * Returns whether there is offline data waiting to be pushed on reconnect.
+ */
+export function hasUnsyncedOfflineData(): boolean {
+  try {
+    return localStorage.getItem(HAS_UNSYNCED_OFFLINE_DATA_KEY) === 'true';
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -75,24 +105,35 @@ export function hasPendingOfflineChange(key: SyncCollectionKey): boolean {
 
 /**
  * Records an offline change for a specific section.
- * If online and authenticated, attempts immediate push; otherwise safely marks it pending.
+ * If offline, marks offline pending flag. If online and authenticated, attempts immediate push.
  */
 export function recordOfflineChange(key: SyncCollectionKey, data: any): void {
+  const isCurrentlyOnline = isOnline();
+  const createdOffline = !isCurrentlyOnline;
+
   try {
     const keys = new Set(getPendingOfflineKeys());
     keys.add(key);
     localStorage.setItem(PENDING_KEYS_STORAGE_KEY, JSON.stringify(Array.from(keys)));
     localStorage.setItem(`${PENDING_PREFIX}${key}`, JSON.stringify({
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      createdOffline
     }));
+
+    if (createdOffline) {
+      markHasUnsyncedOfflineData();
+    }
   } catch (e) {
     console.warn(`[OfflineSync] Failed to queue pending change for ${key}:`, e);
   }
 
-  // If currently online and user is authenticated, trigger sync immediately in background
-  if (isOnline() && auth.currentUser) {
-    syncPendingOfflineData().catch((err) => {
+  // If currently online and user is authenticated, trigger background push
+  // (Pass false so standard online writes do not trigger the offline recovery pop)
+  if (isCurrentlyOnline && auth.currentUser) {
+    syncPendingOfflineData(false).catch((err) => {
+      // If immediate push failed due to network issues, mark as offline data
+      markHasUnsyncedOfflineData();
       console.warn(`[OfflineSync] Background push for ${key} deferred:`, err);
     });
   }
@@ -105,8 +146,12 @@ export function clearPendingOfflineChange(key: SyncCollectionKey): void {
   try {
     const keys = new Set(getPendingOfflineKeys());
     keys.delete(key);
-    localStorage.setItem(PENDING_KEYS_STORAGE_KEY, JSON.stringify(Array.from(keys)));
+    const remaining = Array.from(keys);
+    localStorage.setItem(PENDING_KEYS_STORAGE_KEY, JSON.stringify(remaining));
     localStorage.removeItem(`${PENDING_PREFIX}${key}`);
+    if (remaining.length === 0) {
+      clearHasUnsyncedOfflineData();
+    }
   } catch (e) {}
 }
 
@@ -186,13 +231,31 @@ function mergeWaterHistory(localHistory: any[] = [], remoteHistory: any[] = []):
  */
 let isSyncInProgress = false;
 
-export async function syncPendingOfflineData(): Promise<boolean> {
+export async function syncPendingOfflineData(isOnlineReconnect: boolean = false): Promise<boolean> {
   if (isSyncInProgress || !isOnline()) return false;
   const user = auth.currentUser;
   if (!user) return false;
 
   const pendingKeys = getPendingOfflineKeys();
-  if (pendingKeys.length === 0) return false;
+  if (pendingKeys.length === 0) {
+    clearHasUnsyncedOfflineData();
+    return false;
+  }
+
+  // Determine if there is genuine offline-originated data waiting to be pushed
+  let hadOfflineData = hasUnsyncedOfflineData();
+  if (!hadOfflineData) {
+    hadOfflineData = pendingKeys.some((k) => {
+      try {
+        const raw = localStorage.getItem(`${PENDING_PREFIX}${k}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return Boolean(parsed.createdOffline);
+        }
+      } catch {}
+      return false;
+    });
+  }
 
   isSyncInProgress = true;
   let hasSyncedAny = false;
@@ -299,12 +362,14 @@ export async function syncPendingOfflineData(): Promise<boolean> {
 
           if (snap.exists() && snap.data().completedLogs) {
             const remoteLogs = snap.data().completedLogs;
-            // Union of all completed habit IDs across offline & online
-            const allDates = new Set([...Object.keys(remoteLogs), ...Object.keys(mergedLogs)]);
-            allDates.forEach((dKey) => {
-              const combined = new Set([...(remoteLogs[dKey] || []), ...(mergedLogs[dKey] || [])]);
-              mergedLogs[dKey] = Array.from(combined);
-            });
+            const remoteTime = Number(snap.data().updatedAt) || 0;
+            const localTime = Number(localData.updatedAt) || 0;
+            if (remoteTime > localTime) {
+              mergedLogs = remoteLogs;
+            } else {
+              // Local changes are newer (preserves habit un-checking/unticking)
+              mergedLogs = localData.completedLogs || {};
+            }
           }
 
           const payload = { completedLogs: mergedLogs, updatedAt: Date.now() };
@@ -487,8 +552,13 @@ export async function syncPendingOfflineData(): Promise<boolean> {
       }
     }
 
-    if (hasSyncedAny && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('ratbod_offline_sync_success'));
+    // 'Updated' pop message only appears when a new offline data saves for the first time
+    // after establishing an online connection!
+    if (hasSyncedAny && (hadOfflineData || isOnlineReconnect)) {
+      clearHasUnsyncedOfflineData();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ratbod_offline_sync_success'));
+      }
     }
   } finally {
     isSyncInProgress = false;
@@ -503,39 +573,67 @@ export async function syncPendingOfflineData(): Promise<boolean> {
 export function initOfflineSyncManager(): () => void {
   if (typeof window === 'undefined') return () => {};
 
+  let wasOffline = !isOnline();
+
   const handleOnline = () => {
-    // When coming back online, push any offline pending data immediately
+    // When coming back online, push any offline pending data
+    const cameFromOffline = wasOffline || !isOnline();
+    wasOffline = false;
+
     setTimeout(() => {
-      syncPendingOfflineData().catch(() => {});
-    }, 1200);
+      if (isOnline() && auth.currentUser) {
+        syncPendingOfflineData(cameFromOffline).catch(() => {});
+      }
+    }, 600);
+  };
+
+  const handleOffline = () => {
+    wasOffline = true;
   };
 
   const handleVisibility = () => {
     if (document.visibilityState === 'visible' && isOnline() && auth.currentUser) {
-      syncPendingOfflineData().catch(() => {});
+      if (hasUnsyncedOfflineData() && getPendingOfflineKeys().length > 0) {
+        syncPendingOfflineData(true).catch(() => {});
+      }
     }
   };
 
   // Heartbeat interval to check pending sync when connected
   const intervalId = setInterval(() => {
     if (isOnline() && auth.currentUser && getPendingOfflineKeys().length > 0) {
-      syncPendingOfflineData().catch(() => {});
+      const isOfflineData = hasUnsyncedOfflineData();
+      syncPendingOfflineData(isOfflineData).catch(() => {});
     }
   }, 20000);
 
   window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
   document.addEventListener('visibilitychange', handleVisibility);
 
-  // Initial check on load
+  // Initial check on load: If user opened the app online, but has pending offline data from an earlier offline session
   if (isOnline() && auth.currentUser) {
-    setTimeout(() => {
-      syncPendingOfflineData().catch(() => {});
-    }, 2000);
+    if (hasUnsyncedOfflineData() && getPendingOfflineKeys().length > 0) {
+      setTimeout(() => {
+        syncPendingOfflineData(true).catch(() => {});
+      }, 1500);
+    }
   }
+
+  // Also listen for auth state change in case auth becomes active shortly after load
+  const unsubAuth = auth.onAuthStateChanged((u) => {
+    if (u && isOnline() && hasUnsyncedOfflineData() && getPendingOfflineKeys().length > 0) {
+      setTimeout(() => {
+        syncPendingOfflineData(true).catch(() => {});
+      }, 1000);
+    }
+  });
 
   return () => {
     window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
     document.removeEventListener('visibilitychange', handleVisibility);
     clearInterval(intervalId);
+    unsubAuth();
   };
 }
