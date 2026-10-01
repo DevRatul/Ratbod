@@ -59,11 +59,20 @@ export default function CircularSleepDial({
   // Interaction dragging state
   const [dragTarget, setDragTarget] = useState<'bed' | 'wake' | 'arc' | null>(null);
 
-  // Internal active time overrides during dragging to prevent any parent/echo reset
-  const [draggingTimes, setDraggingTimes] = useState<{ bed: string; wake: string } | null>(null);
+  // Stable internal state initialized with props and kept strictly persistent across drags
+  const [internalBedTime, setInternalBedTime] = useState<string>(bedTime || '23:00');
+  const [internalWakeTime, setInternalWakeTime] = useState<string>(wakeTime || '07:00');
 
-  const activeBedTime = draggingTimes ? draggingTimes.bed : bedTime;
-  const activeWakeTime = draggingTimes ? draggingTimes.wake : wakeTime;
+  // Sync internal state with props ONLY when not actively dragging
+  React.useEffect(() => {
+    if (!dragTarget) {
+      if (bedTime) setInternalBedTime(bedTime);
+      if (wakeTime) setInternalWakeTime(wakeTime);
+    }
+  }, [bedTime, wakeTime, dragTarget]);
+
+  const activeBedTime = internalBedTime;
+  const activeWakeTime = internalWakeTime;
 
   // Ref tracking smooth relative rotational movement
   const dragStateRef = useRef<{
@@ -155,11 +164,11 @@ export default function CircularSleepDial({
   }, [bedAngle, sweepAngle, trackRadius, getCoordinates]);
 
   // Convert pointer event to angle clockwise from Top (0..360°)
-  const getAngleFromEvent = useCallback((e: React.PointerEvent<any>): number => {
+  const getAngleFromEvent = useCallback((e: PointerEvent | React.PointerEvent<any>): number => {
     if (!svgRef.current) return 0;
     const rect = svgRef.current.getBoundingClientRect();
-    const scaleX = 320 / rect.width;
-    const scaleY = 320 / rect.height;
+    const scaleX = 320 / (rect.width || 320);
+    const scaleY = 320 / (rect.height || 320);
     const px = (e.clientX - rect.left) * scaleX;
     const py = (e.clientY - rect.top) * scaleY;
     const dx = px - cx;
@@ -200,7 +209,6 @@ export default function CircularSleepDial({
     triggerHaptic('selection', true);
 
     setDragTarget(resolvedTarget);
-    setDraggingTimes({ bed: activeBedTime, wake: activeWakeTime });
     dragStateRef.current = {
       lastAngle: currentAngle,
       currentBedMinutes: bedMinutes,
@@ -216,10 +224,8 @@ export default function CircularSleepDial({
     }
   };
 
-  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+  const processPointerMove = useCallback((e: PointerEvent | React.PointerEvent<any>) => {
     if (!dragTarget) return;
-    e.preventDefault();
-    e.stopPropagation();
 
     const currentAngle = getAngleFromEvent(e);
     let deltaAngle = currentAngle - dragStateRef.current.lastAngle;
@@ -258,7 +264,8 @@ export default function CircularSleepDial({
         isPrimeBoundary = nextBed === 22 * 60 || nextBed === 2 * 60;
         const newBedStr = minutesToTime(nextBed);
         const newWakeStr = minutesToTime(curWake);
-        setDraggingTimes({ bed: newBedStr, wake: newWakeStr });
+        setInternalBedTime(newBedStr);
+        setInternalWakeTime(newWakeStr);
         onChange(newBedStr, newWakeStr);
       } else if (dragTarget === 'wake') {
         let nextWake = ((curWake + step) % 1440 + 1440) % 1440;
@@ -274,7 +281,8 @@ export default function CircularSleepDial({
         isPrimeBoundary = nextWake === 22 * 60 || nextWake === 2 * 60;
         const newBedStr = minutesToTime(curBed);
         const newWakeStr = minutesToTime(nextWake);
-        setDraggingTimes({ bed: newBedStr, wake: newWakeStr });
+        setInternalBedTime(newBedStr);
+        setInternalWakeTime(newWakeStr);
         onChange(newBedStr, newWakeStr);
       } else if (dragTarget === 'arc') {
         const nextBed = ((curBed + step) % 1440 + 1440) % 1440;
@@ -285,7 +293,8 @@ export default function CircularSleepDial({
         isPrimeBoundary = nextBed === 22 * 60 || nextBed === 2 * 60 || nextWake === 22 * 60 || nextWake === 2 * 60;
         const newBedStr = minutesToTime(nextBed);
         const newWakeStr = minutesToTime(nextWake);
-        setDraggingTimes({ bed: newBedStr, wake: newWakeStr });
+        setInternalBedTime(newBedStr);
+        setInternalWakeTime(newWakeStr);
         onChange(newBedStr, newWakeStr);
       }
 
@@ -298,22 +307,59 @@ export default function CircularSleepDial({
         triggerHaptic('notch');
       }
     }
-  };
+  }, [dragTarget, getAngleFromEvent, onChange]);
 
-  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+  const processPointerUp = useCallback((pointerId?: number) => {
     if (dragTarget) {
       triggerHaptic('light', true);
       const finalBed = minutesToTime(dragStateRef.current.currentBedMinutes);
       const finalWake = minutesToTime(dragStateRef.current.currentWakeMinutes);
+      setInternalBedTime(finalBed);
+      setInternalWakeTime(finalWake);
+      onChange(finalBed, finalWake);
       onDragEnd?.(finalBed, finalWake);
     }
-    if (dragTarget && svgRef.current) {
+    if (pointerId !== undefined && svgRef.current) {
       try {
-        svgRef.current.releasePointerCapture(e.pointerId);
+        svgRef.current.releasePointerCapture(pointerId);
       } catch (err) {}
     }
     setDragTarget(null);
-    setDraggingTimes(null);
+  }, [dragTarget, onChange, onDragEnd]);
+
+  // Window-level event listeners while dragging so fast drag or release outside SVG never breaks
+  React.useEffect(() => {
+    if (!dragTarget) return;
+
+    const onGlobalPointerMove = (e: PointerEvent) => {
+      e.preventDefault();
+      processPointerMove(e);
+    };
+
+    const onGlobalPointerUp = (e: PointerEvent) => {
+      processPointerUp(e.pointerId);
+    };
+
+    window.addEventListener('pointermove', onGlobalPointerMove, { passive: false });
+    window.addEventListener('pointerup', onGlobalPointerUp);
+    window.addEventListener('pointercancel', onGlobalPointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', onGlobalPointerMove);
+      window.removeEventListener('pointerup', onGlobalPointerUp);
+      window.removeEventListener('pointercancel', onGlobalPointerUp);
+    };
+  }, [dragTarget, processPointerMove, processPointerUp]);
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dragTarget) return;
+    e.preventDefault();
+    e.stopPropagation();
+    processPointerMove(e);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    processPointerUp(e.pointerId);
   };
 
   // 12-Hour Clock Numbers: 12 at top (0°), 1, 2, 3 (90°), 4, 5, 6 (180°), 7, 8, 9 (270°), 10, 11

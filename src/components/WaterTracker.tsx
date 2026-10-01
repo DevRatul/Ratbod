@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, BellOff, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, BellOff, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle, Pencil, Droplets } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -14,6 +14,7 @@ import {
   clearPendingOfflineChange, 
   syncPendingOfflineData 
 } from '../utils/offlineSync';
+import { triggerHaptic, initHapticAudio } from '../utils/haptics';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -135,9 +136,61 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   const [showAlarmModal, setShowAlarmModal] = useState<boolean>(false);
   const [customTimerInput, setCustomTimerInput] = useState<string>('');
 
+  // Today's vs Yesterday's Log Toggle state
+  const [activeLogTab, setActiveLogTab] = useState<'today' | 'yesterday'>('today');
+  const [yesterdayEntries, setYesterdayEntries] = useState<WaterEntry[]>(() => {
+    try {
+      const savedData = localStorage.getItem('ratbod_water_tracker_data');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (Array.isArray(parsed.yesterdayEntries) && parsed.yesterdayEntries.length > 0) {
+          return parsed.yesterdayEntries;
+        }
+      }
+      const raw = localStorage.getItem('ratbod_water_yesterday_entries');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  });
 
+  // Entry Edit and Add modals
+  const [editingEntry, setEditingEntry] = useState<{ entry: WaterEntry; isYesterday: boolean } | null>(null);
+  const [editAmountInput, setEditAmountInput] = useState<string>('');
+  const [editTimeInput, setEditTimeInput] = useState<string>('');
+  const [showAddYesterdayModal, setShowAddYesterdayModal] = useState<boolean>(false);
+  const [addYesterdayAmountInput, setAddYesterdayAmountInput] = useState<string>('250');
+  const [isAlertHovered, setIsAlertHovered] = useState<boolean>(false);
 
   const dhakaSunsetInfo = useMemo(() => getDhakaLogicalDateKey(), []);
+
+  const currentYesterdayDate = useMemo(() => getDhakaLogicalDateKey().yesterdayDateKey, []);
+
+  // Compute displayed yesterday entries: either explicit yesterdayEntries or synthesized from history
+  const displayedYesterdayEntries = useMemo(() => {
+    if (yesterdayEntries.length > 0) return yesterdayEntries;
+    const yRecord = history.find(h => h.date === currentYesterdayDate);
+    if (yRecord && yRecord.consumedMl > 0) {
+      const vol = glassVolumeMl || 250;
+      const count = Math.max(1, Math.round(yRecord.consumedMl / vol));
+      const mockEntries: WaterEntry[] = [];
+      const now = Date.now();
+      for (let i = 0; i < count; i++) {
+        mockEntries.push({
+          id: `yesterday_auto_${i}_${currentYesterdayDate}`,
+          amountMl: vol,
+          glasses: 1,
+          timestamp: '12:00 PM',
+          createdAt: now - 86400000 + i * 3600000
+        });
+      }
+      return mockEntries;
+    }
+    return [];
+  }, [yesterdayEntries, history, currentYesterdayDate, glassVolumeMl]);
+
+  const yesterdayTotalMl = useMemo(() => {
+    return displayedYesterdayEntries.reduce((acc, curr) => acc + (curr.amountMl || 0), 0);
+  }, [displayedYesterdayEntries]);
 
   const goalMl = goalGlasses * glassVolumeMl;
   const totalConsumedMl = entries.reduce((acc, curr) => acc + curr.amountMl, 0);
@@ -243,12 +296,15 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     updatedHistory?: DayHistory[],
     updatedGoalGlasses?: number,
     updatedGlassVolume?: number,
-    updatedReminderActive?: boolean
+    updatedReminderActive?: boolean,
+    updatedYesterdayEntries?: WaterEntry[]
   ) => {
     try {
       const todayDate = getDhakaLogicalDateKey().dateKey;
+      const yesterdayDate = getDhakaLogicalDateKey().yesterdayDateKey;
       const finalEntries = updatedEntries !== undefined ? updatedEntries : entries;
       const finalHistory = updatedHistory !== undefined ? updatedHistory : history;
+      const finalYesterday = updatedYesterdayEntries !== undefined ? updatedYesterdayEntries : yesterdayEntries;
       const finalGoalGlasses = updatedGoalGlasses !== undefined ? updatedGoalGlasses : goalGlasses;
       const finalGlassVolume = updatedGlassVolume !== undefined ? updatedGlassVolume : glassVolumeMl;
       const finalReminderActive = updatedReminderActive !== undefined ? updatedReminderActive : reminderActive;
@@ -257,7 +313,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
         goalGlasses: finalGoalGlasses,
         glassVolumeMl: finalGlassVolume,
         todayEntries: finalEntries,
+        yesterdayEntries: finalYesterday,
         todayDate,
+        yesterdayDate,
         history: finalHistory,
         reminderActive: finalReminderActive,
         alertIntervalMinutes,
@@ -269,6 +327,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       try {
         localStorage.setItem('ratbod_water_tracker_data', JSON.stringify(payload));
         localStorage.setItem('ratool_water_tracker_data', JSON.stringify(payload));
+        localStorage.setItem('ratbod_water_yesterday_entries', JSON.stringify(finalYesterday));
       } catch (e) {}
 
       // Register change in offline sync manager
@@ -298,6 +357,109 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
   };
 
+  // Persist modifications to yesterday's entries and sync with DayHistory & Habitor
+  const persistYesterdayEntries = (updatedYesterday: WaterEntry[]) => {
+    setYesterdayEntries(updatedYesterday);
+    try {
+      localStorage.setItem('ratbod_water_yesterday_entries', JSON.stringify(updatedYesterday));
+    } catch {}
+
+    const yesterdayDate = getDhakaLogicalDateKey().yesterdayDateKey;
+    const yesterdayTotal = updatedYesterday.reduce((acc, c) => acc + (c.amountMl || 0), 0);
+    const yesterdayGoal = goalGlasses * glassVolumeMl;
+
+    let updatedHistory = [...history];
+    const existIdx = updatedHistory.findIndex(h => h.date === yesterdayDate);
+    if (existIdx >= 0) {
+      updatedHistory[existIdx] = { date: yesterdayDate, consumedMl: yesterdayTotal, goalMl: yesterdayGoal };
+    } else {
+      updatedHistory.unshift({ date: yesterdayDate, consumedMl: yesterdayTotal, goalMl: yesterdayGoal });
+    }
+    setHistory(updatedHistory);
+
+    persistWaterData(entries, updatedHistory, goalGlasses, glassVolumeMl, reminderActive, updatedYesterday);
+
+    if (yesterdayTotal >= yesterdayGoal && yesterdayGoal > 0) {
+      markWaterHabitCompleted(yesterdayDate);
+    }
+  };
+
+  // Delete Yesterday's Entry
+  const handleDeleteYesterdayEntry = (id: string) => {
+    initHapticAudio();
+    triggerHaptic('medium', true);
+    const updated = displayedYesterdayEntries.filter(e => e.id !== id);
+    persistYesterdayEntries(updated);
+  };
+
+  // Add Yesterday's Entry
+  const handleAddYesterdayEntry = () => {
+    initHapticAudio();
+    triggerHaptic('heavy', true);
+    const amt = parseInt(addYesterdayAmountInput, 10);
+    if (isNaN(amt) || amt <= 0) return;
+
+    const newEntry: WaterEntry = {
+      id: `yesterday_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      amountMl: amt,
+      glasses: amt / (glassVolumeMl || 250),
+      timestamp: '03:00 PM',
+      createdAt: Date.now() - 86400000
+    };
+
+    const updated = [newEntry, ...displayedYesterdayEntries];
+    persistYesterdayEntries(updated);
+    setShowAddYesterdayModal(false);
+    setAddYesterdayAmountInput('250');
+  };
+
+  // Open Edit Modal for an entry (either Today or Yesterday)
+  const handleOpenEditEntry = (entry: WaterEntry, isYesterday: boolean) => {
+    initHapticAudio();
+    triggerHaptic('selection', true);
+    setEditingEntry({ entry, isYesterday });
+    setEditAmountInput(String(entry.amountMl));
+    setEditTimeInput(format12HourTime(entry.createdAt || entry.timestamp));
+  };
+
+  // Save changes to edited entry
+  const handleSaveEditEntry = () => {
+    if (!editingEntry) return;
+    initHapticAudio();
+    triggerHaptic('heavy', true);
+    const newAmount = parseInt(editAmountInput, 10);
+    if (isNaN(newAmount) || newAmount <= 0) return;
+
+    if (editingEntry.isYesterday) {
+      const updated = displayedYesterdayEntries.map(e => {
+        if (e.id === editingEntry.entry.id) {
+          return {
+            ...e,
+            amountMl: newAmount,
+            glasses: newAmount / (glassVolumeMl || 250)
+          };
+        }
+        return e;
+      });
+      persistYesterdayEntries(updated);
+    } else {
+      const updated = entries.map(e => {
+        if (e.id === editingEntry.entry.id) {
+          return {
+            ...e,
+            amountMl: newAmount,
+            glasses: newAmount / (glassVolumeMl || 250)
+          };
+        }
+        return e;
+      });
+      setEntries(updated);
+      persistWaterData(updated);
+    }
+
+    setEditingEntry(null);
+  };
+
   // Load from Firestore & LocalStorage with real-time onSnapshot sync across all devices
   useEffect(() => {
     let unsubscribeSnapshot: (() => void) | null = null;
@@ -322,6 +484,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       if (parsed.reminderActive !== undefined) setReminderActive(parsed.reminderActive);
 
       const currentToday = getDhakaLogicalDateKey().dateKey;
+      const currentYesterday = getDhakaLogicalDateKey().yesterdayDateKey;
       let loadedHistory: DayHistory[] = Array.isArray(parsed.history) ? [...parsed.history] : [];
 
       if (parsed.todayDate === currentToday) {
@@ -330,15 +493,23 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           const valid = parsed.todayEntries.filter((e: WaterEntry) => e && e.id && !deletedEntryIdsRef.current.has(String(e.id)));
           setEntries(valid);
         }
-      } else {
-        // Date changed since last session (or sunset passed): reset deletedEntryIds and redo stack
+        if (Array.isArray(parsed.yesterdayEntries)) {
+          setYesterdayEntries(parsed.yesterdayEntries);
+          try { localStorage.setItem('ratbod_water_yesterday_entries', JSON.stringify(parsed.yesterdayEntries)); } catch {}
+        }
+      } else if (parsed.todayDate === currentYesterday) {
+        // Date changed since last session: yesterday's entries are previous session's todayEntries
         setDeletedEntryIds(new Set());
         try { localStorage.removeItem('ratbod_water_deleted_entry_ids'); } catch {}
         setRedoStack([]);
         try { localStorage.removeItem('ratbod_water_redo_stack'); } catch {}
 
-        if (parsed.todayDate && Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
-          const oldTotal = parsed.todayEntries.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
+        if (Array.isArray(parsed.todayEntries) && parsed.todayEntries.length > 0) {
+          const validYesterday = parsed.todayEntries.filter((e: WaterEntry) => e && e.id && !deletedEntryIdsRef.current.has(String(e.id)));
+          setYesterdayEntries(validYesterday);
+          try { localStorage.setItem('ratbod_water_yesterday_entries', JSON.stringify(validYesterday)); } catch {}
+
+          const oldTotal = validYesterday.reduce((acc: number, c: WaterEntry) => acc + (c.amountMl || 0), 0);
           const oldGoal = (parsed.goalGlasses || goalGlasses) * (parsed.glassVolumeMl || glassVolumeMl);
           
           const existingIdx = loadedHistory.findIndex(h => h.date === parsed.todayDate);
@@ -347,6 +518,12 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           } else if (oldTotal > 0) {
             loadedHistory.unshift({ date: parsed.todayDate, consumedMl: oldTotal, goalMl: oldGoal });
           }
+        }
+        setEntries([]);
+      } else {
+        if (Array.isArray(parsed.yesterdayEntries) && parsed.yesterdayDate === currentYesterday) {
+          setYesterdayEntries(parsed.yesterdayEntries);
+          try { localStorage.setItem('ratbod_water_yesterday_entries', JSON.stringify(parsed.yesterdayEntries)); } catch {}
         }
         setEntries([]);
       }
@@ -934,6 +1111,67 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
   }, [isAlertMenuOpen]);
 
   const isAlertActive = isAlertEnabled;
+
+  // Clock time of alarm & remaining time in simple one line text
+  const alertHoverInfo = useMemo(() => {
+    if (!isAlertActive) return null;
+
+    let baseTime = Date.now();
+    if (entries.length > 0) {
+      const lastEntry = entries[0];
+      const entryTimeMs = lastEntry.createdAt || Number(lastEntry.id);
+      if (entryTimeMs && !isNaN(entryTimeMs) && entryTimeMs > 1600000000000) {
+        baseTime = entryTimeMs;
+      }
+    } else {
+      const savedStartTime = localStorage.getItem('ratbod_water_alert_start_time');
+      if (savedStartTime) {
+        baseTime = Number(savedStartTime) || Date.now();
+      }
+    }
+
+    const targetTimeMs = baseTime + (alertIntervalMinutes * 60 * 1000);
+    const targetDate = new Date(targetTimeMs);
+    
+    // Format clock time e.g. "11:45 AM"
+    let hours = targetDate.getHours();
+    const minutes = targetDate.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    const padMinStr = String(minutes).padStart(2, '0');
+    const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    const toBn = (val: number | string) => String(val).replace(/[0-9]/g, d => bnDigits[Number(d)]);
+    const clockTime = lang === 'bn' 
+      ? `${toBn(hours)}:${toBn(padMinStr)} ${ampm}` 
+      : `${hours}:${padMinStr} ${ampm}`;
+
+    const diffMs = targetTimeMs - Date.now();
+    const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+
+    let remainingText = '';
+    if (remainingMinutes <= 0) {
+      remainingText = lang === 'bn' ? 'এখনই সময়' : 'Due now';
+    } else if (remainingMinutes < 60) {
+      remainingText = lang === 'bn' ? `${toBn(remainingMinutes)} মি. বাকি` : `${remainingMinutes}m remaining`;
+    } else {
+      const remH = Math.floor(remainingMinutes / 60);
+      const remM = remainingMinutes % 60;
+      remainingText = lang === 'bn' 
+        ? `${toBn(remH)} ঘণ্টা ${toBn(remM)} মি. বাকি` 
+        : `${remH}h ${remM}m remaining`;
+    }
+
+    const oneLineText = lang === 'bn'
+      ? `অ্যালার্ম: ${clockTime} (${remainingText})`
+      : `Alarm: ${clockTime} (${remainingText})`;
+
+    return {
+      clockTime,
+      remainingText,
+      oneLineText
+    };
+  }, [isAlertActive, entries, alertIntervalMinutes, lang]);
 
   const handleSelectAlertOption = async (option: number | 'off') => {
     let nextEnabled = true;
@@ -1572,7 +1810,12 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
 
           {/* Top Right Corner: Alert Button (shows Bell when active, BellOff alarm off when off) */}
-          <div className="relative flex items-center justify-end shrink-0" ref={alertMenuRef}>
+          <div 
+            className="relative flex items-center justify-end shrink-0" 
+            ref={alertMenuRef}
+            onMouseEnter={() => setIsAlertHovered(true)}
+            onMouseLeave={() => setIsAlertHovered(false)}
+          >
             <button
               type="button"
               onClick={() => setIsAlertMenuOpen(prev => !prev)}
@@ -1585,7 +1828,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                       : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200/80")
               )}
               title={isAlertActive 
-                ? (lang === 'bn' ? `${alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০'} মিনিট রিমাইন্ডার সক্রিয়` : `${alertIntervalMinutes}m Alert Active`) 
+                ? (alertHoverInfo ? alertHoverInfo.oneLineText : (lang === 'bn' ? `${alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০'} মিনিট রিমাইন্ডার সক্রিয়` : `${alertIntervalMinutes}m Alert Active`))
                 : (lang === 'bn' ? 'রিমাইন্ডার বন্ধ (মেনু খুলতে ক্লিক করুন)' : 'Alert Off (click to open menu)')}
             >
               {isAlertActive ? (
@@ -1596,6 +1839,27 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               <span>{isAlertActive ? (lang === 'bn' ? (alertIntervalMinutes === 50 ? '৫০মি' : alertIntervalMinutes === 30 ? '৩০মি' : alertIntervalMinutes === 45 ? '৪৫মি' : '৬০মি') : `${alertIntervalMinutes}m`) : (lang === 'bn' ? 'বন্ধ' : 'Off')}</span>
               <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-60 ml-0.5", isAlertMenuOpen ? "rotate-180" : "")} />
             </button>
+
+            {/* Mouseover One-Line Alert Clock & Remaining Time Tooltip */}
+            <AnimatePresence>
+              {isAlertHovered && isAlertActive && alertHoverInfo && !isAlertMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className={cn(
+                    "absolute right-0 top-full mt-1.5 z-40 px-3 py-1.5 rounded-xl border text-[11px] font-semibold tracking-tight whitespace-nowrap shadow-xl backdrop-blur-md pointer-events-none flex items-center gap-1.5",
+                    darkMode
+                      ? "bg-[#0f172a]/95 text-emerald-300 border-emerald-500/40 shadow-black/70"
+                      : "bg-white/95 text-emerald-800 border-emerald-300 shadow-emerald-900/10"
+                  )}
+                >
+                  <Clock size={12} className="text-emerald-500 shrink-0" />
+                  <span>{alertHoverInfo.oneLineText}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Small Popup Menu with 30, 45, 50, 60 minutes and Off */}
             <AnimatePresence>
@@ -1921,85 +2185,418 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
       {/* Intake Logs & Goal Card Section */}
       <div className="w-full space-y-3">
-        {/* Today's Log List */}
+        {/* Toggle between Today's and Yesterday's Log */}
         <div className={cn(
           "w-full p-4 sm:p-5 rounded-2xl border space-y-3",
           darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
         )}>
-          <div className="flex items-center justify-between pb-2.5 border-b border-gray-200/20 dark:border-white/5">
-            <h3 className="text-xs sm:text-sm font-bold tracking-tight text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-              <Calendar size={15} className="text-blue-500" />
-              {labels.todayLogs} ({formatNum(entries.length)})
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(true)}
-              className={cn(
-                "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
-                darkMode
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
-                  : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+          {/* Header with Segmented Tabs for Today & Yesterday */}
+          <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-gray-200/20 dark:border-white/5 gap-2">
+            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200/60 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => setActiveLogTab('today')}
+                className={cn(
+                  "px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                  activeLogTab === 'today'
+                    ? (darkMode ? "bg-blue-600 text-white shadow-xs" : "bg-white text-blue-600 shadow-xs")
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                )}
+              >
+                <Calendar size={13} />
+                <span>{lang === 'bn' ? 'আজকের লগ' : "Today's Log"}</span>
+                <span className="text-[10px] font-mono opacity-80">({formatNum(entries.length)})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveLogTab('yesterday')}
+                className={cn(
+                  "px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                  activeLogTab === 'yesterday'
+                    ? (darkMode ? "bg-blue-600 text-white shadow-xs" : "bg-white text-blue-600 shadow-xs")
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                )}
+              >
+                <Clock size={13} />
+                <span>{lang === 'bn' ? 'গতকালকের লগ' : "Yesterday's Log"}</span>
+                <span className="text-[10px] font-mono opacity-80">({formatNum(displayedYesterdayEntries.length)})</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {activeLogTab === 'yesterday' && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddYesterdayModal(true)}
+                  className={cn(
+                    "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border shadow-2xs whitespace-nowrap active:scale-95",
+                    darkMode
+                      ? "bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30"
+                      : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 shadow-blue-500/10"
+                  )}
+                  title={lang === 'bn' ? 'গতকালকের জন্য পানি যোগ করুন' : 'Add water entry for yesterday'}
+                >
+                  <Plus size={13} />
+                  <span>{lang === 'bn' ? '+ যোগ করুন' : '+ Add Entry'}</span>
+                </button>
               )}
-              title={lang === 'bn' ? 'পানি পানের ইতিহাস দেখুন' : 'View Water Intake History'}
-            >
-              <HistoryIcon size={13} />
-              <span>{lang === 'bn' ? 'ইতিহাস' : 'History'}</span>
-            </button>
+
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
+                className={cn(
+                  "px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border shadow-2xs whitespace-nowrap active:scale-95",
+                  darkMode
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
+                    : "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                )}
+                title={lang === 'bn' ? 'পানি পানের ইতিহাস দেখুন' : 'View Water Intake History'}
+              >
+                <HistoryIcon size={13} />
+                <span>{lang === 'bn' ? 'ইতিহাস' : 'History'}</span>
+              </button>
+            </div>
           </div>
 
-          {entries.length === 0 ? (
-            <div className="py-6 text-center text-xs text-gray-700 font-medium">
-              {labels.emptyLogs}
+          {/* Yesterday's Summary Banner when Yesterday tab is active */}
+          {activeLogTab === 'yesterday' && (
+            <div className={cn(
+              "p-2.5 rounded-xl border flex items-center justify-between text-xs font-bold",
+              darkMode ? "bg-blue-950/20 border-blue-500/20 text-blue-300" : "bg-blue-50/70 border-blue-100 text-blue-900"
+            )}>
+              <div className="flex items-center gap-2">
+                <Droplets size={15} className="text-blue-500" />
+                <span>{lang === 'bn' ? 'গতকালকের মোট পানি পান:' : 'Total Yesterday:'}</span>
+                <span className="font-mono text-sm">{formatNum(yesterdayTotalMl)} ml</span>
+              </div>
+              <span className="text-[11px] font-mono opacity-80">
+                {lang === 'bn' ? `লক্ষ্য: ${formatNum(goalMl)} ml` : `Goal: ${formatNum(goalMl)} ml`}
+              </span>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <AnimatePresence>
-                {entries.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className={cn(
-                      "p-2.5 rounded-xl border flex items-center justify-between transition-colors",
-                      darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                        <Droplet size={14} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
-                          +{formatNum(item.amountMl)} {labels.mlUnit}
-                        </span>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Clock size={11} className="text-gray-400 dark:text-gray-500 shrink-0" />
-                          <span 
-                            className="text-[11px] text-gray-500 dark:text-gray-400 font-sans font-medium tracking-tight"
-                            style={{ fontFamily: 'Inter, sans-serif' }}
-                          >
-                            {format12HourTime(item.createdAt || item.timestamp)}
+          )}
+
+          {/* List of Entries (Conditional on active tab) */}
+          {activeLogTab === 'today' ? (
+            entries.length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-700 font-medium">
+                {labels.emptyLogs}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {entries.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className={cn(
+                        "p-2.5 rounded-xl border flex items-center justify-between transition-colors",
+                        darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                          <Droplet size={14} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                            +{formatNum(item.amountMl)} {labels.mlUnit}
                           </span>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Clock size={11} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                            <span 
+                              className="text-[11px] text-gray-500 dark:text-gray-400 font-sans font-medium tracking-tight"
+                              style={{ fontFamily: 'Inter, sans-serif' }}
+                            >
+                              {format12HourTime(item.createdAt || item.timestamp)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <button
-                      onClick={() => handleDeleteEntry(item.id)}
-                      className="p-1.5 rounded-lg text-gray-900 dark:text-white hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Delete entry"
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditEntry(item, false)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer"
+                          title={lang === 'bn' ? 'সম্পাদনা করুন' : 'Edit entry'}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEntry(item.id)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                          title={lang === 'bn' ? 'মুছুন' : 'Delete entry'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )
+          ) : (
+            displayedYesterdayEntries.length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-700 font-medium space-y-2">
+                <div>{lang === 'bn' ? 'গতকালকের কোনো পানি পানের রেকর্ড নেই।' : 'No water logged for yesterday.'}</div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddYesterdayModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer inline-flex items-center gap-1"
+                >
+                  <Plus size={13} />
+                  <span>{lang === 'bn' ? 'গতকালকের লগ যোগ করুন' : 'Add Yesterday Log'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {displayedYesterdayEntries.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className={cn(
+                        "p-2.5 rounded-xl border flex items-center justify-between transition-colors",
+                        darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+                      )}
                     >
-                      <Trash2 size={13} />
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                          <Droplet size={14} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                            +{formatNum(item.amountMl)} {labels.mlUnit}
+                          </span>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Clock size={11} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                            <span 
+                              className="text-[11px] text-gray-500 dark:text-gray-400 font-sans font-medium tracking-tight"
+                              style={{ fontFamily: 'Inter, sans-serif' }}
+                            >
+                              {format12HourTime(item.createdAt || item.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditEntry(item, true)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer"
+                          title={lang === 'bn' ? 'সম্পাদনা করুন' : 'Edit entry'}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteYesterdayEntry(item.id)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                          title={lang === 'bn' ? 'মুছুন' : 'Delete entry'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )
           )}
 
         </div>
       </div>
+
+      {/* Edit Entry Modal */}
+      <AnimatePresence>
+        {editingEntry && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={cn(
+                "w-full max-w-sm rounded-2xl border p-4 sm:p-5 shadow-2xl space-y-4 my-auto",
+                darkMode ? "bg-[#0b1724] border-blue-500/30 text-white" : "bg-white border-gray-200 text-gray-900"
+              )}
+            >
+              <div className="flex items-center justify-between border-b pb-2.5 border-gray-200/20 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <Pencil size={16} className="text-blue-500" />
+                  <h3 className="font-bold text-sm">
+                    {editingEntry.isYesterday 
+                      ? (lang === 'bn' ? 'গতকালকের রেকর্ড সম্পাদনা' : "Edit Yesterday's Entry") 
+                      : (lang === 'bn' ? 'আজকের রেকর্ড সম্পাদনা' : "Edit Today's Entry")}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingEntry(null)}
+                  className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                    {lang === 'bn' ? 'পানির পরিমাণ (মিলি)' : 'Water Amount (ml)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="5000"
+                    step="10"
+                    value={editAmountInput}
+                    onChange={(e) => setEditAmountInput(e.target.value)}
+                    className={cn(
+                      "w-full px-3 py-2 rounded-xl border text-sm font-bold font-mono outline-hidden",
+                      darkMode ? "bg-white/5 border-white/15 text-white" : "bg-gray-50 border-gray-300 text-gray-900"
+                    )}
+                  />
+                  {/* Quick preset buttons */}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    {[100, 200, 250, 300, 500].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setEditAmountInput(String(amt))}
+                        className={cn(
+                          "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
+                          parseInt(editAmountInput, 10) === amt
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : (darkMode ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200")
+                        )}
+                      >
+                        {amt}ml
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingEntry(null)}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all",
+                      darkMode ? "border-white/10 hover:bg-white/5 text-gray-400" : "border-gray-200 hover:bg-gray-100 text-gray-600"
+                    )}
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEditEntry}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 cursor-pointer transition-all active:scale-95"
+                  >
+                    {lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Yesterday Entry Modal */}
+      <AnimatePresence>
+        {showAddYesterdayModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={cn(
+                "w-full max-w-sm rounded-2xl border p-4 sm:p-5 shadow-2xl space-y-4 my-auto",
+                darkMode ? "bg-[#0b1724] border-blue-500/30 text-white" : "bg-white border-gray-200 text-gray-900"
+              )}
+            >
+              <div className="flex items-center justify-between border-b pb-2.5 border-gray-200/20 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <Plus size={16} className="text-blue-500" />
+                  <h3 className="font-bold text-sm">
+                    {lang === 'bn' ? 'গতকালকের জন্য পানি যোগ করুন' : 'Add Water to Yesterday'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddYesterdayModal(false)}
+                  className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                    {lang === 'bn' ? 'পানির পরিমাণ (মিলি)' : 'Water Amount (ml)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="5000"
+                    step="10"
+                    value={addYesterdayAmountInput}
+                    onChange={(e) => setAddYesterdayAmountInput(e.target.value)}
+                    className={cn(
+                      "w-full px-3 py-2 rounded-xl border text-sm font-bold font-mono outline-hidden",
+                      darkMode ? "bg-white/5 border-white/15 text-white" : "bg-gray-50 border-gray-300 text-gray-900"
+                    )}
+                  />
+                  {/* Quick preset buttons */}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    {[150, 200, 250, 300, 500].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setAddYesterdayAmountInput(String(amt))}
+                        className={cn(
+                          "px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
+                          parseInt(addYesterdayAmountInput, 10) === amt
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : (darkMode ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200")
+                        )}
+                      >
+                        +{amt}ml
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddYesterdayModal(false)}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all",
+                      darkMode ? "border-white/10 hover:bg-white/5 text-gray-400" : "border-gray-200 hover:bg-gray-100 text-gray-600"
+                    )}
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddYesterdayEntry}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 cursor-pointer transition-all active:scale-95"
+                  >
+                    {lang === 'bn' ? 'যোগ করুন' : 'Add Entry'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Goal Selector Modal */}
       <AnimatePresence>

@@ -474,8 +474,14 @@ export async function syncPendingOfflineData(isOnlineReconnect: boolean = false)
             });
           }
 
+          // Use authoritative latest local times from localStorage if present
+          const currentLocalBed = (typeof localStorage !== 'undefined' && localStorage.getItem('ratbod_sleep_bed')) || localData.sleepBedTime;
+          const currentLocalWake = (typeof localStorage !== 'undefined' && localStorage.getItem('ratbod_sleep_wake')) || localData.sleepWakeTime;
+
           const payload = {
             ...localData,
+            sleepBedTime: currentLocalBed || '23:00',
+            sleepWakeTime: currentLocalWake || '07:00',
             sleepRecords: mergedRecords,
             updatedAt: Date.now()
           };
@@ -554,7 +560,7 @@ export async function syncPendingOfflineData(isOnlineReconnect: boolean = false)
 
     // 'Updated' pop message only appears when a new offline data saves for the first time
     // after establishing an online connection!
-    if (hasSyncedAny && (hadOfflineData || isOnlineReconnect)) {
+    if (hasSyncedAny && hadOfflineData) {
       clearHasUnsyncedOfflineData();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('ratbod_offline_sync_success'));

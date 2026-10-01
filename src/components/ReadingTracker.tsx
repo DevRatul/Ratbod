@@ -284,6 +284,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const [noteInput, setNoteInput] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
   const [savedToast, setSavedToast] = useState<boolean>(false);
+  const [showBookSessionsModal, setShowBookSessionsModal] = useState<boolean>(false);
+  const [bookSessionsSelectedId, setBookSessionsSelectedId] = useState<string | null>(null);
 
   // Keep date synchronized when sunset passes in real-time
   useEffect(() => {
@@ -1505,11 +1507,30 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
             <Calendar size={13} className="text-indigo-500" />
             <span>{isBn ? 'সাম্প্রতিক ইতিহাস' : 'Recent Sessions'}</span>
           </h3>
-          {records.length > 0 && (
-            <span className="text-[10.5px] font-mono text-gray-400">
-              {formatNum(records.length)} {isBn ? 'টি সেশন' : 'sessions'}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setBookSessionsSelectedId(selectedBookId);
+                setShowBookSessionsModal(true);
+              }}
+              className={cn(
+                "px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-2xs whitespace-nowrap active:scale-95",
+                darkMode
+                  ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30"
+                  : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
+              )}
+              title={isBn ? 'এই বইয়ের সকল পূর্ববর্তী সেশন দেখুন' : 'Show all previous logs of this book'}
+            >
+              <BookOpen size={12} />
+              <span>{isBn ? 'সেশনসমূহ' : 'Sessions'}</span>
+            </button>
+            {records.length > 0 && (
+              <span className="text-[10.5px] font-mono text-gray-400">
+                {formatNum(records.length)} {isBn ? 'টি সেশন' : 'sessions'}
+              </span>
+            )}
+          </div>
         </div>
 
         {records.length === 0 ? (
@@ -1518,7 +1539,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           </div>
         ) : (
           <div className="space-y-1.5">
-            {records.slice(0, 6).map((rec) => (
+            {records.slice(0, 7).map((rec) => (
               <div
                 key={rec.id}
                 className={cn(
@@ -1563,6 +1584,193 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* 4b. ALL PREVIOUS SESSIONS FOR SELECTED BOOK MODAL                         */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {showBookSessionsModal && (() => {
+          const targetSessionBookId = bookSessionsSelectedId || selectedBookId;
+          const targetSessionBook = books.find(b => b.id === targetSessionBookId);
+          const isCustomSessionTarget = targetSessionBookId === 'custom';
+          const targetSessionBookTitle = isCustomSessionTarget 
+            ? (customBookTitle.trim() || (isBn ? 'কাস্টম বই' : 'Custom Book')) 
+            : (targetSessionBook?.title || 'Atomic Habits');
+
+          const selectedBookPreviousLogs = records.filter(r => {
+            if (isCustomSessionTarget) {
+              return r.bookId === 'custom' || (!r.bookId && r.bookTitle === targetSessionBookTitle);
+            }
+            return r.bookId === targetSessionBookId || r.bookTitle === targetSessionBookTitle;
+          });
+
+          const selectedBookTotalPagesRead = selectedBookPreviousLogs.reduce((acc, r) => acc + (r.pages || 0), 0);
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className={cn(
+                  "w-full max-w-lg rounded-2xl border p-4 sm:p-5 shadow-2xl space-y-4 max-h-[88vh] flex flex-col my-auto",
+                  darkMode ? "bg-[#14151b] border-white/10 text-white" : "bg-white border-slate-200 text-gray-900"
+                )}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3 shrink-0">
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-2">
+                      <BookOpen size={17} className="text-indigo-500 shrink-0" />
+                      <h3 className="font-bold text-sm sm:text-base truncate">
+                        {targetSessionBookTitle}
+                      </h3>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {isBn ? 'এই বইটির সকল পূর্ববর্তী পড়ার সেশন ও ইতিহাস' : 'All previous reading sessions & logs for this book'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowBookSessionsModal(false)}
+                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Book Switcher Pills if user has books */}
+                {books.length > 0 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 shrink-0 scrollbar-none">
+                    {books.map(b => {
+                      const isSelected = targetSessionBookId === b.id;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setBookSessionsSelectedId(b.id)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border",
+                            isSelected
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                              : (darkMode ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" : "bg-slate-100 border-slate-200 text-gray-700 hover:bg-slate-200")
+                          )}
+                        >
+                          {b.title}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setBookSessionsSelectedId('custom')}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border",
+                        targetSessionBookId === 'custom'
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                          : (darkMode ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" : "bg-slate-100 border-slate-200 text-gray-700 hover:bg-slate-200")
+                      )}
+                    >
+                      ✏️ {isBn ? 'কাস্টম বই' : 'Custom Book'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Summary Stats Header Card */}
+                <div className={cn(
+                  "p-3 rounded-xl border flex items-center justify-between text-xs shrink-0",
+                  darkMode ? "bg-white/[0.03] border-white/5" : "bg-slate-50 border-slate-200/80"
+                )}>
+                  <div>
+                    <span className="text-[10.5px] text-gray-400 block">{isBn ? 'মোট সেশন' : 'Total Sessions'}</span>
+                    <span className="font-bold text-sm font-mono text-indigo-500">
+                      {formatNum(selectedBookPreviousLogs.length)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10.5px] text-gray-400 block">{isBn ? 'মোট পড়া হয়েছে' : 'Total Read'}</span>
+                    <span className="font-bold text-sm font-mono text-emerald-500">
+                      {formatNum(selectedBookTotalPagesRead)} {isBn ? 'পৃষ্ঠা' : 'pages'}
+                    </span>
+                  </div>
+                  {targetSessionBook && (
+                    <div>
+                      <span className="text-[10.5px] text-gray-400 block">{isBn ? 'অগ্রগতি' : 'Progress'}</span>
+                      <span className="font-bold text-sm font-mono text-amber-500">
+                        {Math.min(100, Math.round((selectedBookTotalPagesRead / (targetSessionBook.totalPages || 1)) * 100))}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Scrollable list of all previous sessions */}
+                <div className="overflow-y-auto space-y-2 pr-1 my-1 flex-1">
+                  {selectedBookPreviousLogs.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-gray-400">
+                      {isBn ? 'এই বইটির জন্য এখনো কোনো পূর্ববর্তী সেশন পাওয়া যায়নি।' : 'No previous reading sessions logged for this book yet.'}
+                    </div>
+                  ) : (
+                    selectedBookPreviousLogs.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className={cn(
+                          "p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all",
+                          darkMode ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04]" : "bg-slate-50/70 border-slate-200/70 hover:bg-slate-100/70"
+                        )}
+                      >
+                        <div className="min-w-0 flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                            <BookOpen size={13} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 font-mono">
+                                +{formatNum(rec.pages)} {isBn ? 'পৃষ্ঠা' : 'pages'}
+                              </span>
+                              {rec.fromPage !== undefined && rec.toPage !== undefined && (
+                                <span className="text-[10.5px] font-mono font-medium opacity-70">
+                                  (p. {formatNum(rec.fromPage)}–{formatNum(rec.toPage)})
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10.5px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                              <Clock size={10} className="shrink-0" />
+                              <span>{formatHistoryDate(rec.date)}</span>
+                              {rec.note && <span className="truncate italic">• "{rec.note}"</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            requestDeleteRecord(rec);
+                          }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                          title={isBn ? 'মুছুন' : 'Delete'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Close Button */}
+                <div className="pt-2 border-t border-slate-100 dark:border-white/10 shrink-0 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowBookSessionsModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition-all active:scale-95"
+                  >
+                    {isBn ? 'বন্ধ করুন' : 'Close'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ========================================================================= */}
       {/* 5. MINIMAL MODAL / SHEET: LIBRARY & ADD BOOK                              */}

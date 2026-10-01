@@ -145,9 +145,11 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
         unsubSnapshot = onSnapshot(docRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            const isRecentLocalWrite = Date.now() - lastLocalWriteRef.current < 2500;
-            // Never overwrite the dial time if user is actively dragging or just made a local adjustment
-            if (!isDraggingRef.current && !isRecentLocalWrite) {
+            const remoteUpdatedAt = Number(data?.updatedAt) || 0;
+            const localUpdatedAt = Number(localStorage.getItem('ratbod_sleep_updated_at')) || 0;
+            const isRecentLocalWrite = Date.now() - lastLocalWriteRef.current < 5000;
+            // Never overwrite the dial time if user is actively dragging, if in recent write, or if local is newer
+            if (!isDraggingRef.current && !isRecentLocalWrite && remoteUpdatedAt > localUpdatedAt) {
               if (data.sleepBedTime) {
                 setSleepBedTime(data.sleepBedTime);
                 try { localStorage.setItem('ratbod_sleep_bed', data.sleepBedTime); } catch {}
@@ -197,17 +199,19 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
 
   // Save to localStorage and Firestore
   const persistSleepData = (bed: string, wake: string, records: SleepRecord[]) => {
-    lastLocalWriteRef.current = Date.now();
+    const now = Date.now();
+    lastLocalWriteRef.current = now;
     try {
       localStorage.setItem('ratbod_sleep_bed', bed);
       localStorage.setItem('ratbod_sleep_wake', wake);
+      localStorage.setItem('ratbod_sleep_updated_at', String(now));
       localStorage.setItem('ratbod_sleep_records', JSON.stringify(records));
       
       const payload = {
         sleepBedTime: bed,
         sleepWakeTime: wake,
         sleepRecords: records,
-        updatedAt: Date.now()
+        updatedAt: now
       };
 
       recordOfflineChange('sleepTracker', payload);
@@ -332,28 +336,35 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
 
   const handleDialChange = (newBed: string, newWake: string) => {
     isDraggingRef.current = true;
-    lastLocalWriteRef.current = Date.now();
+    const now = Date.now();
+    lastLocalWriteRef.current = now;
     setSleepBedTime(newBed);
     setSleepWakeTime(newWake);
     try {
       localStorage.setItem('ratbod_sleep_bed', newBed);
       localStorage.setItem('ratbod_sleep_wake', newWake);
+      localStorage.setItem('ratbod_sleep_updated_at', String(now));
     } catch {}
 
-    // Debounced safety save in case onDragEnd doesn't fire
+    // Debounced safety save in case onDragEnd doesn't fire, but keep isDraggingRef true until drag finishes
     if (dialSaveTimeoutRef.current) clearTimeout(dialSaveTimeoutRef.current);
     dialSaveTimeoutRef.current = setTimeout(() => {
-      isDraggingRef.current = false;
       persistSleepData(newBed, newWake, sleepRecords);
-    }, 1000);
+    }, 1500);
   };
 
   const handleDialDragEnd = (finalBed: string, finalWake: string) => {
     if (dialSaveTimeoutRef.current) clearTimeout(dialSaveTimeoutRef.current);
     isDraggingRef.current = false;
-    lastLocalWriteRef.current = Date.now();
+    const now = Date.now();
+    lastLocalWriteRef.current = now;
     setSleepBedTime(finalBed);
     setSleepWakeTime(finalWake);
+    try {
+      localStorage.setItem('ratbod_sleep_bed', finalBed);
+      localStorage.setItem('ratbod_sleep_wake', finalWake);
+      localStorage.setItem('ratbod_sleep_updated_at', String(now));
+    } catch {}
     persistSleepData(finalBed, finalWake, sleepRecords);
   };
 
