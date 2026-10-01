@@ -1523,13 +1523,8 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
               title={isBn ? 'এই বইয়ের সকল পূর্ববর্তী সেশন দেখুন' : 'Show all previous logs of this book'}
             >
               <BookOpen size={12} />
-              <span>{isBn ? 'সেশনসমূহ' : 'Sessions'}</span>
+              <span>{isBn ? `সেশনসমূহ (${formatNum(records.length)})` : `Sessions (${records.length})`}</span>
             </button>
-            {records.length > 0 && (
-              <span className="text-[10.5px] font-mono text-gray-400">
-                {formatNum(records.length)} {isBn ? 'টি সেশন' : 'sessions'}
-              </span>
-            )}
           </div>
         </div>
 
@@ -1607,14 +1602,14 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           const selectedBookTotalPagesRead = selectedBookPreviousLogs.reduce((acc, r) => acc + (r.pages || 0), 0);
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
                 className={cn(
-                  "w-full max-w-lg rounded-2xl border p-4 sm:p-5 shadow-2xl space-y-4 max-h-[88vh] flex flex-col my-auto",
+                  "w-full max-w-md sm:max-w-lg max-h-[72vh] sm:max-h-[90vh] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl space-y-3.5 my-auto",
                   darkMode ? "bg-[#14151b] border-white/10 text-white" : "bg-white border-slate-200 text-gray-900"
                 )}
               >
@@ -1704,7 +1699,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 </div>
 
                 {/* Scrollable list of all previous sessions */}
-                <div className="overflow-y-auto space-y-2 pr-1 my-1 flex-1">
+                <div className="overflow-y-auto space-y-2 pr-1 my-1 flex-1 min-h-0">
                   {selectedBookPreviousLogs.length === 0 ? (
                     <div className="py-8 text-center text-xs text-gray-400">
                       {isBn ? 'এই বইটির জন্য এখনো কোনো পূর্ববর্তী সেশন পাওয়া যায়নি।' : 'No previous reading sessions logged for this book yet.'}
