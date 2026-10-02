@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, BellOff, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertCircle, Pencil, Droplets } from 'lucide-react';
+import { Droplet, GlassWater, Plus, Minus, RotateCcw, RotateCw, Target, Award, Bell, BellOff, Check, Sparkles, Trash2, Calendar, Info, Volume2, VolumeX, Clock, History as HistoryIcon, ArrowLeft, Moon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, AlertCircle, Pencil, Droplets } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -530,7 +530,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       if (typeof parsed.glassVolumeMl === 'number' && parsed.glassVolumeMl > 0) {
         setGlassVolumeMl(parsed.glassVolumeMl);
       }
-      if (typeof parsed.alertIntervalMinutes === 'number' && [30, 45, 50, 60].includes(parsed.alertIntervalMinutes)) {
+      if (typeof parsed.alertIntervalMinutes === 'number' && [30, 45, 60, 90].includes(parsed.alertIntervalMinutes)) {
         setAlertIntervalMinutes(parsed.alertIntervalMinutes);
         try { localStorage.setItem('ratbod_water_alert_interval', String(parsed.alertIntervalMinutes)); } catch {}
       }
@@ -1125,16 +1125,16 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     return 'default';
   };
 
-  // Hydration Alert state (30, 45, 50, 60 min options, default 50 min)
+  // Hydration Alert state (30, 45, 60, 90 min options, default 45 min)
   const [alertIntervalMinutes, setAlertIntervalMinutes] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('ratbod_water_alert_interval');
       if (saved) {
         const parsed = Number(saved);
-        if ([30, 45, 50, 60].includes(parsed)) return parsed;
+        if ([30, 45, 60, 90].includes(parsed)) return parsed;
       }
     } catch {}
-    return 50; // default 50 minutes
+    return 45; // default 45 minutes
   });
 
   const [isAlertEnabled, setIsAlertEnabled] = useState<boolean>(() => {
@@ -1294,7 +1294,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     }
 
     const intervalText = lang === 'bn' 
-      ? (alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০')
+      ? (alertIntervalMinutes === 90 ? '৯০' : alertIntervalMinutes === 60 ? '৬০' : alertIntervalMinutes === 45 ? '৪৫' : '৩০')
       : String(alertIntervalMinutes);
 
     const title = lang === 'bn' 
@@ -1809,7 +1809,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           {/* Left: Today's Intake Label */}
           <div className="flex items-center gap-1.5 shrink-0 min-w-0">
             <Droplet size={16} className="text-blue-500 fill-blue-500/20 shrink-0" />
-            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white truncate">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white truncate" style={{ fontSize: '11px' }}>
               {labels.consumed}
             </span>
           </div>
@@ -1841,7 +1841,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               title={
                 isIntakeOverdue
                   ? (lang === 'bn' 
-                      ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ${alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০'} মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
+                      ? `সতর্কতা: ${formatLastIntakeTimeAgo()} পানি পান করা হয়েছে। ${alertIntervalMinutes === 90 ? '৯০' : alertIntervalMinutes === 60 ? '৬০' : alertIntervalMinutes === 45 ? '৪৫' : '৩০'} মিনিট বা তার বেশি সময় হয়ে গেছে—পানি পান করতে ক্লিক করুন!` 
                       : `Alert: ${formatLastIntakeTimeAgo()} since last intake. Over ${alertIntervalMinutes} minutes—time to drink water! Tap to drink water.`)
                   : (entries.length > 0 ? `${labels.lastIntake}: ${format12HourTime(entries[0].createdAt || entries[0].timestamp)}` : undefined)
               }
@@ -1884,22 +1884,20 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                       ? "bg-white/5 text-gray-400 border-white/20 hover:bg-white/10" 
                       : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200/80")
               )}
-              title={isAlertActive 
-                ? (alertHoverInfo ? alertHoverInfo.oneLineText : (lang === 'bn' ? `${alertIntervalMinutes === 50 ? '৫০' : alertIntervalMinutes === 30 ? '৩০' : alertIntervalMinutes === 45 ? '৪৫' : '৬০'} মিনিট রিমাইন্ডার সক্রিয়` : `${alertIntervalMinutes}m Alert Active`))
-                : (lang === 'bn' ? 'রিমাইন্ডার বন্ধ (মেনু খুলতে ক্লিক করুন)' : 'Alert Off (click to open menu)')}
+              aria-label={isAlertActive ? `Alert ${alertIntervalMinutes} minutes active` : 'Alert Off'}
             >
               {isAlertActive ? (
                 <Bell size={13} className="shrink-0 text-emerald-500 dark:text-emerald-400 fill-emerald-500/20" />
               ) : (
                 <BellOff size={13} className="shrink-0 text-gray-400 dark:text-gray-400" />
               )}
-              <span>{isAlertActive ? (lang === 'bn' ? (alertIntervalMinutes === 50 ? '৫০মি' : alertIntervalMinutes === 30 ? '৩০মি' : alertIntervalMinutes === 45 ? '৪৫মি' : '৬০মি') : `${alertIntervalMinutes}m`) : (lang === 'bn' ? 'বন্ধ' : 'Off')}</span>
+              <span>{isAlertActive ? (lang === 'bn' ? (alertIntervalMinutes === 90 ? '৯০মি' : alertIntervalMinutes === 60 ? '৬০মি' : alertIntervalMinutes === 45 ? '৪৫মি' : '৩০মি') : `${alertIntervalMinutes}m`) : (lang === 'bn' ? 'বন্ধ' : 'Off')}</span>
               <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-60 ml-0.5", isAlertMenuOpen ? "rotate-180" : "")} />
             </button>
 
-            {/* Mouseover One-Line Alert Clock & Remaining Time Tooltip */}
+            {/* Single clean hover tooltip (eliminated duplicate native browser tooltip) */}
             <AnimatePresence>
-              {isAlertHovered && isAlertActive && alertHoverInfo && !isAlertMenuOpen && (
+              {isAlertHovered && !isAlertMenuOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: 4, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1912,13 +1910,22 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                       : "bg-white/95 text-emerald-800 border-emerald-300 shadow-emerald-900/10"
                   )}
                 >
-                  <Clock size={12} className="text-emerald-500 shrink-0" />
-                  <span>{alertHoverInfo.oneLineText}</span>
+                  {isAlertActive && alertHoverInfo ? (
+                    <>
+                      <Clock size={12} className="text-emerald-500 shrink-0" />
+                      <span>{alertHoverInfo.oneLineText}</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff size={12} className="text-gray-400 shrink-0" />
+                      <span>{lang === 'bn' ? 'রিমাইন্ডার বন্ধ' : 'Alert Off'}</span>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Small Popup Menu with 30, 45, 50, 60 minutes and Off */}
+            {/* Small Popup Menu with 30, 45, 60, 90 minutes and Off */}
             <AnimatePresence>
               {isAlertMenuOpen && (
                 <motion.div
@@ -1933,10 +1940,10 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                       : "bg-white/95 border-gray-200 text-gray-800 shadow-gray-400/40"
                   )}
                 >
-                  {[30, 45, 50, 60].map((mins) => {
+                  {[30, 45, 60, 90].map((mins) => {
                     const isSelected = isAlertActive && alertIntervalMinutes === mins;
-                    const labelBn = mins === 30 ? '৩০ মিনিট' : mins === 45 ? '৪৫ মিনিট' : mins === 50 ? '৫০ মিনিট' : '৬০ মিনিট';
-                    const labelEn = `${mins} minute`;
+                    const labelBn = mins === 30 ? '৩০ মিনিট' : mins === 45 ? '৪৫ মিনিট' : mins === 60 ? '৬০ মিনিট' : '৯০ মিনিট';
+                    const labelEn = `${mins} minutes`;
 
                     return (
                       <button
@@ -1984,135 +1991,254 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
         </div>
 
-        {/* Glass Cup with Liquid Fill: Left [300ml] [400ml] - Center [Cup] - Right [250ml] [100ml] - Zero horizontal scroll on mobile */}
+        {/* Glass Cup with Liquid Fill: Left [400ml] [300ml] - Center [Cup] - Right [250ml] [100ml] - Zero horizontal scroll on mobile */}
         <div id="water_glasses_container" className="relative my-0.5 sm:my-1 flex flex-col items-center justify-center w-full">
           <div className="grid grid-cols-[1fr_1fr_auto_1fr_1fr] sm:flex sm:items-center sm:justify-center items-center justify-items-center gap-1 sm:gap-2.5 w-full max-w-full py-1">
             
-            {/* Left Outer: 300 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
+            {/* Left Outer: 400 ml Capsule Button (Plus icon on top, reduced ml size) */}
             <motion.button
               type="button"
-              whileTap={{ scale: 0.92 }}
-              onClick={() => handleAddWater(300)}
-              title={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
-              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
-            >
-              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
-              </div>
-              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
-                300 {labels.mlUnit}
-              </span>
-            </motion.button>
-
-            {/* Left Inner: 400 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
-            <motion.button
-              type="button"
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(400)}
               title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
-              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
+              aria-label={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
+              style={{ width: '46.732px' }}
+              className={cn(
+                "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
+                darkMode
+                  ? "border-sky-400/60 bg-gradient-to-b from-sky-500 via-blue-600 to-blue-800 shadow-blue-500/25 hover:border-sky-300 hover:shadow-blue-400/40"
+                  : "border-sky-300 bg-gradient-to-b from-sky-400 via-blue-500 to-blue-600 shadow-blue-500/25 hover:border-white hover:shadow-blue-500/40"
+              )}
             >
-              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
-              </div>
-              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
-                400 {labels.mlUnit}
+              {/* Top Glass Gloss Highlight for 3D Capsule Effect */}
+              <div className="absolute top-0.5 inset-x-2 h-4 sm:h-5 bg-gradient-to-b from-white/35 via-white/10 to-transparent rounded-t-full pointer-events-none" />
+
+              {/* Plus icon on top */}
+              <Plus size={10} className="text-white/90 z-10 shrink-0 mb-0.5 group-hover:scale-110 transition-transform" strokeWidth={3} />
+
+              {/* Amount */}
+              <span className="text-xs sm:text-base font-black tracking-tight text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] z-10">
+                {formatNum(400)}
+              </span>
+
+              {/* ml unit badge with reduced text size */}
+              <span className="text-[7.5px] sm:text-[8.5px] font-extrabold uppercase tracking-wider text-white bg-white/20 border border-white/25 px-1 sm:px-1.5 py-0.5 rounded-full leading-none shadow-2xs block truncate max-w-full z-10 mt-0.5">
+                {labels.mlUnit}
               </span>
             </motion.button>
 
-            {/* Glass Tumbler Container with Liquid Water Fill (Display Only) */}
-            <div className={cn(
-              "relative w-[76px] h-[116px] sm:w-28 sm:h-40 rounded-b-[1.75rem] sm:rounded-b-[2rem] rounded-t-sm sm:rounded-t-md border-x-[3px] sm:border-x-4 border-b-[3px] sm:border-b-4 border-t-2 flex items-center justify-center shadow-lg sm:shadow-xl overflow-hidden transition-all shrink-0 mx-0.5 sm:mx-1",
-              totalConsumedMl >= goalMl 
-                ? "border-[#32CD32]/80 shadow-[#32CD32]/20 " + (darkMode ? "bg-slate-950/90" : "bg-emerald-50/90")
-                : "border-blue-400/80 dark:border-blue-500/70 shadow-blue-500/20 " + (darkMode ? "bg-slate-950/90" : "bg-blue-50/90")
-            )}>
-              {/* Vertical Glass Shine Reflection */}
-              <div className="absolute left-1 top-1.5 bottom-3 w-1 bg-gradient-to-b from-white/50 via-white/20 to-transparent rounded-full z-20 pointer-events-none" />
+            {/* Left Inner: 300 ml Capsule Button (Plus icon on top, reduced ml size) */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => handleAddWater(300)}
+              title={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
+              aria-label={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
+              style={{ width: '46.732px' }}
+              className={cn(
+                "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
+                darkMode
+                  ? "border-sky-400/60 bg-gradient-to-b from-sky-500 via-blue-600 to-blue-800 shadow-blue-500/25 hover:border-sky-300 hover:shadow-blue-400/40"
+                  : "border-sky-300 bg-gradient-to-b from-sky-400 via-blue-500 to-blue-600 shadow-blue-500/25 hover:border-white hover:shadow-blue-500/40"
+              )}
+            >
+              {/* Top Glass Gloss Highlight for 3D Capsule Effect */}
+              <div className="absolute top-0.5 inset-x-2 h-4 sm:h-5 bg-gradient-to-b from-white/35 via-white/10 to-transparent rounded-t-full pointer-events-none" />
 
-              {/* Measurement Notch Lines on Right Side */}
-              <div className={cn("absolute right-1 top-3 bottom-3 flex flex-col justify-between z-20 pointer-events-none opacity-50", totalConsumedMl >= goalMl ? "hidden" : "")}>
-                <div className="w-1 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                <div className="w-2 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                <div className="w-1 h-0.5 bg-blue-500 dark:bg-blue-300" />
-                <div className="w-2.5 h-0.5 bg-blue-500 dark:bg-blue-300" />
-              </div>
+              {/* Plus icon on top */}
+              <Plus size={10} className="text-white/90 z-10 shrink-0 mb-0.5 group-hover:scale-110 transition-transform" strokeWidth={3} />
 
-              {/* Liquid Water Level Fill (Sea Water Gradient) */}
-              <motion.div
-                className={cn("absolute bottom-0 left-0 right-0 w-full pointer-events-none",
-                  totalConsumedMl >= goalMl
-                    ? "bg-gradient-to-t from-emerald-800 via-[#32CD32] to-emerald-400"
-                    : "bg-gradient-to-t from-blue-800 via-blue-600 to-sky-400"
-                )}
-                initial={{ height: 0 }}
-                animate={{ height: `${Math.min(100, progressPercent)}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+              {/* Amount */}
+              <span className="text-xs sm:text-base font-black tracking-tight text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] z-10">
+                {formatNum(300)}
+              </span>
+
+              {/* ml unit badge with reduced text size */}
+              <span className="text-[7.5px] sm:text-[8.5px] font-extrabold uppercase tracking-wider text-white bg-white/20 border border-white/25 px-1 sm:px-1.5 py-0.5 rounded-full leading-none shadow-2xs block truncate max-w-full z-10 mt-0.5">
+                {labels.mlUnit}
+              </span>
+            </motion.button>
+
+            {/* Conical Glass Tumbler Container matching uploaded image */}
+            <div className="relative w-[84px] h-[126px] sm:w-[124px] sm:h-[168px] flex items-center justify-center shrink-0 mx-0.5 sm:mx-1 select-none">
+              <svg 
+                viewBox="0 0 120 160" 
+                className="w-full h-full drop-shadow-md overflow-visible"
               >
-                {/* Wave effect at top of water surface */}
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/50 animate-pulse" />
-              </motion.div>
+                <defs>
+                  {/* Clip path matching exact conical glass interior */}
+                  <clipPath id="conical-glass-clip">
+                    <path d="M 22 12 L 98 12 L 109 138 Q 110 150 98 150 L 22 150 Q 10 150 11 138 Z" />
+                  </clipPath>
 
-              {/* Center Display Overlay: Target glasses removed, Consumed amount in center, Percentage at bottom */}
-              <div className="relative z-10 w-full h-full flex flex-col items-center justify-between text-center p-1 sm:p-1.5 select-none pointer-events-none backdrop-blur-[1px]">
-                {/* Top status indicator icon */}
-                <div className={cn("w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md flex items-center justify-center shadow-2xs mt-0.5", totalConsumedMl >= goalMl ? "text-emerald-700 dark:text-emerald-200" : "text-blue-600 dark:text-blue-200")}>
-                  {totalConsumedMl >= goalMl ? <Check size={11} className="animate-in zoom-in-50" strokeWidth={3} /> : <Droplet size={11} className="fill-current animate-pulse" />}
-                </div>
+                  {/* Ocean blue water gradients */}
+                  <linearGradient id="water-blue-front" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#38bdf8" />
+                    <stop offset="50%" stopColor="#0284c7" />
+                    <stop offset="100%" stopColor="#0369a1" />
+                  </linearGradient>
+                  <linearGradient id="water-blue-back" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#0ea5e9" />
+                    <stop offset="100%" stopColor="#075985" />
+                  </linearGradient>
 
-                {/* Middle: Number of glasses only (ML removed as requested) */}
+                  {/* Goal achieved emerald gradients */}
+                  <linearGradient id="water-emerald-front" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#4ade80" />
+                    <stop offset="50%" stopColor="#16a34a" />
+                    <stop offset="100%" stopColor="#15803d" />
+                  </linearGradient>
+                  <linearGradient id="water-emerald-back" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#22c55e" />
+                    <stop offset="100%" stopColor="#166534" />
+                  </linearGradient>
+                </defs>
+
+                {/* Dark Glass Interior Background */}
+                <path
+                  d="M 22 12 L 98 12 L 109 138 Q 110 150 98 150 L 22 150 Q 10 150 11 138 Z"
+                  className={darkMode ? "fill-[#06101c]" : "fill-[#091b2c]"}
+                />
+
+                {/* Horizontal Dashed Measurement Marks */}
+                <line x1="19.25" y1="46.5" x2="100.75" y2="46.5" stroke={totalConsumedMl >= goalMl ? "#4ade80" : "#38bdf8"} strokeOpacity="0.25" strokeWidth="1" strokeDasharray="3 3" />
+                <line x1="16.5" y1="81" x2="103.5" y2="81" stroke={totalConsumedMl >= goalMl ? "#4ade80" : "#38bdf8"} strokeOpacity="0.25" strokeWidth="1" strokeDasharray="3 3" />
+                <line x1="13.75" y1="115.5" x2="106.25" y2="115.5" stroke={totalConsumedMl >= goalMl ? "#4ade80" : "#38bdf8"} strokeOpacity="0.25" strokeWidth="1" strokeDasharray="3 3" />
+
+                {/* Continuous Wavy Water Inside Glass */}
+                <g clipPath="url(#conical-glass-clip)">
+                  <motion.g
+                    initial={{ y: 154 }}
+                    animate={{ y: progressPercent <= 0 ? 154 : 148 - (134 * (Math.min(100, Math.max(0, progressPercent)) / 100)) }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  >
+                    {/* Back Wave Layer */}
+                    <motion.path
+                      d="M 0 0 Q 30 -5 60 0 T 120 0 T 180 0 T 240 0 T 300 0 T 360 0 V 200 H 0 Z"
+                      fill={totalConsumedMl >= goalMl ? "url(#water-emerald-back)" : "url(#water-blue-back)"}
+                      opacity={0.65}
+                      animate={{ x: [-120, 0] }}
+                      transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
+                    />
+
+                    {/* Front Wave Layer */}
+                    <motion.path
+                      d="M 0 0 Q 30 -6 60 0 T 120 0 T 180 0 T 240 0 T 300 0 T 360 0 V 200 H 0 Z"
+                      fill={totalConsumedMl >= goalMl ? "url(#water-emerald-front)" : "url(#water-blue-front)"}
+                      opacity={0.92}
+                      animate={{ x: [0, -120] }}
+                      transition={{ repeat: Infinity, duration: 3.2, ease: "linear" }}
+                    />
+                  </motion.g>
+                </g>
+
+                {/* Conical Glass Outer Stroke Border matching image */}
+                <path
+                  d="M 22 12 L 98 12 L 109 138 Q 110 150 98 150 L 22 150 Q 10 150 11 138 Z"
+                  fill="none"
+                  stroke={totalConsumedMl >= goalMl ? "#22c55e" : "#1d6b8f"}
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* Subtle glass rim reflection */}
+                <path
+                  d="M 25 15 L 14 135"
+                  stroke="rgba(255, 255, 255, 0.25)"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+
+              {/* Center Display Overlay */}
+              <div className="absolute inset-0 z-10 w-full h-full flex flex-col items-center justify-between text-center py-2 sm:py-3.5 px-1 select-none pointer-events-none">
+                {/* Top status indicator: Checkmark when goal reached */}
+                {totalConsumedMl >= goalMl ? (
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full backdrop-blur-md flex items-center justify-center shadow-2xs mt-0.5 bg-white/40 dark:bg-black/40 text-emerald-300">
+                    <Check size={11} className="animate-in zoom-in-50" strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5" />
+                )}
+
+                {/* Middle: Percentage replacing number of glasses */}
                 <div className="flex flex-col items-center my-auto">
-                  <span className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none drop-shadow-sm">
-                    {formatNum(totalGlasses, 1)}
-                  </span>
-                  <span className="text-[9.5px] sm:text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-blue-100 mt-0.5 drop-shadow-2xs truncate max-w-full px-0.5">
-                    {labels.glassesUnit}
-                  </span>
-                </div>
-
-                {/* Bottom of Tumbler: Increased Percentage Badge */}
-                <div className="w-full flex items-center justify-center pb-1 sm:pb-1.5">
-                  <span className={cn(
-                    "text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded-full border shadow-xs leading-tight tracking-tight",
-                    totalConsumedMl >= goalMl
-                      ? "bg-emerald-600 text-white border-emerald-400/60"
-                      : "bg-blue-600 text-white border-blue-400/60"
-                  )}>
+                  <span className="text-xl sm:text-2xl font-black tracking-tight text-white leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                     {formatNum(progressPercent)}%
                   </span>
                 </div>
+
+                {/* Bottom spacer balancing top */}
+                <div className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5" />
               </div>
             </div>
 
-            {/* Right Inner: 250 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
+            {/* Right Inner: 250 ml Capsule Button (Plus icon on top, reduced ml size) */}
             <motion.button
               type="button"
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(250)}
               title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
-              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
+              aria-label={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
+              style={{ width: '46.732px' }}
+              className={cn(
+                "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
+                darkMode
+                  ? "border-sky-400/60 bg-gradient-to-b from-sky-500 via-blue-600 to-blue-800 shadow-blue-500/25 hover:border-sky-300 hover:shadow-blue-400/40"
+                  : "border-sky-300 bg-gradient-to-b from-sky-400 via-blue-500 to-blue-600 shadow-blue-500/25 hover:border-white hover:shadow-blue-500/40"
+              )}
             >
-              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
-              </div>
-              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
-                250 {labels.mlUnit}
+              {/* Top Glass Gloss Highlight for 3D Capsule Effect */}
+              <div className="absolute top-0.5 inset-x-2 h-4 sm:h-5 bg-gradient-to-b from-white/35 via-white/10 to-transparent rounded-t-full pointer-events-none" />
+
+              {/* Plus icon on top */}
+              <Plus size={10} className="text-white/90 z-10 shrink-0 mb-0.5 group-hover:scale-110 transition-transform" strokeWidth={3} />
+
+              {/* Amount */}
+              <span className="text-xs sm:text-base font-black tracking-tight text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] z-10">
+                {formatNum(250)}
+              </span>
+
+              {/* ml unit badge with reduced text size */}
+              <span className="text-[7.5px] sm:text-[8.5px] font-extrabold uppercase tracking-wider text-white bg-white/20 border border-white/25 px-1 sm:px-1.5 py-0.5 rounded-full leading-none shadow-2xs block truncate max-w-full z-10 mt-0.5">
+                {labels.mlUnit}
               </span>
             </motion.button>
 
-            {/* Right Outer: 100 ml Glass Button (Unified Blue Theme with pure White text & icon) */}
+            {/* Right Outer: 100 ml Capsule Button (Plus icon on top, reduced ml size) */}
             <motion.button
               type="button"
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => handleAddWater(100)}
               title={lang === 'bn' ? '১০০ মিলি যোগ করুন' : 'Add 100 ml'}
-              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-blue-500 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all cursor-pointer group shadow-xs w-full max-w-[66px] sm:max-w-[80px] min-w-0 active:scale-95"
+              aria-label={lang === 'bn' ? '১০০ মিলি যোগ করুন' : 'Add 100 ml'}
+              style={{ width: '46.7432px' }}
+              className={cn(
+                "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
+                darkMode
+                  ? "border-sky-400/60 bg-gradient-to-b from-sky-500 via-blue-600 to-blue-800 shadow-blue-500/25 hover:border-sky-300 hover:shadow-blue-400/40"
+                  : "border-sky-300 bg-gradient-to-b from-sky-400 via-blue-500 to-blue-600 shadow-blue-500/25 hover:border-white hover:shadow-blue-500/40"
+              )}
             >
-              <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-white/20 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Droplet size={10} className="fill-current sm:scale-110 text-white" />
-              </div>
-              <span className="text-xs sm:text-sm font-black mt-1 text-center truncate w-full tracking-tight text-white drop-shadow-xs">
-                100 {labels.mlUnit}
+              {/* Top Glass Gloss Highlight for 3D Capsule Effect */}
+              <div className="absolute top-0.5 inset-x-2 h-4 sm:h-5 bg-gradient-to-b from-white/35 via-white/10 to-transparent rounded-t-full pointer-events-none" />
+
+              {/* Plus icon on top */}
+              <Plus size={10} className="text-white/90 z-10 shrink-0 mb-0.5 group-hover:scale-110 transition-transform" strokeWidth={3} />
+
+              {/* Amount */}
+              <span className="text-xs sm:text-base font-black tracking-tight text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] z-10">
+                {formatNum(100)}
+              </span>
+
+              {/* ml unit badge with reduced text size */}
+              <span className="text-[7.5px] sm:text-[8.5px] font-extrabold uppercase tracking-wider text-white bg-white/20 border border-white/25 px-1 sm:px-1.5 py-0.5 rounded-full leading-none shadow-2xs block truncate max-w-full z-10 mt-0.5">
+                {labels.mlUnit}
               </span>
             </motion.button>
           </div>
@@ -2134,8 +2260,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               {lang === 'bn' ? 'আজকের গ্রহণ' : "Today's Intake"}
             </span>
             <span 
-              className="text-[14px] leading-[18.67px] font-extrabold text-blue-600 dark:text-blue-400 mt-0.5"
-              style={{ fontSize: '14px', lineHeight: '18.6667px' }}
+              className="text-[15px] font-extrabold text-blue-600 dark:text-blue-400 mt-0.5"
+              style={{ fontSize: '15px' }}
             >
               {formatNum(totalConsumedMl)} {labels.mlUnit}
             </span>
@@ -2149,8 +2275,8 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               {lang === 'bn' ? 'বাকি আছে' : 'Remaining'}
             </span>
             <span 
-              className="text-[14px] font-extrabold text-gray-700 dark:text-gray-300 mt-0.5"
-              style={{ fontSize: '14px' }}
+              className="text-[15px] font-extrabold text-gray-700 dark:text-gray-300 mt-0.5"
+              style={{ fontSize: '15px' }}
             >
               {formatNum(Math.max(0, goalMl - totalConsumedMl))} {labels.mlUnit}
             </span>
@@ -2247,38 +2373,78 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           "w-full p-4 sm:p-5 rounded-2xl border space-y-3",
           darkMode ? "bg-white/5 border-white/10" : "bg-white border-black/5 shadow-xs"
         )}>
-          {/* Header with Segmented Tabs for Today & Yesterday */}
+          {/* Header with Today / Yesterday Pill Navigation matching image */}
           <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-gray-200/20 dark:border-white/5 gap-2">
-            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200/60 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setActiveLogTab('today')}
+            <div className="flex items-center gap-2">
+              {/* Sleek Pill Capsule: < Today > or < Yesterday > */}
+              <div 
                 className={cn(
-                  "px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                  activeLogTab === 'today'
-                    ? (darkMode ? "bg-blue-600 text-white shadow-xs" : "bg-white text-blue-600 shadow-xs")
-                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                  "inline-flex items-center justify-between rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 shadow-2xs select-none transition-all",
+                  darkMode 
+                    ? "bg-[#101726] border-white/15 text-white" 
+                    : "bg-white border-slate-200/90 text-slate-900 shadow-slate-200/50"
                 )}
               >
-                <Calendar size={13} />
-                <span>{lang === 'bn' ? 'আজকের লগ' : "Today's Log"}</span>
-                <span className="text-[10px] font-mono opacity-80">({formatNum(entries.length)})</span>
-              </button>
+                {/* Left Arrow Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    initHapticAudio();
+                    triggerHaptic('light', true);
+                    if (activeLogTab === 'today') {
+                      handleSelectYesterdayTab();
+                    } else {
+                      setActiveLogTab('today');
+                    }
+                  }}
+                  className="p-1 rounded-full text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer active:scale-90 flex items-center justify-center"
+                  title={activeLogTab === 'today' ? (lang === 'bn' ? 'গতকালকের লগে যান' : 'Go to Yesterday') : (lang === 'bn' ? 'আজকের লগে যান' : 'Go to Today')}
+                  aria-label="Previous day"
+                >
+                  <ChevronLeft size={16} strokeWidth={2.75} />
+                </button>
 
-              <button
-                type="button"
-                onClick={handleSelectYesterdayTab}
-                className={cn(
-                  "px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                  activeLogTab === 'yesterday'
-                    ? (darkMode ? "bg-blue-600 text-white shadow-xs" : "bg-white text-blue-600 shadow-xs")
-                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                )}
-              >
-                <Clock size={13} />
-                <span>{lang === 'bn' ? 'গতকাল' : 'Yesterday'}</span>
-                <span className="text-[10px] font-mono opacity-80">({formatNum(displayedYesterdayEntries.length)})</span>
-              </button>
+                {/* Center Title (Clickable) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    initHapticAudio();
+                    triggerHaptic('light', true);
+                    if (activeLogTab === 'today') {
+                      handleSelectYesterdayTab();
+                    } else {
+                      setActiveLogTab('today');
+                    }
+                  }}
+                  className="px-2.5 sm:px-3 text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors leading-none"
+                  title={activeLogTab === 'today' 
+                    ? (lang === 'bn' ? `আজ (${formatNum(entries.length)})` : `Today (${entries.length})`) 
+                    : (lang === 'bn' ? `গতকাল (${formatNum(displayedYesterdayEntries.length)})` : `Yesterday (${displayedYesterdayEntries.length})`)}
+                >
+                  {activeLogTab === 'today' 
+                    ? (lang === 'bn' ? `আজ (${formatNum(entries.length)})` : `Today (${entries.length})`) 
+                    : (lang === 'bn' ? `গতকাল (${formatNum(displayedYesterdayEntries.length)})` : `Yesterday (${displayedYesterdayEntries.length})`)}
+                </button>
+
+                {/* Right Arrow Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    initHapticAudio();
+                    triggerHaptic('light', true);
+                    if (activeLogTab === 'yesterday') {
+                      setActiveLogTab('today');
+                    } else {
+                      handleSelectYesterdayTab();
+                    }
+                  }}
+                  className="p-1 rounded-full text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer active:scale-90 flex items-center justify-center"
+                  title={activeLogTab === 'yesterday' ? (lang === 'bn' ? 'আজকের লগে যান' : 'Go to Today') : (lang === 'bn' ? 'গতকালকের লগে যান' : 'Go to Yesterday')}
+                  aria-label="Next day"
+                >
+                  <ChevronRight size={16} strokeWidth={2.75} />
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">

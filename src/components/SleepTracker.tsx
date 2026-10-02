@@ -18,7 +18,9 @@ import {
   TrendingUp,
   Award,
   Bed,
-  AlarmClock
+  AlarmClock,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -666,49 +668,56 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
                 <span className="hidden xs:inline">{isBn ? 'তারিখ:' : 'Date:'}</span>
               </span>
 
-              <div className={cn(
-                "inline-flex items-center p-0.5 rounded-lg border text-[11px] font-bold shrink-0",
-                darkMode ? "bg-white/5 border-white/10" : "bg-gray-100 border-gray-200/80"
-              )}>
+              {/* Pill Toggle like image: < Today > or < Yesterday > */}
+              <div 
+                className={cn(
+                  "inline-flex items-center justify-between rounded-full border px-1.5 py-0.5 shadow-2xs select-none transition-all shrink-0",
+                  darkMode 
+                    ? "bg-[#101726] border-white/15 text-white" 
+                    : "bg-white border-slate-200/90 text-slate-900 shadow-slate-200/50"
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => {
                     initHapticAudio();
                     triggerHaptic('light', true);
-                    setSelectedSleepDate(todayStr);
+                    setSelectedSleepDate(selectedSleepDate === todayStr ? yesterdayStr : todayStr);
                   }}
-                  className={cn(
-                    "px-2 py-0.5 rounded-md transition-all cursor-pointer whitespace-nowrap text-[10.5px] sm:text-xs font-semibold",
-                    selectedSleepDate === todayStr 
-                      ? (darkMode
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "bg-white text-indigo-700 shadow-xs border border-gray-200/50") 
-                      : (darkMode
-                          ? "text-gray-400 hover:text-gray-200"
-                          : "text-gray-600 hover:text-gray-900")
-                  )}
+                  className="p-0.5 rounded-full text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer active:scale-90 flex items-center justify-center"
+                  title={selectedSleepDate === todayStr ? (isBn ? 'গতকালের তারিখে যান' : 'Go to Yesterday') : (isBn ? 'আজকের তারিখে যান' : 'Go to Today')}
+                  aria-label="Previous day"
                 >
-                  {isBn ? 'আজ' : 'Today'}
+                  <ChevronLeft size={14} strokeWidth={2.75} />
                 </button>
+
                 <button
                   type="button"
                   onClick={() => {
                     initHapticAudio();
                     triggerHaptic('light', true);
-                    setSelectedSleepDate(yesterdayStr);
+                    setSelectedSleepDate(selectedSleepDate === todayStr ? yesterdayStr : todayStr);
                   }}
-                  className={cn(
-                    "px-2 py-0.5 rounded-md transition-all cursor-pointer whitespace-nowrap text-[10.5px] sm:text-xs font-semibold",
-                    selectedSleepDate === yesterdayStr 
-                      ? (darkMode
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "bg-white text-indigo-700 shadow-xs border border-gray-200/50") 
-                      : (darkMode
-                          ? "text-gray-400 hover:text-gray-200"
-                          : "text-gray-600 hover:text-gray-900")
-                  )}
+                  className="px-2 text-[11px] font-black tracking-tight text-slate-900 dark:text-white cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors leading-none"
+                  title={selectedSleepDate === todayStr ? (isBn ? 'আজ' : 'Today') : (isBn ? 'গতকাল' : 'Yesterday')}
                 >
-                  {isBn ? 'গতকাল' : 'Yesterday'}
+                  {selectedSleepDate === todayStr 
+                    ? (isBn ? 'আজ' : 'Today') 
+                    : (isBn ? 'গতকাল' : 'Yesterday')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    initHapticAudio();
+                    triggerHaptic('light', true);
+                    setSelectedSleepDate(selectedSleepDate === yesterdayStr ? todayStr : yesterdayStr);
+                  }}
+                  className="p-0.5 rounded-full text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer active:scale-90 flex items-center justify-center"
+                  title={selectedSleepDate === yesterdayStr ? (isBn ? 'আজকের তারিখে যান' : 'Go to Today') : (isBn ? 'গতকালের তারিখে যান' : 'Go to Yesterday')}
+                  aria-label="Next day"
+                >
+                  <ChevronRight size={14} strokeWidth={2.75} />
                 </button>
               </div>
             </div>

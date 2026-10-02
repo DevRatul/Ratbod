@@ -2322,7 +2322,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Salah Tab Content */}
       <div className={cn(
-        "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[20px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
         activeTab === 'salah' ? "block" : "hidden"
       )}>
         <SalahTracker 
@@ -2336,7 +2336,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Groceries Tab Content */}
       <div className={cn(
-        "max-w-5xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
         activeTab === 'groceries' ? "block" : "hidden"
       )}>
         <GroceryCalculator darkMode={darkMode} lang={lang} />
@@ -2344,7 +2344,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Logify Tab Content (includes Water section) */}
       <div className={cn(
-        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[70px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
         (activeTab === 'logify' || activeTab === 'water') ? "block" : "hidden"
       )}>
         <Logify 
@@ -2359,7 +2359,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Habitor Tab Content */}
       <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
         activeTab === 'results' ? "block" : "hidden"
       )}>
         <Habitor darkMode={darkMode} lang={lang} weekStartDay={weekStartDay} />
@@ -2367,7 +2367,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Home Tab Content (Activity Dashboard rendered inline) */}
       <div className={cn(
-        "max-w-5xl mx-auto px-3 sm:px-6 pt-2 md:pt-2.5 pb-[11px] sm:pb-12",
+        "max-w-5xl mx-auto px-3 sm:px-6 pt-2 md:pt-2.5 pb-[76px] sm:pb-12",
         activeTab === 'home' ? "block" : "hidden"
       )}>
         <DashboardModal
@@ -2873,24 +2873,30 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         onNavigateTab={handleNavigateTab}
       />
     </div>
-      {/* Mobile Sticky 5-Tab Navigation: Full-width bottom bar with inside capsule/pill buttons */}
+      {/* Mobile Sticky 5-Tab Navigation: Floating bar with round corner design */}
       <div 
         id="mobile_bottom_nav"
+        style={{
+          borderRadius: '28px',
+          paddingLeft: '8px',
+          marginBottom: '3px',
+        }}
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 md:hidden w-full border-t backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1 px-1.5",
+          "fixed bottom-[calc(env(safe-area-inset-bottom,0px)+8px)] left-2.5 right-2.5 max-w-md mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[3px]",
           darkMode 
-            ? "bg-[#141416]/90 border-white/[0.12] text-white shadow-[0_-4px_24px_rgba(0,0,0,0.5)]" 
-            : "bg-[#ffffff]/90 border-black/[0.08] text-gray-900 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+            ? "bg-[#141416]/92 border-white/[0.14] text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+            : "bg-[#ffffff]/92 border-black/[0.08] text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
         )}
       >
-        <div className="w-full max-w-md mx-auto grid grid-cols-5 gap-1 items-center">
+        <div className="w-full grid grid-cols-5 gap-1 items-center">
           {/* 1. Home (replaced Groceries) */}
           <button 
             id="tab_home"
             type="button"
             onClick={() => handleMenuClick('home')}
+            style={{ borderRadius: '21px' }}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'home'
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2899,8 +2905,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             {activeTab === 'home' && (
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
+                style={{ borderRadius: '21px' }}
                 className={cn(
-                  "absolute inset-0 rounded-xl",
+                  "absolute inset-0 rounded-[21px]",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2937,8 +2944,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_results"
             type="button"
             onClick={() => handleMenuClick('results')}
+            style={{ borderRadius: '21px' }}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'results' 
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2947,8 +2955,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             {activeTab === 'results' && (
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
+                style={{ borderRadius: '21px' }}
                 className={cn(
-                  "absolute inset-0 rounded-xl",
+                  "absolute inset-0 rounded-[21px]",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -2985,8 +2994,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_logify"
             type="button"
             onClick={() => handleMenuClick('logify')}
+            style={{ borderRadius: '21px' }}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               (activeTab === 'logify' || activeTab === 'water') 
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -2995,8 +3005,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             {(activeTab === 'logify' || activeTab === 'water') && (
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
+                style={{ borderRadius: '21px' }}
                 className={cn(
-                  "absolute inset-0 rounded-xl",
+                  "absolute inset-0 rounded-[21px]",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -3033,8 +3044,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_salah"
             type="button"
             onClick={() => handleMenuClick('salah')}
+            style={{ borderRadius: '21px' }}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'salah'
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -3043,8 +3055,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             {activeTab === 'salah' && (
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
+                style={{ borderRadius: '21px' }}
                 className={cn(
-                  "absolute inset-0 rounded-xl",
+                  "absolute inset-0 rounded-[21px]",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"
@@ -3081,8 +3094,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             id="tab_calculator"
             type="button"
             onClick={() => handleMenuClick('calculator')}
+            style={{ borderRadius: '21px' }}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+              "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'calculator' 
                 ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -3091,8 +3105,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             {activeTab === 'calculator' && (
               <motion.div
                 layoutId="activeMobileBottomTabIndicator"
+                style={{ borderRadius: '21px' }}
                 className={cn(
-                  "absolute inset-0 rounded-xl",
+                  "absolute inset-0 rounded-[21px]",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
                     : "bg-black/[0.07] backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1),inset_0_1px_0.5px_rgba(255,255,255,0.9)]"

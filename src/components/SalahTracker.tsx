@@ -1791,6 +1791,78 @@ export default function SalahTracker({
         ref={canvasRef}
         className="fixed inset-0 pointer-events-none z-[9999] w-full h-full"
       />
+
+      {/* Mobile 3-Tab Navigation: Floating capsule on top in mobile view */}
+      <div 
+        id="salah_mobile_subnav_wrapper"
+        className="sticky top-0 z-40 md:hidden flex justify-center px-3 pt-1 pb-2.5 pointer-events-none transition-all duration-300"
+      >
+        <div 
+          id="salah_mobile_subnav"
+          className={cn(
+            "pointer-events-auto w-full max-w-[270px] xs:max-w-[290px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1",
+            darkMode 
+              ? "bg-[#1c1c1e]/90 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+              : "bg-[#f2f2f7]/90 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
+          )}
+        >
+          {MOBILE_SALAH_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isSelected = activeSubTab === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                id={`salah_tab_${tab.id}`}
+                type="button"
+                onClick={() => handleSubTabChange(tab.id)}
+                className={cn(
+                  "relative flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+                  isSelected
+                    ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                    : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
+                )}
+              >
+                {isSelected && (
+                  <motion.div
+                    layoutId="activeSalahSubTabIndicatorMobile"
+                    className={cn(
+                      "absolute inset-0 rounded-full",
+                      darkMode 
+                        ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
+                        : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+                    )}
+                    transition={{
+                      type: "spring",
+                      stiffness: 380,
+                      damping: 25,
+                      mass: 0.7
+                    }}
+                  />
+                )}
+                <Icon 
+                  size={12} 
+                  className={cn(
+                    "relative z-10 shrink-0 transition-all duration-200", 
+                    isSelected 
+                      ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                      : "opacity-75"
+                  )} 
+                />
+                <span className={cn(
+                  "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+                  isSelected 
+                    ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                    : "font-semibold"
+                )}>
+                  {isBn ? tab.labelBn : tab.labelEn}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row items-start gap-3 md:gap-3.5 lg:gap-4 w-full">
         {/* Tab Content Area: 3 sub nav menu pages */}
         <div id={`salah_content_${activeSubTab}`} className="flex-1 min-w-0 w-full pb-16 md:pb-0 md:pr-32 xl:pr-0 space-y-3 sm:space-y-5">
@@ -3128,77 +3200,6 @@ export default function SalahTracker({
   </aside>
 </div>
 
-{/* Mobile 3-Tab Navigation: Floating capsule docked right above bottom menu */}
-<div 
-  id="salah_mobile_subnav_wrapper"
-  style={{ bottom: `${mobileNavHeight + 6}px` }}
-  className="fixed left-0 right-0 z-40 md:hidden flex justify-center px-4 pointer-events-none transition-all duration-300"
->
-  <div 
-    id="salah_mobile_subnav"
-    className={cn(
-      "pointer-events-auto w-full max-w-[260px] xs:max-w-[280px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1",
-      darkMode 
-        ? "bg-[#1c1c1e]/80 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-        : "bg-[#f2f2f7]/85 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
-    )}
-  >
-    {MOBILE_SALAH_TABS.map((tab) => {
-      const Icon = tab.icon;
-      const isSelected = activeSubTab === tab.id;
-
-      return (
-        <button
-          key={tab.id}
-          id={`salah_tab_${tab.id}`}
-          type="button"
-          onClick={() => handleSubTabChange(tab.id)}
-          className={cn(
-            "relative flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
-            isSelected
-              ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
-              : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
-          )}
-        >
-          {isSelected && (
-            <motion.div
-              layoutId="activeSalahSubTabIndicatorMobile"
-              className={cn(
-                "absolute inset-0 rounded-full",
-                darkMode 
-                  ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
-                  : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
-              )}
-              transition={{
-                type: "spring",
-                stiffness: 380,
-                damping: 25,
-                mass: 0.7
-              }}
-            />
-          )}
-          <Icon 
-            size={12} 
-            className={cn(
-              "relative z-10 shrink-0 transition-all duration-200", 
-              isSelected 
-                ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
-                : "opacity-75"
-            )} 
-          />
-          <span className={cn(
-            "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
-            isSelected 
-              ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-              : "font-semibold"
-          )}>
-            {isBn ? tab.labelBn : tab.labelEn}
-          </span>
-        </button>
-      );
-    })}
-  </div>
-</div>
-</div>
+    </div>
   );
 }
