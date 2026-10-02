@@ -17,6 +17,7 @@
         "clsx": "^2.1.1",
         "cookie-parser": "^1.4.7",
         "dotenv": "^17.2.3",
+        "esbuild": "^0.28.2",
         "express": "^4.21.2",
         "firebase": "^12.14.0",
         "firebase-admin": "^13.10.0",

@@ -2879,10 +2879,9 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         style={{
           borderRadius: '28px',
           paddingLeft: '8px',
-          marginBottom: '1px',
         }}
         className={cn(
-          "fixed bottom-[calc(env(safe-area-inset-bottom,0px)+8px)] left-2.5 right-2.5 max-w-md mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[1px]",
+          "fixed bottom-2 left-2.5 right-2.5 max-w-md mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2",
           darkMode 
             ? "bg-[#141416]/92 border-white/[0.14] text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
             : "bg-[#ffffff]/92 border-black/[0.08] text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"

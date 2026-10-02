@@ -12,7 +12,7 @@
     "start": "node server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist build",
-    "lint": "tsc --noEmit"
+    "lint": "npx tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",

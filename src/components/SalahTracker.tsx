@@ -1803,7 +1803,7 @@ export default function SalahTracker({
             "pointer-events-auto w-full max-w-[270px] xs:max-w-[290px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1",
             darkMode 
               ? "bg-[#1c1c1e]/90 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-              : "bg-[#f2f2f7]/90 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
+              : "bg-[#f2f2f7]/90 border-black/80 text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
           )}
         >
           {MOBILE_SALAH_TABS.map((tab) => {
@@ -3139,7 +3139,7 @@ export default function SalahTracker({
         "flex flex-col gap-1 text-[11px] font-bold p-1 rounded-2xl border backdrop-blur-2xl backdrop-saturate-180 transition-all w-28",
         darkMode 
           ? "bg-[#1c1c1e]/75 border-white/[0.14] text-white shadow-[0_12px_36px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-          : "bg-[#f2f2f7]/80 border-black/[0.08] text-gray-900 shadow-[0_12px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
+          : "bg-[#f2f2f7]/80 border-black/80 text-gray-900 shadow-[0_12px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
       )}
     >
       {SALAH_TABS.map((tab) => {
