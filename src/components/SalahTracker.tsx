@@ -1803,7 +1803,7 @@ export default function SalahTracker({
             "pointer-events-auto w-full max-w-[270px] xs:max-w-[290px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1",
             darkMode 
               ? "bg-[#1c1c1e]/90 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-              : "bg-[#141416]/92 border-black/[0.18] text-white shadow-[0_8px_30px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.12)]"
+              : "bg-[#f2f2f7]/90 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
           )}
         >
           {MOBILE_SALAH_TABS.map((tab) => {
@@ -1819,8 +1819,8 @@ export default function SalahTracker({
                 className={cn(
                   "relative flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
                   isSelected
-                    ? (darkMode ? "text-white font-black" : "text-neutral-950 font-black")
-                    : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-400 hover:text-white")
+                    ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                    : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
                 )}
               >
                 {isSelected && (
@@ -1830,7 +1830,7 @@ export default function SalahTracker({
                       "absolute inset-0 rounded-full",
                       darkMode 
                         ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
-                        : "bg-white backdrop-blur-xl border border-white/40 shadow-[0_2px_10px_rgba(0,0,0,0.2),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+                        : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
                     )}
                     transition={{
                       type: "spring",
@@ -1845,14 +1845,14 @@ export default function SalahTracker({
                   className={cn(
                     "relative z-10 shrink-0 transition-all duration-200", 
                     isSelected 
-                      ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]") 
+                      ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
                       : "opacity-75"
                   )} 
                 />
                 <span className={cn(
                   "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
                   isSelected 
-                    ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-950") 
+                    ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
                     : "font-semibold"
                 )}>
                   {isBn ? tab.labelBn : tab.labelEn}
@@ -3139,7 +3139,7 @@ export default function SalahTracker({
         "flex flex-col gap-1 text-[11px] font-bold p-1 rounded-2xl border backdrop-blur-2xl backdrop-saturate-180 transition-all w-28",
         darkMode 
           ? "bg-[#1c1c1e]/75 border-white/[0.14] text-white shadow-[0_12px_36px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-          : "bg-[#141416]/92 border-black/[0.18] text-white shadow-[0_12px_32px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.12)]"
+          : "bg-[#f2f2f7]/80 border-black/[0.08] text-gray-900 shadow-[0_12px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
       )}
     >
       {SALAH_TABS.map((tab) => {
@@ -3155,8 +3155,8 @@ export default function SalahTracker({
             className={cn(
               "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 select-none text-left active:scale-[0.96]",
               isSelected
-                ? (darkMode ? "text-white font-black" : "text-neutral-950 font-black")
-                : (darkMode ? "text-neutral-400 hover:text-white hover:bg-white/[0.06]" : "text-neutral-400 hover:text-white hover:bg-white/[0.08]")
+                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                : (darkMode ? "text-neutral-400 hover:text-white hover:bg-white/[0.06]" : "text-neutral-600 hover:text-neutral-900 hover:bg-black/[0.04]")
             )}
           >
             {isSelected && (
@@ -3166,7 +3166,7 @@ export default function SalahTracker({
                   "absolute inset-0 rounded-xl",
                   darkMode 
                     ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_18px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
-                    : "bg-white backdrop-blur-xl border border-white/40 shadow-[0_3px_12px_rgba(0,0,0,0.2),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+                    : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_3px_12px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
                 )}
                 transition={{
                   type: "spring",
@@ -3181,14 +3181,14 @@ export default function SalahTracker({
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 isSelected 
-                  ? (darkMode ? "text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]")
+                  ? (darkMode ? "text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]")
                   : "opacity-75"
               )} 
             />
             <span className={cn(
               "relative z-10 truncate tracking-tight transition-colors duration-200",
               isSelected 
-                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-950")
+                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900")
                 : "font-medium"
             )}>
               {isBn ? tab.labelBn : tab.labelEn}
