@@ -1800,11 +1800,11 @@ export default function SalahTracker({
         <div 
           id="salah_mobile_subnav"
           style={{
-            width: '245px',
+            width: '230px',
             height: '39.4324px',
           }}
           className={cn(
-            "pointer-events-auto w-[245px] max-w-[calc(100vw-24px)] h-[39.4324px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1 items-center",
+            "pointer-events-auto w-[230px] max-w-[calc(100vw-24px)] h-[39.4324px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1 items-center",
             darkMode 
               ? "bg-[#1c1c1e]/90 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
               : "bg-[#f2f2f7]/90 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
@@ -1888,14 +1888,8 @@ export default function SalahTracker({
               )}>
                 <Compass size={16} className={cn("animate-pulse", darkMode ? "text-emerald-500" : st.iconText)} />
               </div>
-              <h1 className={cn("text-base sm:text-xl font-black tracking-tight flex items-center gap-1.5", darkMode ? "text-white" : st.bannerTitle)}>
+              <h1 className={cn("text-base sm:text-xl font-black tracking-tight", darkMode ? "text-white" : st.bannerTitle)}>
                 {isBn ? 'সালাত ট্র্যাকার' : 'Salah Tracker'}
-                <span className={cn(
-                  "text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-extrabold",
-                  darkMode ? "bg-emerald-500/20 text-emerald-400" : st.badge
-                )}>
-                  {isBn ? '৫ ওয়াক্ত' : '5 Waqt'}
-                </span>
               </h1>
             </div>
             <p className={cn("text-xs hidden sm:block", darkMode ? "text-neutral-400" : st.bannerSubtitle)}>
@@ -2012,7 +2006,7 @@ export default function SalahTracker({
           <div className="flex items-center gap-2">
             <Clock size={16} className={cn(darkMode ? "text-emerald-500" : st.waqtClockIcon)} />
             <h2 className={cn("text-sm sm:text-base font-black tracking-tight", darkMode ? "text-white" : st.waqtTitle)}>
-              {isBn ? 'পাঁচ ওয়াক্ত ফরজ সালাত (মাগরিব হতে শুরু)' : 'Five Waqt Farz Salah (Starts at Maghrib)'}
+              {isBn ? 'ফরজ সালাত' : 'Farz Salah'}
             </h2>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
