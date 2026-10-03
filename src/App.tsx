@@ -2879,15 +2879,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         style={{
           borderRadius: '28px',
           paddingLeft: '8px',
-          width: '353.327px',
-          marginBottom: '3px',
+          width: '357.322px',
+          marginBottom: '4.5px',
           borderWidth: '1.720721px',
           borderStyle: 'double',
-          borderColor: '#c7c7c7',
+          borderColor: '#dddddd',
           backgroundColor: darkMode ? 'rgba(20, 20, 22, 0)' : 'rgba(255, 255, 255, 0)',
         }}
         className={cn(
-          "fixed bottom-2 left-2.5 right-2.5 w-[353.327px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[3px] bg-transparent",
+          "fixed bottom-2 left-2.5 right-2.5 w-[357.322px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[4.5px] bg-transparent",
           darkMode 
             ? "text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
             : "text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
