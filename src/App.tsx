@@ -2880,10 +2880,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           borderRadius: '28px',
           paddingLeft: '8px',
           width: '335.36px',
-          marginBottom: '1px',
+          marginBottom: '1.5px',
         }}
         className={cn(
-          "fixed bottom-2 left-2.5 right-2.5 w-[335.36px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[1px]",
+          "fixed bottom-2 left-2.5 right-2.5 w-[335.36px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[1.5px]",
           darkMode 
             ? "bg-[#141416]/92 border-white/[0.14] text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
             : "bg-[#ffffff]/92 border-black/[0.08] text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
@@ -2922,7 +2922,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Home 
-              size={16} 
+              size={20}
+              style={{ width: '19.991px', height: '19.991px' }}
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'home' 
@@ -2930,12 +2931,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   : "opacity-75"
               )} 
             />
-            <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
-              activeTab === 'home' 
-                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                : "font-semibold"
-            )}>
+            <span 
+              style={{ fontSize: '13px', fontWeight: 'normal' }}
+              className={cn(
+                "relative z-10 truncate tracking-tight leading-none text-[13px] transition-all duration-200", 
+                activeTab === 'home' 
+                  ? (darkMode ? "font-normal text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-normal text-neutral-900") 
+                  : "font-normal"
+              )}
+            >
               {lang === 'bn' ? 'হোম' : 'Home'}
             </span>
           </button>
@@ -2972,7 +2976,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Flame 
-              size={16} 
+              size={20}
+              style={{ width: '19.991px', height: '19.991px' }}
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'results' 
@@ -2980,12 +2985,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   : "opacity-75"
               )} 
             />
-            <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
-              activeTab === 'results' 
-                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                : "font-semibold"
-            )}>
+            <span 
+              style={{ fontSize: '13px' }}
+              className={cn(
+                "relative z-10 truncate tracking-tight leading-none text-[13px] transition-all duration-200", 
+                activeTab === 'results' 
+                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                  : "font-semibold"
+              )}
+            >
               {lang === 'bn' ? 'অভ্যাস' : 'Habitor'}
             </span>
           </button>
@@ -3022,7 +3030,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <ClipboardList 
-              size={16} 
+              size={20}
+              style={{ width: '19.991px', height: '19.991px' }}
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 (activeTab === 'logify' || activeTab === 'water') 
@@ -3030,12 +3039,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   : "opacity-75"
               )} 
             />
-            <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
-              (activeTab === 'logify' || activeTab === 'water') 
-                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                : "font-semibold"
-            )}>
+            <span 
+              style={{ fontSize: '13px' }}
+              className={cn(
+                "relative z-10 truncate tracking-tight leading-none text-[13px] transition-all duration-200", 
+                (activeTab === 'logify' || activeTab === 'water') 
+                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                  : "font-semibold"
+              )}
+            >
               {lang === 'bn' ? 'লগ' : 'Logify'}
             </span>
           </button>
@@ -3072,7 +3084,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Compass 
-              size={16} 
+              size={20}
+              style={{ width: '19.991px', height: '19.991px' }}
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'salah' 
@@ -3080,12 +3093,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   : "opacity-75"
               )} 
             />
-            <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
-              activeTab === 'salah' 
-                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                : "font-semibold"
-            )}>
+            <span 
+              style={{ fontSize: '13px' }}
+              className={cn(
+                "relative z-10 truncate tracking-tight leading-none text-[13px] transition-all duration-200", 
+                activeTab === 'salah' 
+                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                  : "font-semibold"
+              )}
+            >
               {lang === 'bn' ? 'সালাত' : 'Salah'}
             </span>
           </button>
@@ -3122,7 +3138,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               />
             )}
             <Heart 
-              size={16} 
+              size={20}
+              style={{ width: '19.991px', height: '19.991px' }}
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'calculator' 
@@ -3130,12 +3147,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   : "opacity-75"
               )} 
             />
-            <span className={cn(
-              "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
-              activeTab === 'calculator' 
-                ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                : "font-semibold"
-            )}>
+            <span 
+              style={{ fontSize: '13px' }}
+              className={cn(
+                "relative z-10 truncate tracking-tight leading-none text-[13px] transition-all duration-200", 
+                activeTab === 'calculator' 
+                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                  : "font-semibold"
+              )}
+            >
               {lang === 'bn' ? 'স্বাস্থ্য' : 'Health'}
             </span>
           </button>

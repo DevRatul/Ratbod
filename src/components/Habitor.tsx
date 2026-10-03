@@ -619,11 +619,155 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
     }
   }, [isLoaded, selectedDateKey]);
 
+  // Date currently shown in the week view (initially matches selectedDateKey)
+  const [displayedDateKey, setDisplayedDateKey] = useState<string>(() => dhakaInfo.dateKey);
+  const [slideDirection, setSlideDirection] = useState<number>(0);
+
   // Week Days based on weekStartDay (default Saturday)
   const { weekDays, weekNum } = useMemo(
-    () => getWeekDaysForDate(selectedDateKey, weekStartDay, dhakaInfo.dateKey), 
-    [selectedDateKey, dhakaInfo.dateKey, weekStartDay]
+    () => getWeekDaysForDate(displayedDateKey, weekStartDay, dhakaInfo.dateKey), 
+    [displayedDateKey, dhakaInfo.dateKey, weekStartDay]
   );
+
+  const handleNavigateWeek = (step: number) => {
+    // step: -1 for previous week, +1 for upcoming week
+    setSlideDirection(step);
+
+    const [y, m, d] = displayedDateKey.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + (step * 7));
+
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const newDisplayedKey = `${yyyy}-${mm}-${dd}`;
+    setDisplayedDateKey(newDisplayedKey);
+
+    // Also shift selectedDateKey by step * 7 days to preserve the weekday selection in the new week
+    const [sy, sm, sd] = selectedDateKey.split('-').map(Number);
+    const sDate = new Date(sy, sm - 1, sd);
+    sDate.setDate(sDate.getDate() + (step * 7));
+    const sYyyy = sDate.getFullYear();
+    const sMm = String(sDate.getMonth() + 1).padStart(2, '0');
+    const sDd = String(sDate.getDate()).padStart(2, '0');
+    setSelectedDateKey(`${sYyyy}-${sMm}-${sDd}`);
+  };
+
+  const wasSwiping = React.useRef(false);
+  const handleDaySelect = (dateKey: string) => {
+    if (wasSwiping.current) return;
+    setSelectedDateKey(dateKey);
+    setDisplayedDateKey(dateKey);
+  };
+
+  // Touch and drag swipe handlers
+  const touchStartX = React.useRef<number | null>(null);
+  const touchStartY = React.useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    wasSwiping.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) > 15 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      wasSwiping.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+
+    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      wasSwiping.current = true;
+      if (deltaX > 0) {
+        handleNavigateWeek(-1);
+      } else {
+        handleNavigateWeek(1);
+      }
+      setTimeout(() => {
+        wasSwiping.current = false;
+      }, 150);
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const mouseStartX = React.useRef<number | null>(null);
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    mouseStartX.current = e.clientX;
+    wasSwiping.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mouseStartX.current !== null && Math.abs(e.clientX - mouseStartX.current) > 15) {
+      wasSwiping.current = true;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (mouseStartX.current === null) return;
+    const deltaX = e.clientX - mouseStartX.current;
+    if (Math.abs(deltaX) > 40) {
+      wasSwiping.current = true;
+      if (deltaX > 0) {
+        handleNavigateWeek(-1);
+      } else {
+        handleNavigateWeek(1);
+      }
+      setTimeout(() => {
+        wasSwiping.current = false;
+      }, 150);
+    }
+    mouseStartX.current = null;
+  };
+
+  const lastWheelTime = React.useRef(0);
+  const handleWheel = (e: React.WheelEvent) => {
+    if (Math.abs(e.deltaX) > 35) {
+      const now = Date.now();
+      if (now - lastWheelTime.current > 380) {
+        lastWheelTime.current = now;
+        if (e.deltaX > 0) {
+          handleNavigateWeek(1);
+        } else {
+          handleNavigateWeek(-1);
+        }
+      }
+    }
+  };
+
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 100 : -100,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      transition: {
+        x: { type: "spring" as const, stiffness: 350, damping: 28 },
+        opacity: { duration: 0.18 },
+      },
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -100 : 100,
+      opacity: 0,
+      transition: {
+        x: { type: "spring" as const, stiffness: 350, damping: 28 },
+        opacity: { duration: 0.15 },
+      },
+    }),
+  };
+
+  const weekKey = weekDays.length > 0 ? `${weekDays[0].dateKey}_w${weekNum}` : displayedDateKey;
 
   // Modal for adding habit
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1027,68 +1171,109 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         "p-2 sm:p-2.5 rounded-2xl border transition-all",
         darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
       )}>
-        {/* Header: Week number on left, Sunset info on right (no September 2026) */}
+        {/* Header: Week number on left with subtle step buttons, Sunset info on right */}
         <div className="flex items-center justify-between mb-1.5 px-1">
-          <span className="text-xs font-black uppercase tracking-wider text-rose-500 dark:text-rose-400 flex items-center gap-1.5">
-            <Calendar size={14} className="text-rose-500 shrink-0" />
-            {lang === 'bn' ? `সপ্তাহ ${weekNum}` : `Week ${weekNum}`}
-          </span>
-          <span className="text-[11px] font-bold text-amber-500 dark:text-amber-400 flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleNavigateWeek(-1)}
+              className="p-1 -ml-1 rounded-md text-neutral-400 hover:text-rose-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer select-none active:scale-95"
+              title={lang === 'bn' ? 'পূর্ববর্তী সপ্তাহ' : 'Previous week'}
+              aria-label="Previous week"
+            >
+              <ChevronLeft size={13} />
+            </button>
+            <span className="text-xs font-black uppercase tracking-wider text-rose-500 dark:text-rose-400 flex items-center gap-1 select-none">
+              <Calendar size={14} className="text-rose-500 shrink-0" />
+              {lang === 'bn' ? `সপ্তাহ ${weekNum}` : `Week ${weekNum}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleNavigateWeek(1)}
+              className="p-1 rounded-md text-neutral-400 hover:text-rose-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer select-none active:scale-95"
+              title={lang === 'bn' ? 'পরবর্তী সপ্তাহ' : 'Next week'}
+              aria-label="Next week"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </div>
+          <span className="text-[11px] font-bold text-amber-500 dark:text-amber-400 flex items-center gap-1.5 select-none">
             <Sunset size={13} className="text-amber-400 shrink-0" />
             {lang === 'bn' ? `সূর্যাস্ত: ${dhakaInfo.sunsetStr}` : `Sunset: ${dhakaInfo.sunsetStr}`}
           </span>
         </div>
 
-        {/* 7 Days Grid: Saturday -> Sunday -> Monday -> Tuesday -> Wednesday -> Thursday -> Friday */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center">
-          {weekDays.map((d) => {
-            const isSelected = d.dateKey === selectedDateKey;
-            const isToday = d.isToday;
-            const dayLabel = lang === 'bn' ? (d.dayNameBn || d.dayName) : d.dayName;
+        {/* 7 Days Grid: Continuous week by week slide with touch, drag, wheel */}
+        <div 
+          className="relative overflow-hidden touch-pan-y select-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+        >
+          <AnimatePresence initial={false} custom={slideDirection} mode="wait">
+            <motion.div
+              key={weekKey}
+              custom={slideDirection}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full"
+            >
+              {weekDays.map((d) => {
+                const isSelected = d.dateKey === selectedDateKey;
+                const isToday = d.isToday;
+                const dayLabel = lang === 'bn' ? (d.dayNameBn || d.dayName) : d.dayName;
 
-            if (isSelected) {
-              return (
-                <button
-                  key={d.dateKey}
-                  type="button"
-                  onClick={() => setSelectedDateKey(d.dateKey)}
-                  title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
-                  className="flex flex-col items-center justify-between w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl bg-[#2563EB] text-white shadow-md shadow-blue-500/25 cursor-pointer select-none transition-all"
-                >
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
-                    {dayLabel}
-                  </span>
-                  <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs">
-                    <span className="text-xs sm:text-sm font-black text-gray-900 leading-none">
+                if (isSelected) {
+                  return (
+                    <button
+                      key={d.dateKey}
+                      type="button"
+                      onClick={() => handleDaySelect(d.dateKey)}
+                      title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
+                      className="flex flex-col items-center justify-between w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl bg-[#2563EB] text-white shadow-md shadow-blue-500/25 cursor-pointer select-none transition-all"
+                    >
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
+                        {dayLabel}
+                      </span>
+                      <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs">
+                        <span className="text-xs sm:text-sm font-black text-gray-900 leading-none">
+                          {d.dateNum}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    key={d.dateKey}
+                    type="button"
+                    onClick={() => handleDaySelect(d.dateKey)}
+                    title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
+                    className={cn(
+                      "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl transition-all cursor-pointer select-none",
+                      isToday
+                        ? (darkMode ? "bg-white/10 text-white border border-rose-500/40" : "bg-rose-50 text-rose-900 border border-rose-200")
+                        : (darkMode ? "bg-white/5 text-gray-400 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200")
+                    )}
+                  >
+                    <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none">
+                      {dayLabel}
+                    </span>
+                    <span className="text-base sm:text-lg font-black tracking-tighter mt-1 leading-none">
                       {d.dateNum}
                     </span>
-                  </div>
-                </button>
-              );
-            }
-
-            return (
-              <button
-                key={d.dateKey}
-                type="button"
-                onClick={() => setSelectedDateKey(d.dateKey)}
-                title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
-                className={cn(
-                  "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl transition-all cursor-pointer select-none",
-                  isToday
-                    ? (darkMode ? "bg-white/10 text-white border border-rose-500/40" : "bg-rose-50 text-rose-900 border border-rose-200")
-                    : (darkMode ? "bg-white/5 text-gray-400 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200")
-                )}
-              >
-                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none">
-                  {dayLabel}
-                </span>
-                <span className="text-base sm:text-lg font-black tracking-tighter mt-1 leading-none">
-                  {d.dateNum}
-                </span>
-              </button>
-            );
-          })}
+                  </button>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
