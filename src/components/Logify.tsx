@@ -157,20 +157,21 @@ export default function Logify({
 
   return (
     <div className="w-full max-w-full">
-      {/* Mobile 5-Tab Navigation: Floating capsule on top in mobile view */}
+      {/* Mobile 5-Tab Navigation: Floating capsule on bottom right above the main menu */}
       <div 
         id="logify_mobile_subnav_wrapper"
-        className="sticky top-0 z-40 md:hidden flex justify-center px-2 pt-1 pb-2.5 pointer-events-none transition-all duration-300"
+        className="fixed bottom-[75px] left-0 right-0 z-40 md:hidden flex justify-center px-2 pointer-events-none transition-all duration-300"
       >
         <div 
           id="logify_mobile_subnav"
           style={{
-            height: '39.4234px',
-            width: '307.387px',
+            height: '33.4144px',
+            marginBottom: '2px',
+            width: '260px',
             backgroundColor: darkMode ? 'rgba(28, 28, 30, 0)' : 'rgba(242, 242, 247, 0)',
           }}
           className={cn(
-            "pointer-events-auto w-[307.387px] max-w-[calc(100vw-24px)] h-[39.4234px] grid grid-cols-5 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-0.5 items-center bg-transparent",
+            "pointer-events-auto w-[260px] max-w-[calc(100vw-24px)] h-[33.4144px] mb-[2px] grid grid-cols-5 py-0.5 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-0.5 items-center bg-transparent",
             darkMode 
               ? "border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
               : "border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
@@ -187,7 +188,7 @@ export default function Logify({
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "relative flex items-center justify-center gap-1 py-1.5 px-0.5 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+                  "relative flex items-center justify-center py-1 px-0.5 rounded-full min-h-[24px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
                   isSelected
                     ? "text-white font-black"
                     : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -210,17 +211,8 @@ export default function Logify({
                     }}
                   />
                 )}
-                <Icon 
-                  size={12} 
-                  className={cn(
-                    "relative z-10 shrink-0 transition-all duration-200", 
-                    isSelected 
-                      ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
-                      : "opacity-75"
-                  )} 
-                />
                 <span className={cn(
-                  "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
+                  "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
                   isSelected 
                     ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                     : "font-semibold"
@@ -279,7 +271,7 @@ export default function Logify({
                   type="button"
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 select-none text-left active:scale-[0.96]",
+                    "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center select-none text-center active:scale-[0.96]",
                     isSelected
                       ? "text-white font-black"
                       : (darkMode ? "text-neutral-400 hover:text-white hover:bg-white/[0.06]" : "text-neutral-600 hover:text-neutral-900 hover:bg-black/[0.04]")
@@ -302,17 +294,8 @@ export default function Logify({
                       }}
                     />
                   )}
-                  <Icon 
-                    size={14} 
-                    className={cn(
-                      "relative z-10 shrink-0 transition-all duration-200", 
-                      isSelected 
-                        ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
-                        : "opacity-75"
-                    )} 
-                  />
                   <span className={cn(
-                    "relative z-10 truncate tracking-tight transition-colors duration-200",
+                    "relative z-10 truncate tracking-tight transition-colors duration-200 w-full text-center text-[11px]",
                     isSelected 
                       ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                       : "font-medium"

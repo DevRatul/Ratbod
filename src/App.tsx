@@ -50,6 +50,7 @@ import {
   AtSign,
   MessageCircle
 } from 'lucide-react';
+import { PrayerIcon } from './components/icons/PrayerIcon';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -2118,7 +2119,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                   }}
                 />
               )}
-              <Compass size={13} className="relative z-10 text-emerald-500 shrink-0" />
+              <PrayerIcon size={14} className="relative z-10 text-emerald-500 shrink-0" />
               <span className="relative z-10">{t.tabSalah}</span>
             </button>
 
@@ -2322,7 +2323,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Salah Tab Content */}
       <div className={cn(
-        "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[130px] sm:pb-12",
         activeTab === 'salah' ? "block" : "hidden"
       )}>
         <SalahTracker 
@@ -2344,7 +2345,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
 
       {/* Logify Tab Content (includes Water section) */}
       <div className={cn(
-        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
+        "max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[130px] sm:pb-12",
         (activeTab === 'logify' || activeTab === 'water') ? "block" : "hidden"
       )}>
         <Logify 
@@ -2879,22 +2880,27 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         style={{
           borderRadius: '28px',
           paddingLeft: '8px',
-          width: '365.32px',
+          paddingRight: '8px',
+          width: '371.315px',
           height: '57.8559px',
           marginBottom: '4.5px',
           borderWidth: '1.720721px',
-          borderStyle: darkMode ? 'groove' : 'double',
+          borderStyle: 'solid',
           borderColor: darkMode ? '#2e2e34' : '#b7b7b7',
           backgroundColor: darkMode ? 'rgba(20, 20, 22, 0)' : 'rgba(255, 255, 255, 0)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxSizing: 'border-box',
         }}
         className={cn(
-          "fixed bottom-2 left-2.5 right-2.5 w-[365.32px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[4.5px] bg-transparent",
+          "fixed bottom-2 left-0 right-0 mx-auto w-[371.315px] max-w-[calc(100vw-20px)] z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 px-2 mb-[4.5px] bg-transparent flex items-center justify-center",
           darkMode 
             ? "text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)]" 
             : "text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
         )}
       >
-        <div className="w-full grid grid-cols-5 gap-1 items-center">
+        <div className="w-full grid grid-cols-5 gap-1 items-center justify-items-center">
           {/* 1. Home (replaced Groceries) */}
           <button 
             id="tab_home"
@@ -2904,7 +2910,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             className={cn(
               "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'home'
-                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                ? (darkMode ? "text-blue-400 font-bold" : "text-blue-900 font-bold")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
@@ -2932,17 +2938,17 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'home' 
-                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  ? (darkMode ? "text-blue-400 drop-shadow-[0_1px_4px_rgba(96,165,250,0.5)]" : "text-blue-900 drop-shadow-[0_1px_2px_rgba(30,58,138,0.25)]") 
                   : "opacity-75"
               )} 
             />
             <span 
-              style={{ fontSize: '12px', fontWeight: 'normal' }}
+              style={{ fontSize: '12px' }}
               className={cn(
                 "relative z-10 truncate tracking-tight leading-none text-[12px] transition-all duration-200", 
                 activeTab === 'home' 
-                  ? (darkMode ? "font-normal text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-normal text-neutral-900") 
-                  : "font-normal"
+                  ? (darkMode ? "font-bold text-blue-400 drop-shadow-[0_1px_3px_rgba(96,165,250,0.4)]" : "font-bold text-blue-900") 
+                  : "font-medium"
               )}
             >
               {lang === 'bn' ? 'হোম' : 'Home'}
@@ -2958,7 +2964,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             className={cn(
               "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'results' 
-                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
+                ? (darkMode ? "text-blue-400 font-bold" : "text-blue-900 font-bold") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
@@ -2986,7 +2992,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'results' 
-                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  ? (darkMode ? "text-blue-400 drop-shadow-[0_1px_4px_rgba(96,165,250,0.5)]" : "text-blue-900 drop-shadow-[0_1px_2px_rgba(30,58,138,0.25)]") 
                   : "opacity-75"
               )} 
             />
@@ -2995,8 +3001,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 truncate tracking-tight leading-none text-[12px] transition-all duration-200", 
                 activeTab === 'results' 
-                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                  : "font-semibold"
+                  ? (darkMode ? "font-bold text-blue-400 drop-shadow-[0_1px_3px_rgba(96,165,250,0.4)]" : "font-bold text-blue-900") 
+                  : "font-medium"
               )}
             >
               {lang === 'bn' ? 'অভ্যাস' : 'Habitor'}
@@ -3012,7 +3018,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             className={cn(
               "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               (activeTab === 'logify' || activeTab === 'water') 
-                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
+                ? (darkMode ? "text-blue-400 font-bold" : "text-blue-900 font-bold") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
@@ -3040,7 +3046,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 (activeTab === 'logify' || activeTab === 'water') 
-                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  ? (darkMode ? "text-blue-400 drop-shadow-[0_1px_4px_rgba(96,165,250,0.5)]" : "text-blue-900 drop-shadow-[0_1px_2px_rgba(30,58,138,0.25)]") 
                   : "opacity-75"
               )} 
             />
@@ -3049,8 +3055,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 truncate tracking-tight leading-none text-[12px] transition-all duration-200", 
                 (activeTab === 'logify' || activeTab === 'water') 
-                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                  : "font-semibold"
+                  ? (darkMode ? "font-bold text-blue-400 drop-shadow-[0_1px_3px_rgba(96,165,250,0.4)]" : "font-bold text-blue-900") 
+                  : "font-medium"
               )}
             >
               {lang === 'bn' ? 'লগ' : 'Logify'}
@@ -3066,7 +3072,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             className={cn(
               "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'salah'
-                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                ? (darkMode ? "text-blue-400 font-bold" : "text-blue-900 font-bold")
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
@@ -3088,13 +3094,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 }}
               />
             )}
-            <Compass 
+            <PrayerIcon 
               size={18}
               style={{ width: '17.9887px', height: '17.9887px' }}
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'salah' 
-                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  ? (darkMode ? "text-blue-400 drop-shadow-[0_1px_4px_rgba(96,165,250,0.5)]" : "text-blue-900 drop-shadow-[0_1px_2px_rgba(30,58,138,0.25)]") 
                   : "opacity-75"
               )} 
             />
@@ -3103,8 +3109,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 truncate tracking-tight leading-none text-[12px] transition-all duration-200", 
                 activeTab === 'salah' 
-                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                  : "font-semibold"
+                  ? (darkMode ? "font-bold text-blue-400 drop-shadow-[0_1px_3px_rgba(96,165,250,0.4)]" : "font-bold text-blue-900") 
+                  : "font-medium"
               )}
             >
               {lang === 'bn' ? 'সালাত' : 'Salah'}
@@ -3120,7 +3126,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
             className={cn(
               "relative flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-[21px] min-h-[46px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
               activeTab === 'calculator' 
-                ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black") 
+                ? (darkMode ? "text-blue-400 font-bold" : "text-blue-900 font-bold") 
                 : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
             )}
           >
@@ -3148,7 +3154,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 shrink-0 transition-all duration-200", 
                 activeTab === 'calculator' 
-                  ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                  ? (darkMode ? "text-blue-400 drop-shadow-[0_1px_4px_rgba(96,165,250,0.5)]" : "text-blue-900 drop-shadow-[0_1px_2px_rgba(30,58,138,0.25)]") 
                   : "opacity-75"
               )} 
             />
@@ -3157,8 +3163,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               className={cn(
                 "relative z-10 truncate tracking-tight leading-none text-[12px] transition-all duration-200", 
                 activeTab === 'calculator' 
-                  ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
-                  : "font-semibold"
+                  ? (darkMode ? "font-bold text-blue-400 drop-shadow-[0_1px_3px_rgba(96,165,250,0.4)]" : "font-bold text-blue-900") 
+                  : "font-medium"
               )}
             >
               {lang === 'bn' ? 'স্বাস্থ্য' : 'Health'}

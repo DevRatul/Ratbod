@@ -39,6 +39,8 @@ import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey, getDhakaSunsetTime } from '../utils/sunsetDate';
 import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offlineSync';
+import { getWeekDaysForDate } from './Habitor';
+import { PrayerIcon } from './icons/PrayerIcon';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -1298,6 +1300,33 @@ export default function SalahTracker({
     setSelectedDate(getDhakaLogicalDateKey().dateKey);
   };
 
+  const todayKey = useMemo(() => getDhakaLogicalDateKey().dateKey, []);
+
+  const { weekDays, weekNum, monthNameEn, monthNameBn } = useMemo(
+    () => getWeekDaysForDate(selectedDate, weekStartDay, todayKey),
+    [selectedDate, weekStartDay, todayKey]
+  );
+
+  const handlePrevWeek = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() - 7);
+    const prevY = date.getFullYear();
+    const prevM = String(date.getMonth() + 1).padStart(2, '0');
+    const prevD = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${prevY}-${prevM}-${prevD}`);
+  };
+
+  const handleNextWeek = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + 7);
+    const nextY = date.getFullYear();
+    const nextM = String(date.getMonth() + 1).padStart(2, '0');
+    const nextD = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${nextY}-${nextM}-${nextD}`);
+  };
+
   // Calculation of Farz completion (Order: Maghrib, Isha, Fajr, Dhuhr, Asr)
   const farzCount = useMemo(() => {
     let count = 0;
@@ -1792,20 +1821,21 @@ export default function SalahTracker({
         className="fixed inset-0 pointer-events-none z-[9999] w-full h-full"
       />
 
-      {/* Mobile 3-Tab Navigation: Floating capsule on top in mobile view */}
+      {/* Mobile 3-Tab Navigation: Floating capsule on bottom right above the main menu */}
       <div 
         id="salah_mobile_subnav_wrapper"
-        className="sticky top-0 z-40 md:hidden flex justify-center px-3 pt-1 pb-2.5 pointer-events-none transition-all duration-300"
+        className="fixed bottom-[75px] left-0 right-0 z-40 md:hidden flex justify-center px-3 pointer-events-none transition-all duration-300"
       >
         <div 
           id="salah_mobile_subnav"
           style={{
-            width: '230px',
-            height: '39.4324px',
+            width: '190px',
+            height: '33.4257px',
+            marginBottom: '2px',
             backgroundColor: darkMode ? 'rgba(28, 28, 30, 0)' : 'rgba(242, 242, 247, 0)',
           }}
           className={cn(
-            "pointer-events-auto w-[230px] max-w-[calc(100vw-24px)] h-[39.4324px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1 items-center bg-transparent",
+            "pointer-events-auto w-[190px] max-w-[calc(100vw-24px)] h-[33.4257px] mb-[2px] grid grid-cols-3 py-0.5 px-0.5 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1 items-center bg-transparent",
             darkMode 
               ? "border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
               : "border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
@@ -1822,7 +1852,7 @@ export default function SalahTracker({
                 type="button"
                 onClick={() => handleSubTabChange(tab.id)}
                 className={cn(
-                  "relative flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
+                  "relative flex items-center justify-center py-1 px-1 rounded-full min-h-[24px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
                   isSelected
                     ? "text-white font-black"
                     : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
@@ -1845,17 +1875,8 @@ export default function SalahTracker({
                     }}
                   />
                 )}
-                <Icon 
-                  size={12} 
-                  className={cn(
-                    "relative z-10 shrink-0 transition-all duration-200", 
-                    isSelected 
-                      ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
-                      : "opacity-75"
-                  )} 
-                />
                 <span className={cn(
-                  "relative z-10 truncate tracking-tight leading-none text-[10.5px] transition-all duration-200", 
+                  "relative z-10 truncate tracking-tight leading-none text-[11px] transition-all duration-200", 
                   isSelected 
                     ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                     : "font-semibold"
@@ -1874,129 +1895,286 @@ export default function SalahTracker({
           {/* Sub Tab: Salah */}
           <div className={cn("space-y-3 sm:space-y-5 w-full", activeSubTab === 'salah' ? "block" : "hidden")}>
             {/* 1. Header Banner with Date & Progress */}
-      <div className={cn(
-        "rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all shadow-sm",
-        darkMode 
-          ? "bg-gradient-to-br from-[#121b18] to-[#161a1e] border-emerald-500/20 text-white" 
-          : st.bannerBg
-      )}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <div className={cn(
-                "w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center",
-                darkMode ? "bg-emerald-500/20 text-emerald-400" : st.iconBox
-              )}>
-                <Compass size={16} className={cn("animate-pulse", darkMode ? "text-emerald-500" : st.iconText)} />
+            <div className={cn(
+              "rounded-2xl p-2.5 sm:p-4 border transition-all duration-300 relative overflow-hidden",
+              darkMode 
+                ? "bg-[#18181b]/90 backdrop-blur-xl border-white/[0.08] text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)]" 
+                : "bg-white/95 backdrop-blur-xl border-black/[0.06] text-gray-900 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+            )}>
+              {/* Subtle ambient background glow */}
+              <div className="absolute top-0 right-0 w-64 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none -mr-16 -mt-10" />
+
+              {/* Header Top Controls */}
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-transform hover:scale-105 shrink-0",
+                    darkMode 
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.15)]" 
+                      : "bg-emerald-50 text-emerald-600 border border-emerald-200/80 shadow-2xs"
+                  )}>
+                    <PrayerIcon size={16} className="animate-pulse text-emerald-500" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h1 className="text-sm sm:text-base font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <span>{isBn ? 'সালাত ট্র্যাকার' : 'Salah Tracker'}</span>
+                      <span className={cn(
+                        "text-[9.5px] font-bold px-1.5 py-0.2 rounded-full border",
+                        farzCount === 5
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20"
+                      )}>
+                        {farzCount === 5 ? (isBn ? 'সম্পন্ন ★' : 'Completed ★') : `${formatNum(farzCount)}/5`}
+                      </span>
+                    </h1>
+                  </div>
+                </div>
+
+                {/* Right: Week Navigator + Sunset badge */}
+                <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto text-[11px] font-bold">
+                  {/* Week Navigator */}
+                  <div className={cn(
+                    "flex items-center gap-0.5 px-1 py-0.5 rounded-xl border shadow-2xs",
+                    darkMode ? "bg-black/30 border-white/10 text-white" : "bg-white/90 border-slate-200 text-slate-800"
+                  )}>
+                    <button
+                      type="button"
+                      onClick={handlePrevWeek}
+                      title={isBn ? 'পূর্ববর্তী সপ্তাহ' : 'Previous Week'}
+                      className={cn(
+                        "p-1 rounded-lg transition-colors cursor-pointer",
+                        darkMode ? "hover:bg-white/10 text-neutral-300" : "hover:bg-slate-100 text-slate-700"
+                      )}
+                    >
+                      <ChevronLeft size={13} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleToday}
+                      title={isBn ? 'আজকের দিনে ফিরুন' : 'Jump to Today'}
+                      className={cn(
+                        "px-2 py-0.5 rounded-lg text-[10.5px] sm:text-xs font-black transition-colors cursor-pointer flex items-center gap-1",
+                        darkMode ? "hover:bg-white/10 text-white" : "hover:bg-slate-100 text-slate-900"
+                      )}
+                    >
+                      <Calendar size={11} className="text-emerald-500 shrink-0" />
+                      <span>{isBn ? `সপ্তাহ ${formatNum(weekNum)} · ${monthNameBn}` : `W${weekNum} · ${monthNameEn.slice(0, 3)}`}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleNextWeek}
+                      title={isBn ? 'পরবর্তী সপ্তাহ' : 'Next Week'}
+                      className={cn(
+                        "p-1 rounded-lg transition-colors cursor-pointer",
+                        darkMode ? "hover:bg-white/10 text-neutral-300" : "hover:bg-slate-100 text-slate-700"
+                      )}
+                    >
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+
+                  {/* Sunset badge */}
+                  <div 
+                    title={isBn ? 'প্রতিদিন সূর্যাস্তে সালাতের নতুন দিনচক্র শুরু হয়' : 'Daily Salah cycle advances at sunset'}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-0.5 rounded-xl border shrink-0 text-[10px] sm:text-[11px] font-bold shadow-2xs",
+                      darkMode ? "bg-amber-500/10 text-amber-300 border-amber-500/25" : "bg-amber-50 text-amber-900 border-amber-200"
+                    )}
+                  >
+                    <Sunset size={12} className="text-amber-500 shrink-0" />
+                    <span>{isBn ? `সূর্যাস্ত: ${dhakaInfo.sunsetStr}` : `Sunset: ${dhakaInfo.sunsetStr}`}</span>
+                  </div>
+                </div>
               </div>
-              <h1 className={cn("text-base sm:text-xl font-black tracking-tight", darkMode ? "text-white" : st.bannerTitle)}>
-                {isBn ? 'সালাত ট্র্যাকার' : 'Salah Tracker'}
-              </h1>
-            </div>
-            <p className={cn("text-xs hidden sm:block", darkMode ? "text-neutral-400" : st.bannerSubtitle)}>
-              {isBn 
-                ? 'পাঁচ ওয়াক্ত ফরজ সালাত, নফল ইবাদত ও যিকির-আযকার নিয়মিত আদায় করুন।' 
-                : 'Track daily five waqt prayers, nafal ibadat, and daily zikr azkar with peace of mind.'}
-            </p>
-          </div>
 
-          {renderDateAndThemeControls()}
-        </div>
+              {/* 7-Days Minimal Weekly Strip (Just like Habitor, but compact & clean) */}
+              <div className="relative z-10 w-full mb-2.5">
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full">
+                  {weekDays.map((d) => {
+                    const isSelected = d.dateKey === selectedDate;
+                    const isToday = d.dateKey === todayKey;
+                    const dayLabel = isBn ? (d.dayNameBn || d.dayName) : d.dayName;
+                    
+                    const rec = recordsMap[d.dateKey];
+                    let completedFarz = 0;
+                    if (rec?.prayers) {
+                      if (rec.prayers.maghrib?.fard) completedFarz++;
+                      if (rec.prayers.isha?.fard) completedFarz++;
+                      if (rec.prayers.fajr?.fard) completedFarz++;
+                      if (rec.prayers.dhuhr?.fard) completedFarz++;
+                      if (rec.prayers.asr?.fard) completedFarz++;
+                    }
 
-        {/* Stats Strip: matching Zikr banner height, padding, and layout */}
-        <div className={cn("grid grid-cols-4 gap-1.5 sm:gap-3 mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t text-xs", darkMode ? "border-emerald-500/15" : st.statsBorder)}>
-          {/* 1. Fard */}
-          <div 
-            onClick={farzCount === 5 ? triggerSalahFireworks : undefined}
-            className={cn(
-              "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
-              farzCount === 5 ? "cursor-pointer active:scale-95" : "",
-              darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
-            )}
-            title={farzCount === 5 ? (isBn ? 'আতশবাজি উদযাপন চালান' : 'Fireworks Celebration') : undefined}
-          >
-            <div className={cn(
-              "w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 shadow-xs",
-              farzCount === 5 
-                ? (darkMode ? "bg-emerald-600 text-white shadow-xs animate-bounce" : st.farzStatDone)
-                : (darkMode ? "bg-emerald-500/20 text-emerald-400" : st.farzStatPending)
-            )}>
-              {formatNum(farzCount)}/৫
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
-                {isBn ? 'ফরজ সালাত' : 'Fard'}
-              </span>
-              <span className={cn("font-black text-xs sm:text-sm truncate block", darkMode ? "text-white" : st.farzStatText)}>
-                {farzCount === 5 ? (isBn ? '৫/৫ ★' : '5/5 ★') : `${formatNum(farzCount)}/5`}
-              </span>
-            </div>
-          </div>
+                    if (isSelected) {
+                      return (
+                        <button
+                          key={d.dateKey}
+                          type="button"
+                          onClick={() => setSelectedDate(d.dateKey)}
+                          title={`${isBn ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
+                          className="flex flex-col items-center justify-between w-full h-[36px] sm:h-[40px] py-0.5 px-0.5 rounded-xl bg-emerald-600 text-white shadow-xs cursor-pointer select-none transition-all active:scale-95"
+                        >
+                          <span className="text-[9px] font-bold uppercase tracking-tight leading-none text-emerald-100 pt-0.5">
+                            {dayLabel}
+                          </span>
+                          <div className="flex items-center gap-0.5 pb-0.5">
+                            <span className="text-[11px] sm:text-xs font-black leading-none text-white">
+                              {formatNum(d.dateNum)}
+                            </span>
+                            {completedFarz === 5 && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-300 shrink-0" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    }
 
-          {/* 2. Streak */}
-          <div className={cn(
-            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
-          )}>
-            <div className={cn(
-              "w-7 h-7 rounded-lg flex items-center justify-center font-black shrink-0 shadow-xs",
-              darkMode ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-900 font-bold"
-            )}>
-              <Flame size={14} className="text-amber-600 dark:text-amber-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
-                {isBn ? 'ধারাবাহিক' : 'Streak'}
-              </span>
-              <span className={cn("font-black text-xs sm:text-sm truncate block", darkMode ? "text-amber-400" : "text-amber-900")}>
-                {formatNum(currentStreak)}{isBn ? ' দিন' : 'd'}
-              </span>
-            </div>
-          </div>
+                    return (
+                      <button
+                        key={d.dateKey}
+                        type="button"
+                        onClick={() => setSelectedDate(d.dateKey)}
+                        title={`${isBn ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
+                        className={cn(
+                          "flex flex-col items-center justify-between w-full h-[36px] sm:h-[40px] py-0.5 px-0.5 rounded-xl transition-all cursor-pointer select-none active:scale-95",
+                          isToday
+                            ? (darkMode ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/35" : "bg-emerald-50 text-emerald-900 border border-emerald-300/80")
+                            : (darkMode ? "bg-white/[0.03] text-neutral-300 hover:bg-white/[0.07] border border-white/[0.05]" : "bg-gray-100/80 text-gray-700 hover:bg-gray-200/80 border border-gray-200/60")
+                        )}
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-tight opacity-75 leading-none pt-0.5">
+                          {dayLabel}
+                        </span>
+                        <div className="flex items-center gap-0.5 pb-0.5">
+                          <span className="text-[11px] sm:text-xs font-bold leading-none">
+                            {formatNum(d.dateNum)}
+                          </span>
+                          {completedFarz === 5 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          )}
+                          {completedFarz > 0 && completedFarz < 5 && (
+                            <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0 opacity-80" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          {/* 3. Nafl */}
-          <div className={cn(
-            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
-          )}>
-            <div className={cn(
-              "w-7 h-7 rounded-lg flex items-center justify-center font-black shrink-0 shadow-xs",
-              darkMode ? "bg-teal-500/20 text-teal-400" : "bg-teal-100 text-teal-900 font-bold"
-            )}>
-              <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
-                {isBn ? 'নফল রাকাত' : 'Nafl'}
-              </span>
-              <span className={cn("font-black text-xs sm:text-sm truncate block", darkMode ? "text-teal-400" : "text-teal-900")}>
-                {formatNum(totalNaflRakahs)}{isBn ? ' রাকাত' : 'R'}
-              </span>
-            </div>
-          </div>
+              {/* Minimal Modern Stats Grid */}
+              <div className="relative z-10 grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-2.5 border-t border-black/[0.05] dark:border-white/[0.06]">
+                {/* 1. Fard */}
+                <div 
+                  onClick={farzCount === 5 ? triggerSalahFireworks : undefined}
+                  className={cn(
+                    "group relative p-2 sm:p-2.5 rounded-xl border transition-all duration-200 flex flex-col justify-between min-w-0 select-none",
+                    farzCount === 5 ? "cursor-pointer active:scale-95" : "",
+                    darkMode 
+                      ? "bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]" 
+                      : "bg-gray-50/70 hover:bg-gray-50 border-gray-100 hover:border-gray-200"
+                  )}
+                  title={farzCount === 5 ? (isBn ? 'আতশবাজি উদযাপন চালান' : 'Fireworks Celebration') : undefined}
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 truncate">
+                      {isBn ? 'ফরজ' : 'Fard'}
+                    </span>
+                    <div className={cn(
+                      "w-4 h-4 rounded-md flex items-center justify-center shrink-0 text-[9px] font-black",
+                      farzCount === 5 
+                        ? "bg-emerald-500 text-white" 
+                        : "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400"
+                    )}>
+                      {farzCount === 5 ? '✓' : formatNum(farzCount)}
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={cn(
+                      "text-sm sm:text-base font-black tracking-tight",
+                      farzCount === 5 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-white"
+                    )}>
+                      {formatNum(farzCount)}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-semibold">/ 5</span>
+                  </div>
+                </div>
 
-          {/* 4. Dhikr */}
-          <div className={cn(
-            "p-1.5 sm:p-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 min-w-0 transition-all shadow-xs",
-            darkMode ? "bg-black/20 border-emerald-500/10" : st.statCard
-          )}>
-            <div className={cn(
-              "w-7 h-7 rounded-lg flex items-center justify-center font-black shrink-0 shadow-xs",
-              darkMode ? "bg-cyan-500/20 text-cyan-400" : "bg-cyan-100 text-cyan-900 font-bold"
-            )}>
-              <Heart size={14} className="text-cyan-600 dark:text-cyan-400" />
+                {/* 2. Streak */}
+                <div className={cn(
+                  "group relative p-2 sm:p-2.5 rounded-xl border transition-all duration-200 flex flex-col justify-between min-w-0 select-none",
+                  darkMode 
+                    ? "bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]" 
+                    : "bg-gray-50/70 hover:bg-gray-50 border-gray-100 hover:border-gray-200"
+                )}>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 truncate">
+                      {isBn ? 'ধারাবাহিক' : 'Streak'}
+                    </span>
+                    <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-500 dark:text-amber-400">
+                      <Flame size={10} strokeWidth={2.5} />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm sm:text-base font-black tracking-tight text-amber-600 dark:text-amber-400">
+                      {formatNum(currentStreak)}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-semibold">
+                      {isBn ? 'দিন' : 'd'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Nafl */}
+                <div className={cn(
+                  "group relative p-2 sm:p-2.5 rounded-xl border transition-all duration-200 flex flex-col justify-between min-w-0 select-none",
+                  darkMode 
+                    ? "bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]" 
+                    : "bg-gray-50/70 hover:bg-gray-50 border-gray-100 hover:border-gray-200"
+                )}>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 truncate">
+                      {isBn ? 'নফল' : 'Nafl'}
+                    </span>
+                    <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0 bg-teal-500/15 text-teal-500 dark:text-teal-400">
+                      <Sparkles size={10} strokeWidth={2.5} />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm sm:text-base font-black tracking-tight text-teal-600 dark:text-teal-400">
+                      {formatNum(totalNaflRakahs)}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-semibold">
+                      {isBn ? 'রা.' : 'R'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Dhikr */}
+                <div className={cn(
+                  "group relative p-2 sm:p-2.5 rounded-xl border transition-all duration-200 flex flex-col justify-between min-w-0 select-none",
+                  darkMode 
+                    ? "bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]" 
+                    : "bg-gray-50/70 hover:bg-gray-50 border-gray-100 hover:border-gray-200"
+                )}>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 truncate">
+                      {isBn ? 'যিকির' : 'Dhikr'}
+                    </span>
+                    <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0 bg-cyan-500/15 text-cyan-500 dark:text-cyan-400">
+                      <Heart size={10} strokeWidth={2.5} />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm sm:text-base font-black tracking-tight font-mono text-cyan-600 dark:text-cyan-400 truncate">
+                      {formatNum(totalDhikrToday)}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <span className={cn("block text-[8.5px] sm:text-[9px] font-bold truncate", darkMode ? "text-neutral-400" : "text-slate-800")}>
-                {isBn ? 'যিকির' : 'Dhikr'}
-              </span>
-              <span className={cn("font-black text-xs sm:text-sm font-mono truncate block", darkMode ? "text-cyan-400" : "text-cyan-950")}>
-                {formatNum(totalDhikrToday)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* 2. Five Waqt Salah Section */}
       <div className={cn(
@@ -3152,7 +3330,7 @@ export default function SalahTracker({
             type="button"
             onClick={() => handleSubTabChange(tab.id)}
             className={cn(
-              "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 select-none text-left active:scale-[0.96]",
+              "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center select-none text-center active:scale-[0.96]",
               isSelected
                 ? "text-white font-black"
                 : (darkMode ? "text-neutral-400 hover:text-white hover:bg-white/[0.06]" : "text-neutral-600 hover:text-neutral-900 hover:bg-black/[0.04]")
@@ -3175,17 +3353,8 @@ export default function SalahTracker({
                 }}
               />
             )}
-            <Icon 
-              size={14} 
-              className={cn(
-                "relative z-10 shrink-0 transition-all duration-200", 
-                isSelected 
-                  ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
-                  : "opacity-75"
-              )} 
-            />
             <span className={cn(
-              "relative z-10 truncate tracking-tight transition-colors duration-200",
+              "relative z-10 truncate tracking-tight transition-colors duration-200 w-full text-center text-[11px]",
               isSelected 
                 ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                 : "font-medium"
