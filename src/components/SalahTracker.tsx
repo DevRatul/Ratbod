@@ -1802,12 +1802,13 @@ export default function SalahTracker({
           style={{
             width: '230px',
             height: '39.4324px',
+            backgroundColor: darkMode ? 'rgba(28, 28, 30, 0)' : 'rgba(242, 242, 247, 0)',
           }}
           className={cn(
-            "pointer-events-auto w-[230px] max-w-[calc(100vw-24px)] h-[39.4324px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1 items-center",
+            "pointer-events-auto w-[230px] max-w-[calc(100vw-24px)] h-[39.4324px] grid grid-cols-3 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-1 items-center bg-transparent",
             darkMode 
-              ? "bg-[#1c1c1e]/90 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-              : "bg-[#f2f2f7]/90 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
+              ? "border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+              : "border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
           )}
         >
           {MOBILE_SALAH_TABS.map((tab) => {
