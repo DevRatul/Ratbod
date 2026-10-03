@@ -164,8 +164,12 @@ export default function Logify({
       >
         <div 
           id="logify_mobile_subnav"
+          style={{
+            height: '38.4324px',
+            width: '307.387px',
+          }}
           className={cn(
-            "pointer-events-auto w-full max-w-[325px] xs:max-w-[340px] grid grid-cols-5 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-0.5",
+            "pointer-events-auto w-[307.387px] max-w-[calc(100vw-24px)] h-[38.4324px] grid grid-cols-5 py-1 px-1 rounded-full border backdrop-blur-2xl backdrop-saturate-180 transition-all gap-0.5 items-center",
             darkMode 
               ? "bg-[#1c1c1e]/90 border-white/[0.14] text-white shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]" 
               : "bg-[#f2f2f7]/90 border-black/[0.08] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
@@ -184,7 +188,7 @@ export default function Logify({
                 className={cn(
                   "relative flex items-center justify-center gap-1 py-1.5 px-0.5 rounded-full min-h-[28px] cursor-pointer select-none text-center min-w-0 w-full transition-all duration-200 active:scale-[0.95]",
                   isSelected
-                    ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                    ? "text-white font-black"
                     : (darkMode ? "text-neutral-400 hover:text-white" : "text-neutral-600 hover:text-neutral-900")
                 )}
               >
@@ -195,7 +199,7 @@ export default function Logify({
                       "absolute inset-0 rounded-full",
                       darkMode 
                         ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
-                        : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+                        : "bg-[#18181b] border border-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.12)]"
                     )}
                     transition={{
                       type: "spring",
@@ -210,14 +214,14 @@ export default function Logify({
                   className={cn(
                     "relative z-10 shrink-0 transition-all duration-200", 
                     isSelected 
-                      ? (darkMode ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]") 
+                      ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                       : "opacity-75"
                   )} 
                 />
                 <span className={cn(
                   "relative z-10 truncate tracking-tight leading-none text-[10px] transition-all duration-200", 
                   isSelected 
-                    ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900") 
+                    ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                     : "font-semibold"
                 )}>
                   {isBn ? tab.labelBnShort : tab.labelEnShort}
@@ -276,7 +280,7 @@ export default function Logify({
                   className={cn(
                     "relative w-full px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 select-none text-left active:scale-[0.96]",
                     isSelected
-                      ? (darkMode ? "text-white font-black" : "text-neutral-900 font-black")
+                      ? "text-white font-black"
                       : (darkMode ? "text-neutral-400 hover:text-white hover:bg-white/[0.06]" : "text-neutral-600 hover:text-neutral-900 hover:bg-black/[0.04]")
                   )}
                 >
@@ -287,7 +291,7 @@ export default function Logify({
                         "absolute inset-0 rounded-xl",
                         darkMode 
                           ? "bg-white/[0.22] backdrop-blur-xl border border-white/35 shadow-[0_4px_18px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.45)]" 
-                          : "bg-white/90 backdrop-blur-xl border border-black/[0.06] shadow-[0_3px_12px_rgba(0,0,0,0.12),inset_0_1px_0.5px_rgba(255,255,255,1)]"
+                          : "bg-[#18181b] border border-black/20 shadow-[0_4px_14px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.12)]"
                       )}
                       transition={{
                         type: "spring",
@@ -302,14 +306,14 @@ export default function Logify({
                     className={cn(
                       "relative z-10 shrink-0 transition-all duration-200", 
                       isSelected 
-                        ? (darkMode ? "text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]" : "text-neutral-950 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]")
+                        ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                         : "opacity-75"
                     )} 
                   />
                   <span className={cn(
                     "relative z-10 truncate tracking-tight transition-colors duration-200",
                     isSelected 
-                      ? (darkMode ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : "font-black text-neutral-900")
+                      ? "font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" 
                       : "font-medium"
                   )}>
                     {isBn ? tab.labelBn : tab.labelEn}
