@@ -2879,17 +2879,18 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         style={{
           borderRadius: '28px',
           paddingLeft: '8px',
-          width: '357.322px',
+          width: '365.32px',
+          height: '57.8559px',
           marginBottom: '4.5px',
           borderWidth: '1.720721px',
-          borderStyle: 'double',
-          borderColor: '#dddddd',
+          borderStyle: darkMode ? 'groove' : 'double',
+          borderColor: darkMode ? '#2e2e34' : '#b7b7b7',
           backgroundColor: darkMode ? 'rgba(20, 20, 22, 0)' : 'rgba(255, 255, 255, 0)',
         }}
         className={cn(
-          "fixed bottom-2 left-2.5 right-2.5 w-[357.322px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[4.5px] bg-transparent",
+          "fixed bottom-2 left-2.5 right-2.5 w-[365.32px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[4.5px] bg-transparent",
           darkMode 
-            ? "text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+            ? "text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)]" 
             : "text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
         )}
       >

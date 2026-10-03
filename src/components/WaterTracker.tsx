@@ -2003,7 +2003,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               onClick={() => handleAddWater(400)}
               title={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
               aria-label={lang === 'bn' ? '৪০০ মিলি যোগ করুন' : 'Add 400 ml'}
-              style={{ width: '46.732px' }}
+              style={{ width: '51.723px' }}
               className={cn(
                 "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
                 darkMode
@@ -2036,7 +2036,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               onClick={() => handleAddWater(300)}
               title={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
               aria-label={lang === 'bn' ? '৩০০ মিলি যোগ করুন' : 'Add 300 ml'}
-              style={{ width: '46.732px' }}
+              style={{ width: '51.723px' }}
               className={cn(
                 "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
                 darkMode
@@ -2184,7 +2184,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               onClick={() => handleAddWater(250)}
               title={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
               aria-label={lang === 'bn' ? '২৫০ মিলি যোগ করুন' : 'Add 250 ml'}
-              style={{ width: '46.732px' }}
+              style={{ width: '51.723px' }}
               className={cn(
                 "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
                 darkMode
@@ -2217,7 +2217,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               onClick={() => handleAddWater(100)}
               title={lang === 'bn' ? '১০০ মিলি যোগ করুন' : 'Add 100 ml'}
               aria-label={lang === 'bn' ? '১০০ মিলি যোগ করুন' : 'Add 100 ml'}
-              style={{ width: '46.7432px' }}
+              style={{ width: '51.7342px' }}
               className={cn(
                 "relative overflow-hidden flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-full border-2 transition-all cursor-pointer group shadow-md select-none w-full max-w-[54px] sm:max-w-[70px] h-[64px] sm:h-[78px] min-w-0 active:scale-95",
                 darkMode
@@ -2252,31 +2252,43 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
 
         {/* Consumed & Remaining Stats Bar */}
         <div className="w-full grid grid-cols-2 gap-2 text-center">
-          <div className={cn(
-            "p-2 rounded-xl border flex flex-col items-center justify-center",
-            darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
-          )}>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+          <div 
+            style={{ height: '41.9257px' }}
+            className={cn(
+              "p-2 rounded-xl border flex flex-col items-center justify-center",
+              darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
+            )}
+          >
+            <span 
+              style={{ paddingTop: '3px' }}
+              className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white pt-[3px]"
+            >
               {lang === 'bn' ? 'আজকের গ্রহণ' : "Today's Intake"}
             </span>
             <span 
-              className="text-[15px] font-extrabold text-blue-600 dark:text-blue-400 mt-0.5"
-              style={{ fontSize: '15px' }}
+              className="text-[15px] font-extrabold text-blue-600 dark:text-blue-400 -mt-[1px]"
+              style={{ fontSize: '15px', marginTop: '-1px' }}
             >
               {formatNum(totalConsumedMl)} {labels.mlUnit}
             </span>
           </div>
 
-          <div className={cn(
-            "p-2 rounded-xl border flex flex-col items-center justify-center",
-            darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-          )}>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+          <div 
+            style={{ height: '41.9257px' }}
+            className={cn(
+              "p-2 rounded-xl border flex flex-col items-center justify-center",
+              darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+            )}
+          >
+            <span 
+              style={{ paddingTop: '3px', marginTop: '0px' }}
+              className="text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white pt-[3px] mt-0"
+            >
               {lang === 'bn' ? 'বাকি আছে' : 'Remaining'}
             </span>
             <span 
-              className="text-[15px] font-extrabold text-gray-700 dark:text-gray-300 mt-0.5"
-              style={{ fontSize: '15px' }}
+              className="text-[15px] font-extrabold text-gray-700 dark:text-gray-300 -mt-[1px]"
+              style={{ fontSize: '15px', marginTop: '-1px' }}
             >
               {formatNum(Math.max(0, goalMl - totalConsumedMl))} {labels.mlUnit}
             </span>
