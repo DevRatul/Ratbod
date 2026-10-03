@@ -2879,14 +2879,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         style={{
           borderRadius: '28px',
           paddingLeft: '8px',
-          width: '336.349px',
-          marginBottom: '2px',
+          width: '340.34px',
+          marginBottom: '3px',
+          backgroundColor: darkMode ? 'rgba(20, 20, 22, 0.31)' : 'rgba(255, 255, 255, 0.31)',
         }}
         className={cn(
-          "fixed bottom-2 left-2.5 right-2.5 w-[336.349px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[2px]",
+          "fixed bottom-2 left-2.5 right-2.5 w-[340.34px] max-w-[calc(100vw-20px)] mx-auto z-50 md:hidden rounded-[28px] border backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 py-1.5 px-2 mb-[3px]",
           darkMode 
-            ? "bg-[#141416]/92 border-white/[0.14] text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
-            : "bg-[#ffffff]/92 border-black/[0.08] text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
+            ? "bg-[#141416]/[0.31] border-white/[0.14] text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.12)]" 
+            : "bg-[#ffffff]/[0.31] border-black/[0.08] text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
         )}
       >
         <div className="w-full grid grid-cols-5 gap-1 items-center">
