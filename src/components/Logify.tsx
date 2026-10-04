@@ -48,12 +48,12 @@ const TABS: TabConfig[] = [
     icon: Footprints
   },
   {
-    id: 'reading',
-    labelEn: 'Reading',
-    labelEnShort: 'Read',
-    labelBn: 'পড়া',
-    labelBnShort: 'পড়া',
-    icon: BookOpen
+    id: 'sleep',
+    labelEn: 'Sleep',
+    labelEnShort: 'Sleep',
+    labelBn: 'ঘুম',
+    labelBnShort: 'ঘুম',
+    icon: Moon
   },
   {
     id: 'water',
@@ -64,12 +64,12 @@ const TABS: TabConfig[] = [
     icon: Droplet
   },
   {
-    id: 'sleep',
-    labelEn: 'Sleep',
-    labelEnShort: 'Sleep',
-    labelBn: 'ঘুম',
-    labelBnShort: 'ঘুম',
-    icon: Moon
+    id: 'reading',
+    labelEn: 'Reading',
+    labelEnShort: 'Read',
+    labelBn: 'পড়া',
+    labelBnShort: 'পড়া',
+    icon: BookOpen
   },
   {
     id: 'calm',

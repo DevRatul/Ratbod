@@ -1067,446 +1067,633 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
   const percentGoal = Math.min(100, Math.round((todayPages / (pageGoal || 1)) * 100));
   const activeBookStats = activeBook ? getBookStats(activeBook, records) : null;
   const activeBookPercent = activeBookStats ? activeBookStats.percent : 0;
+  const remainingGoalPages = Math.max(0, pageGoal - todayPages);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-3 pb-4">
+    <div className="w-full max-w-4xl mx-auto space-y-3.5 pb-6">
       {/* ========================================================================= */}
-      {/* 1. TOP MINIMAL PULSE: TODAY'S READING PROGRESS                            */}
+      {/* 1. DAILY READING TARGET / GOAL SET (One Line Section)                     */}
       {/* ========================================================================= */}
       <div className={cn(
-        "p-4 rounded-2xl border transition-all",
+        "px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-2.5 sm:gap-4 relative overflow-hidden",
         darkMode 
-          ? "bg-[#121217] border-white/10 text-white shadow-xs" 
-          : "bg-white border-slate-200/80 text-gray-900 shadow-xs"
+          ? "bg-[#18181b]/95 backdrop-blur-xl border-white/[0.08] text-white shadow-xs" 
+          : "bg-white backdrop-blur-xl border-black/[0.06] text-gray-900 shadow-xs"
       )}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
+        {/* Left: Target Icon + Label + Count */}
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+            <Target size={15} strokeWidth={2.5} />
+          </div>
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <span className="text-xs sm:text-sm font-black tracking-tight text-gray-900 dark:text-white truncate">
+              {isBn ? 'দৈনিক লক্ষ্য' : 'Daily Goal'}:
+            </span>
+            <span className="text-xs sm:text-sm font-mono font-black text-indigo-600 dark:text-indigo-400">
               {formatNum(todayPages)}
             </span>
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-              / {formatNum(pageGoal)} {isBn ? 'পৃষ্ঠা আজ' : 'pages today'}
+            <span className="text-[11px] sm:text-xs font-mono text-neutral-400 dark:text-neutral-500">
+              /{formatNum(pageGoal)} {isBn ? 'পৃ' : 'p'}
             </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {/* Goal pill with quick adjustment */}
-            {isEditingGoal ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  min="1"
-                  autoFocus
-                  value={pageGoal}
-                  onChange={(e) => {
-                    const g = parseInt(e.target.value, 10) || 5;
-                    setPageGoal(g);
-                    persistData(g, records, books);
-                  }}
-                  onBlur={() => setIsEditingGoal(false)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingGoal(false); }}
-                  className={cn(
-                    "w-12 px-1.5 py-0.5 rounded-lg text-xs font-mono font-bold text-center border focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                    darkMode ? "bg-white/10 border-white/20 text-white" : "bg-white border-slate-300 text-gray-900"
-                  )}
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsEditingGoal(false)}
-                  className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/10 cursor-pointer"
-                >
-                  <Check size={13} strokeWidth={2.5} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsEditingGoal(true)}
-                title={isBn ? 'দৈনিক লক্ষ্য পরিবর্তন করুন' : 'Click to adjust daily goal'}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold font-mono transition-all cursor-pointer",
-                  darkMode 
-                    ? "bg-white/5 text-indigo-300 border border-white/10 hover:bg-white/10" 
-                    : "bg-indigo-50 text-indigo-700 border border-indigo-200/60 hover:bg-indigo-100"
-                )}
-              >
-                <Target size={12} className="text-indigo-500" />
-                <span>{formatNum(pageGoal)}p</span>
-                <Edit3 size={11} className="opacity-60 ml-0.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Minimal linear progress line */}
-        <div className="mt-3 w-full h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-          <motion.div 
-            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600"
-            initial={{ width: 0 }}
-            animate={{ width: `${percentGoal}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          />
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. CURRENTLY READING BOOK SPOTLIGHT (Minimal & Focused)                    */}
-      {/* ========================================================================= */}
-      <div className={cn(
-        "p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col gap-2.5",
-        darkMode 
-          ? "bg-[#121217] border-white/10 text-white" 
-          : "bg-white border-slate-200/80 text-gray-900"
-      )}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/40">
-              <BookOpen size={15} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
-                  {isBn ? 'পড়ছেন' : 'Currently Reading'}
-                </span>
-              </div>
-              <h3 className="font-bold text-xs sm:text-sm truncate leading-tight">
-                {selectedBookId === 'custom' ? (customBookTitle || (isBn ? 'কাস্টম বই' : 'Custom Book')) : (activeBook?.title || 'Atomic Habits')}
-              </h3>
-            </div>
-          </div>
-
-          {/* Book action buttons: Edit Active Book & Switch Library */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {activeBook && selectedBookId !== 'custom' && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleStartEditBook(activeBook);
-                  setIsLibraryOpen(true);
-                }}
-                className={cn(
-                  "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border",
-                  darkMode 
-                    ? "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-indigo-400" 
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-indigo-600"
-                )}
-                title={isBn ? 'এই বইটির বিবরণ সম্পাদনা করুন' : 'Edit this book details'}
-              >
-                <Edit3 size={12} className="text-indigo-500" />
-                <span>{isBn ? 'সম্পাদনা' : 'Edit'}</span>
-              </button>
-            )}
-            <button
-              id="open_reading_library_btn"
-              type="button"
-              onClick={() => {
-                setIsLibraryOpen(true);
-                setIsAddBookMode(false);
-                setEditingBookId(null);
-              }}
-              className={cn(
-                "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 border",
-                darkMode 
-                  ? "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10" 
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-              )}
-            >
-              <Library size={12} className="text-indigo-500" />
-              <span>{isBn ? 'বই বদলান' : 'Switch'}</span>
-              <span className="text-[10px] opacity-60 font-mono">({formatNum(books.length)})</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Current Book Progress */}
-        {activeBook && selectedBookId !== 'custom' && activeBookStats && (
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[11px] font-mono font-medium text-gray-500 dark:text-gray-400">
-              <span>{formatNum(activeBookStats.totalRead)} / {formatNum(activeBook.totalPages)} {isBn ? 'পৃষ্ঠা পড়া হয়েছে' : 'pages read'}</span>
-              <span className={cn(
-                "font-bold",
-                activeBookStats.isCompleted ? "text-emerald-500 font-black" : "text-indigo-600 dark:text-indigo-400"
-              )}>
-                {activeBookStats.isCompleted ? (isBn ? '✓ সম্পন্ন (১০০%)' : '✓ Completed (100%)') : `${formatNum(activeBookStats.percent)}%`}
+            {todayPages >= pageGoal && (
+              <span className="inline-flex items-center text-[10px] text-emerald-500 font-bold ml-0.5">
+                ✓
               </span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-              <div 
-                className={cn(
-                  "h-full rounded-full transition-all duration-300",
-                  activeBookStats.isCompleted ? "bg-emerald-500" : "bg-indigo-500"
-                )}
-                style={{ width: `${activeBookStats.percent}%` }}
-              />
-            </div>
-
-            {/* Sections read chips/summary */}
-            {activeBookStats.intervals.length > 0 && (
-              <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                <span className="font-semibold text-gray-400 dark:text-gray-500 shrink-0">
-                  {isBn ? 'পড়া অংশ:' : 'Sections:'}
-                </span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-300 font-medium truncate">
-                  {activeBookStats.intervals.map(([s, e]) => s === e ? `p.${formatNum(s)}` : `p.${formatNum(s)}–${formatNum(e)}`).join(', ')}
-                </span>
-              </div>
             )}
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. LOG SESSION CARD (Compact, Clean, Single-Flow UX on Mobile & Desktop)   */}
-      {/* ========================================================================= */}
-      <div className={cn(
-        "p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all space-y-1.5 sm:space-y-3",
-        darkMode 
-          ? "bg-[#121217] border-white/10 text-white" 
-          : "bg-white border-slate-200/80 text-gray-900"
-      )}>
-        {/* Sub-header: Mode selector (Page Range vs Direct) */}
-        <div className="flex items-center justify-between pb-0.5">
-          <span className="text-[10px] sm:text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
-            <Bookmark size={11} className="text-indigo-500 shrink-0 sm:w-[13px] sm:h-[13px]" />
-            <span>{isBn ? 'পড়ার সেশন লগ করুন' : 'Log Reading Session'}</span>
-          </span>
-
-          {/* Clean Segmented Pill */}
-          <div className="flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/60 dark:bg-white/5 text-[9px] sm:text-[11px]">
-            <button
-              type="button"
-              onClick={() => setUsePageRange(true)}
-              className={cn(
-                "px-1.5 sm:px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer text-[8.5px] sm:text-[11px]",
-                usePageRange 
-                  ? (darkMode ? "bg-white/20 text-white font-bold shadow-2xs" : "bg-white text-gray-900 font-bold shadow-2xs") 
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-800"
-              )}
-            >
-              {isBn ? 'পৃষ্ঠা হতে পৃষ্ঠা' : 'From → To'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setUsePageRange(false)}
-              className={cn(
-                "px-1.5 sm:px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer text-[8.5px] sm:text-[11px]",
-                !usePageRange 
-                  ? (darkMode ? "bg-white/20 text-white font-bold shadow-2xs" : "bg-white text-gray-900 font-bold shadow-2xs") 
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-800"
-              )}
-            >
-              {isBn ? 'মোট পৃষ্ঠা' : 'Pages'}
-            </button>
           </div>
         </div>
 
-        {/* Inputs */}
-        {usePageRange ? (
-          <div className="space-y-1 sm:space-y-2">
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-              <div>
-                <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1">
-                  {isBn ? 'শুরু পৃষ্ঠা' : 'From page'}
-                </label>
-                <input
-                  id="reading_from_page"
-                  type="number"
-                  min="1"
-                  value={fromPageInput}
-                  onChange={(e) => setFromPageInput(e.target.value)}
-                  className={cn(
-                    "w-full px-2 sm:px-3 py-0.5 sm:py-2 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
-                  )}
-                />
-              </div>
-
-              <div>
-                <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1">
-                  {isBn ? 'শেষ পৃষ্ঠা' : 'To page'}
-                </label>
-                <input
-                  id="reading_to_page"
-                  type="number"
-                  min="1"
-                  value={toPageInput}
-                  onChange={(e) => setToPageInput(e.target.value)}
-                  className={cn(
-                    "w-full px-2 sm:px-3 py-0.5 sm:py-2 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                    darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Quick page increment pills */}
-            <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5 flex-wrap">
-              <span className="text-[8px] sm:text-[10px] text-gray-400 font-medium mr-0.5">{isBn ? 'যোগ:' : 'Add:'}</span>
-              {[5, 10, 15, 20].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => applyQuickPages(num)}
-                  className={cn(
-                    "px-1 sm:px-2 py-0.2 sm:py-0.5 rounded text-[8.5px] sm:text-[10.5px] font-mono font-bold transition-all cursor-pointer border",
-                    darkMode 
-                      ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" 
-                      : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
-                  )}
-                >
-                  +{formatNum(num)}
-                </button>
-              ))}
-              <div className="ml-auto text-[9.5px] sm:text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                {formatNum(rangePagesRead)} {isBn ? 'পৃ' : 'pg'}
-              </div>
-            </div>
+        {/* Middle: Inline Progress Bar + Percent */}
+        <div className="flex-1 max-w-[140px] sm:max-w-[220px] flex items-center gap-2 min-w-0">
+          <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden relative shadow-inner">
+            <motion.div 
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                todayPages >= pageGoal
+                  ? "bg-gradient-to-r from-indigo-500 to-emerald-400"
+                  : "bg-gradient-to-r from-indigo-600 to-violet-500"
+              )}
+              initial={{ width: 0 }}
+              animate={{ width: `${percentGoal}%` }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            />
           </div>
-        ) : (
-          <div className="space-y-1 sm:space-y-2">
-            <div>
-              <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1">
-                {isBn ? 'আজ কত পৃষ্ঠা পড়েছেন:' : 'Pages read today:'}
-              </label>
+          <span className="text-[10.5px] sm:text-[11px] font-mono font-bold text-neutral-500 dark:text-neutral-400 shrink-0">
+            {formatNum(percentGoal)}%
+          </span>
+        </div>
+
+        {/* Right: Goal Set Control */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isEditingGoal ? (
+            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-0.5 rounded-lg border border-black/10 dark:border-white/10 shadow-inner">
               <input
-                id="reading_direct_pages"
                 type="number"
                 min="1"
-                value={directPagesInput}
-                onChange={(e) => setDirectPagesInput(e.target.value)}
+                autoFocus
+                value={pageGoal}
+                onChange={(e) => {
+                  const g = parseInt(e.target.value, 10) || 5;
+                  setPageGoal(g);
+                  persistData(g, records, books);
+                }}
+                onBlur={() => setIsEditingGoal(false)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingGoal(false); }}
                 className={cn(
-                  "w-full px-2 sm:px-3 py-0.5 sm:py-2 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-mono font-bold border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                  darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
+                  "w-11 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold text-center border focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                  darkMode ? "bg-white/10 border-white/20 text-white" : "bg-white border-slate-300 text-gray-900"
                 )}
               />
-            </div>
-
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-              <span className="text-[8px] sm:text-[10px] text-gray-400 font-medium mr-0.5">{isBn ? 'যোগ:' : 'Add:'}</span>
-              {[5, 10, 15, 20].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => applyQuickPages(num)}
-                  className={cn(
-                    "px-1 sm:px-2 py-0.2 sm:py-0.5 rounded text-[8.5px] sm:text-[10.5px] font-mono font-bold transition-all cursor-pointer border",
-                    darkMode 
-                      ? "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10" 
-                      : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
-                  )}
-                >
-                  +{formatNum(num)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Date Row (No Time option) */}
-        <div className="pt-1 border-t border-slate-100 dark:border-white/5">
-          <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 block mb-0.5 sm:mb-1 flex items-center gap-1">
-            <Calendar size={9} className="text-gray-400 shrink-0 sm:w-[11px] sm:h-[11px]" />
-            <span>{isBn ? 'পড়ার তারিখ' : 'Reading Date'}</span>
-          </label>
-          <input
-            id="reading_date_picker"
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className={cn(
-              "w-full px-2 sm:px-3 py-0.5 sm:py-1.5 h-6.5 sm:h-9 rounded-md sm:rounded-xl text-[9.5px] sm:text-xs font-mono font-medium border text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 [color-scheme:light] dark:[color-scheme:dark] max-w-full leading-none",
-              darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
-            )}
-          />
-        </div>
-
-        {/* Optional Note Field Toggle */}
-        <div>
-          {showNoteField ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-[8px] sm:text-[10px] font-semibold text-gray-400 flex items-center gap-1">
-                  <Quote size={8} />
-                  <span>{isBn ? 'সংক্ষিপ্ত নোট বা উদ্ধৃতি' : 'Note or quote'}</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowNoteField(false);
-                    setNoteInput('');
-                  }}
-                  className="text-[8.5px] sm:text-[10px] text-gray-400 hover:text-red-500 cursor-pointer"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-              <input
-                id="reading_note_input"
-                type="text"
-                placeholder={isBn ? 'আজকের অধ্যায়ের মূল কথা...' : 'Key takeaways or favorite quote...'}
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                className={cn(
-                  "w-full px-2 sm:px-2.5 py-0.5 sm:py-1.5 h-6.5 sm:h-8 rounded-md sm:rounded-xl text-[9.5px] sm:text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                  darkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-gray-900"
-                )}
-              />
+              <button
+                type="button"
+                onClick={() => setIsEditingGoal(false)}
+                className="p-1 rounded-md text-emerald-500 hover:bg-emerald-500/15 cursor-pointer transition-colors"
+              >
+                <Check size={13} strokeWidth={2.5} />
+              </button>
             </div>
           ) : (
             <button
               type="button"
-              onClick={() => setShowNoteField(true)}
-              className="text-[9px] sm:text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
+              onClick={() => setIsEditingGoal(true)}
+              title={isBn ? 'দৈনিক লক্ষ্য সেট করুন' : 'Set daily goal'}
+              className={cn(
+                "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold font-mono transition-all cursor-pointer border shadow-2xs active:scale-95",
+                darkMode 
+                  ? "bg-white/[0.04] text-indigo-300 border-white/10 hover:bg-white/[0.08] hover:border-indigo-500/30" 
+                  : "bg-indigo-50/70 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80"
+              )}
             >
-              <Plus size={10} />
-              <span>{isBn ? '+ নোট বা উদ্ধৃতি যোগ করুন' : '+ Add a note or quote'}</span>
+              <span>{isBn ? 'লক্ষ্য সেট' : 'Set Goal'}</span>
+              <Edit3 size={10} className="opacity-70" />
             </button>
           )}
         </div>
+      </div>
 
-        {/* Primary Log Action Button */}
+      {/* ========================================================================= */}
+      {/* 2. CURRENTLY READING BOOK SPOTLIGHT (Big Book Water-Glass Style Progression) */}
+      {/* ========================================================================= */}
+      <div className={cn(
+        "p-4 sm:p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden flex flex-col gap-3.5",
+        darkMode 
+          ? "bg-[#18181b]/90 backdrop-blur-xl border-white/[0.08] text-white shadow-[0_12px_36px_rgba(0,0,0,0.35)]" 
+          : "bg-white/95 backdrop-blur-xl border-black/[0.06] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
+      )}>
+        {/* Subtle background ambient corner glow */}
+        <div className="absolute top-0 right-0 w-64 h-36 bg-gradient-to-bl from-indigo-500/10 via-violet-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+        {/* Card Header: Currently Reading Badge + Switch Action Button (Edit button removed as requested) */}
+        <div className="relative z-10 flex items-center justify-between gap-3 border-b border-black/[0.05] dark:border-white/[0.06] pb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-[11px] sm:text-xs uppercase font-black tracking-wider text-indigo-500 dark:text-indigo-400">
+              {isBn ? 'বর্তমানে পড়ছেন' : 'Currently Reading'}
+            </span>
+            {activeBookStats?.isCompleted && (
+              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                ✓ {isBn ? 'সম্পন্ন (১০০%)' : 'Completed'}
+              </span>
+            )}
+          </div>
+
+          {/* Switch Book Button (Edit button removed) */}
+          <button
+            id="open_reading_library_btn"
+            type="button"
+            onClick={() => {
+              setIsLibraryOpen(true);
+              setIsAddBookMode(false);
+              setEditingBookId(null);
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border active:scale-95 shadow-2xs",
+              darkMode 
+                ? "bg-white/[0.04] text-neutral-300 border-white/10 hover:bg-white/[0.08] hover:text-indigo-400 hover:border-indigo-500/30" 
+                : "bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-slate-100 hover:text-indigo-600"
+            )}
+          >
+            <Library size={13} className="text-indigo-500 shrink-0" />
+            <span>{isBn ? 'বই বদলান' : 'Switch Book'}</span>
+            <span className="text-[10px] opacity-70 font-mono">({formatNum(books.length)})</span>
+          </button>
+        </div>
+
+        {/* Central Display: Realistic 3D Hardcover Book with Percentage Style Progression (No Water Waves) */}
+        <div className="relative my-2 flex flex-col items-center justify-center w-full">
+          <div className="flex items-center justify-center gap-3 sm:gap-6 w-full py-2">
+            {/* Left Quick Stat Pill: Remaining Pages */}
+            {activeBook && selectedBookId !== 'custom' && activeBookStats && (
+              <div className={cn(
+                "hidden sm:flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all select-none w-26 h-32 text-center shadow-sm",
+                darkMode ? "bg-white/[0.03] border-white/10" : "bg-slate-50 border-slate-200/80"
+              )}>
+                <BookOpen size={18} className="text-indigo-500 mb-1.5" />
+                <span className="text-lg font-black font-mono text-gray-900 dark:text-white leading-tight">
+                  {formatNum(Math.max(0, activeBook.totalPages - activeBookStats.totalRead))}
+                </span>
+                <span className="text-[9.5px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mt-0.5">
+                  {isBn ? 'পৃষ্ঠা বাকি' : 'Pages Left'}
+                </span>
+              </div>
+            )}
+
+            {/* REALISTIC 3D PHYSICAL BOOK ARTIFACT */}
+            <div className="relative flex items-center justify-center select-none group transition-transform duration-300 hover:scale-[1.02]">
+              {/* Stacked Paper Page Block Depth (Right & Bottom Edges) */}
+              <div 
+                className={cn(
+                  "relative w-[185px] sm:w-[220px] h-[245px] sm:h-[285px] rounded-r-2xl rounded-l-md overflow-hidden transition-all duration-300",
+                  darkMode 
+                    ? "bg-gradient-to-tr from-[#090d1a] via-[#10162a] to-[#18203d] text-white border-y border-r border-amber-400/35 shadow-[7px_7px_0px_#27272a,_14px_14px_32px_rgba(0,0,0,0.65)]" 
+                    : "bg-gradient-to-tr from-[#fbf8ee] via-[#f7f2e4] to-[#eee4cd] text-stone-900 border-y border-r border-amber-600/30 shadow-[7px_7px_0px_#dfd5c0,_14px_14px_28px_rgba(0,0,0,0.12)]"
+                )}
+              >
+                {/* 1. Stitched Leather Bound Spine (Left side) */}
+                <div className={cn(
+                  "absolute left-0 top-0 bottom-0 w-6 sm:w-7 z-20 flex flex-col justify-between py-6 items-center",
+                  darkMode 
+                    ? "bg-gradient-to-r from-black/70 via-indigo-950/90 to-black/40 border-r border-amber-400/30" 
+                    : "bg-gradient-to-r from-[#d8c39e] via-[#e2cfaf] to-[#cbb28b] border-r border-amber-600/30"
+                )}>
+                  <div className={cn("w-3.5 h-0.5 rounded-full shadow-xs", darkMode ? "bg-amber-400/70" : "bg-amber-700/60")} />
+                  <div className={cn("w-3.5 h-0.5 rounded-full shadow-xs", darkMode ? "bg-amber-400/70" : "bg-amber-700/60")} />
+                  <div className={cn("w-3.5 h-0.5 rounded-full shadow-xs", darkMode ? "bg-amber-400/70" : "bg-amber-700/60")} />
+                  <div className={cn("w-3.5 h-0.5 rounded-full shadow-xs", darkMode ? "bg-amber-400/70" : "bg-amber-700/60")} />
+                </div>
+
+                {/* 2. Golden Satin Bookmark Ribbon Hanging at Top */}
+                <div className="absolute top-0 right-7 sm:right-9 z-30 flex flex-col items-center pointer-events-none">
+                  <div className="w-3.5 sm:w-4 h-7 sm:h-9 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 rounded-b-xs shadow-md border-x border-amber-200/50" />
+                </div>
+
+                {/* 3. Gold Foil Inset Frame on Front Cover */}
+                <div className={cn(
+                  "absolute inset-y-2.5 right-2.5 left-8 sm:left-9.5 rounded-r-xl rounded-l-xs pointer-events-none border",
+                  darkMode ? "border-amber-400/25" : "border-amber-700/25"
+                )} />
+
+                {/* 4. Book Cover Content & Percentage Progress Style */}
+                <div className="relative z-10 w-full h-full pl-7 sm:pl-8.5 pr-2.5 py-3.5 flex flex-col items-center justify-between text-center">
+                  
+                  {/* Top: Book Title & Author */}
+                  <div className="w-full flex flex-col items-center px-1 pt-1">
+                    <span className={cn(
+                      "text-[8.5px] font-black tracking-widest uppercase mb-0.5",
+                      darkMode ? "text-amber-400/80" : "text-amber-800/80"
+                    )}>
+                      ✦ {isBn ? 'গ্রন্থ' : 'BOOK'} ✦
+                    </span>
+                    <h3 className={cn(
+                      "font-extrabold text-xs sm:text-sm leading-tight line-clamp-2 w-full",
+                      darkMode ? "text-white drop-shadow-md" : "text-stone-900"
+                    )}>
+                      {selectedBookId === 'custom' 
+                        ? (customBookTitle || (isBn ? 'কাস্টম বই' : 'Custom Book')) 
+                        : (activeBook?.title || 'Atomic Habits')}
+                    </h3>
+                    {activeBook?.author && (
+                      <p className={cn(
+                        "text-[9px] sm:text-[10px] font-medium truncate max-w-[130px] sm:max-w-[155px] mt-0.5",
+                        darkMode ? "text-amber-200/90 drop-shadow-sm" : "text-stone-600"
+                      )}>
+                        {activeBook.author}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Middle: Elegant Circular Percentage Progress Gauge (Green in both light and dark mode) */}
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center my-auto drop-shadow-sm">
+                    <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                      {/* Background Track Circle */}
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="38"
+                        className={darkMode ? "stroke-white/15" : "stroke-stone-300/80"}
+                        strokeWidth="7"
+                        fill="transparent"
+                      />
+                      {/* Animated Active Progress Stroke (Green in light & dark mode) */}
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="38"
+                        stroke="url(#book-circular-gauge-gradient)"
+                        strokeWidth="7"
+                        strokeDasharray={238.76}
+                        strokeDashoffset={238.76 * (1 - Math.min(100, Math.max(0, activeBookPercent)) / 100)}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        className="transition-all duration-700 ease-out"
+                      />
+                      <defs>
+                        <linearGradient id="book-circular-gauge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#4ade80" />
+                          <stop offset="50%" stopColor="#22c55e" />
+                          <stop offset="100%" stopColor="#10b981" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+
+                    {/* Percentage Information Inside the Ring */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className={cn(
+                        "text-xl sm:text-2xl font-black font-mono tracking-tight leading-none",
+                        darkMode ? "text-emerald-400 drop-shadow-sm" : "text-emerald-600 font-extrabold"
+                      )}>
+                        {formatNum(activeBookPercent)}%
+                      </span>
+                      {activeBookStats?.isCompleted ? (
+                        <span className="text-[8px] font-black uppercase text-emerald-500 tracking-wider mt-1 drop-shadow-xs">
+                          ✓ {isBn ? 'সম্পন্ন' : 'DONE'}
+                        </span>
+                      ) : (
+                        <span className={cn(
+                          "text-[7.5px] font-black uppercase tracking-widest mt-1",
+                          darkMode ? "text-emerald-400/90 drop-shadow-xs" : "text-emerald-700/90 font-bold"
+                        )}>
+                          {isBn ? 'পড়া' : 'READ'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom: Pages Read Counter Pill + Mini Cover Progress Bar (Green in light & dark mode) */}
+                  <div className="w-full flex flex-col items-center pb-1">
+                    <div className={cn(
+                      "px-2.5 py-0.5 rounded-full border shadow-2xs",
+                      darkMode ? "bg-white/10 border-white/20" : "bg-black/[0.05] border-stone-300/80"
+                    )}>
+                      <span className={cn(
+                        "text-[10px] sm:text-[11px] font-black font-mono leading-none",
+                        darkMode ? "text-white" : "text-stone-800"
+                      )}>
+                        {formatNum(activeBookStats?.totalRead || 0)} / {formatNum(activeBook?.totalPages || 0)} {isBn ? 'পৃ' : 'p'}
+                      </span>
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-bold uppercase tracking-wider mt-0.5",
+                      darkMode ? "text-white/75" : "text-stone-600"
+                    )}>
+                      {isBn ? 'পৃষ্ঠা পড়া হয়েছে' : 'pages read'}
+                    </span>
+
+                    {/* Minimalist book cover bottom hairline bar (Green progress) */}
+                    <div className={cn(
+                      "w-20 sm:w-24 h-1 rounded-full overflow-hidden mt-1.5 shadow-inner",
+                      darkMode ? "bg-white/15" : "bg-stone-300/70"
+                    )}>
+                      <div 
+                        className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-500 via-emerald-400 to-green-400 shadow-sm"
+                        style={{ width: `${activeBookPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            {/* Right Quick Stat Pill: Total Sessions (Clickable to open all sessions) */}
+            {activeBook && selectedBookId !== 'custom' && activeBookStats && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBookSessionsSelectedId(selectedBookId);
+                  setShowBookSessionsModal(true);
+                }}
+                className={cn(
+                  "hidden sm:flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all cursor-pointer w-26 h-32 text-center shadow-sm active:scale-95 group",
+                  darkMode 
+                    ? "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-indigo-500/30" 
+                    : "bg-slate-50 border-slate-200/80 hover:bg-indigo-50/60 hover:border-indigo-200"
+                )}
+                title={isBn ? 'এই বইয়ের সকল পূর্ববর্তী সেশন দেখুন' : 'Show all sessions of this book'}
+              >
+                <Clock size={18} className="text-indigo-500 mb-1.5 group-hover:scale-110 transition-transform" />
+                <span className="text-lg font-black font-mono text-gray-900 dark:text-white leading-tight">
+                  {formatNum(activeBookStats.recordsCount)}
+                </span>
+                <span className="text-[9.5px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mt-0.5">
+                  {isBn ? 'সেশন' : 'Sessions'}
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Quick Stats Strip below the Book */}
+          {activeBook && selectedBookId !== 'custom' && activeBookStats && (
+            <div className="flex sm:hidden items-center justify-center gap-2 pt-1 text-xs">
+              <span className="px-2.5 py-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[11px] font-mono font-bold text-neutral-600 dark:text-neutral-300">
+                {formatNum(Math.max(0, activeBook.totalPages - activeBookStats.totalRead))} {isBn ? 'পৃষ্ঠা বাকি' : 'pages left'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setBookSessionsSelectedId(selectedBookId);
+                  setShowBookSessionsModal(true);
+                }}
+                className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 active:scale-95 cursor-pointer"
+              >
+                {formatNum(activeBookStats.recordsCount)} {isBn ? 'সেশন' : 'sessions'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Read intervals/sections tags */}
+        {activeBookStats && activeBookStats.intervals.length > 0 && (
+          <div className="flex items-center gap-1.5 pt-2 border-t border-black/[0.05] dark:border-white/[0.06] text-[10.5px] text-neutral-500 dark:text-neutral-400 flex-wrap justify-center sm:justify-start">
+            <span className="font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
+              {isBn ? 'পড়া অংশ:' : 'Sections read:'}
+            </span>
+            <div className="flex items-center gap-1 flex-wrap">
+              {activeBookStats.intervals.map(([s, e], idx) => (
+                <span 
+                  key={idx}
+                  className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20"
+                >
+                  {s === e ? `p.${formatNum(s)}` : `p.${formatNum(s)}–${formatNum(e)}`}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. LOG SESSION CARD (Compact, Clean, Ergonomic UI/UX)                     */}
+      {/* ========================================================================= */}
+      <div className={cn(
+        "p-3.5 sm:p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden space-y-3",
+        darkMode 
+          ? "bg-[#18181b]/95 backdrop-blur-xl border-white/[0.08] text-white shadow-[0_8px_30px_rgba(0,0,0,0.3)]" 
+          : "bg-white backdrop-blur-xl border-black/[0.06] text-gray-900 shadow-[0_4px_24px_rgba(0,0,0,0.03)]"
+      )}>
+        {/* Header: Title ('Log Pages') + Segmented Mode Switcher */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+              <Bookmark size={14} strokeWidth={2.5} />
+            </div>
+            <span className="text-xs sm:text-sm font-black tracking-tight text-gray-900 dark:text-white truncate">
+              {isBn ? 'লগ পেজ' : 'Log Pages'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Segmented Mode Switcher */}
+            <div className="flex items-center p-0.5 rounded-lg border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.04] text-[10.5px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setUsePageRange(true)}
+                className={cn(
+                  "px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer",
+                  usePageRange 
+                    ? (darkMode ? "bg-white/15 text-white shadow-2xs" : "bg-white text-gray-900 shadow-2xs") 
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+                )}
+              >
+                {isBn ? 'হতে-পর্যন্ত' : 'From → To'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setUsePageRange(false)}
+                className={cn(
+                  "px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer",
+                  !usePageRange 
+                    ? (darkMode ? "bg-white/15 text-white shadow-2xs" : "bg-white text-gray-900 shadow-2xs") 
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+                )}
+              >
+                {isBn ? 'মোট পৃষ্ঠা' : 'Pages'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Inputs: Connected From -> To Row or Direct Pages + Inline Quick Chips */}
+        {usePageRange ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              {/* Unified From -> To container */}
+              <div className={cn(
+                "flex-1 flex items-center rounded-xl border transition-all overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/40",
+                darkMode ? "bg-white/[0.03] border-white/10" : "bg-slate-50 border-slate-200"
+              )}>
+                {/* From Input */}
+                <div className="relative flex-1 flex items-center px-2.5 py-1.5">
+                  <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase mr-1.5 shrink-0 select-none">
+                    {isBn ? 'হতে' : 'From'}
+                  </span>
+                  <input
+                    id="reading_from_page"
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    value={fromPageInput}
+                    onChange={(e) => setFromPageInput(e.target.value)}
+                    className="w-full bg-transparent text-xs sm:text-sm font-mono font-bold text-gray-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+
+                {/* Arrow Divider */}
+                <div className="px-1 text-neutral-300 dark:text-neutral-600 select-none shrink-0 font-mono text-xs">
+                  →
+                </div>
+
+                {/* To Input */}
+                <div className="relative flex-1 flex items-center px-2.5 py-1.5 border-l border-black/[0.05] dark:border-white/[0.06]">
+                  <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase mr-1.5 shrink-0 select-none">
+                    {isBn ? 'পর্যন্ত' : 'To'}
+                  </span>
+                  <input
+                    id="reading_to_page"
+                    type="number"
+                    min="1"
+                    placeholder="20"
+                    value={toPageInput}
+                    onChange={(e) => setToPageInput(e.target.value)}
+                    className="w-full bg-transparent text-xs sm:text-sm font-mono font-bold text-gray-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Increment Preset Chips */}
+            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
+                {isBn ? 'দ্রুত যোগ:' : 'Quick add:'}
+              </span>
+              <div className="flex items-center gap-1">
+                {[5, 10, 15, 20].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => applyQuickPages(num)}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold transition-all cursor-pointer border shadow-2xs active:scale-95",
+                      darkMode 
+                        ? "bg-white/[0.04] border-white/10 text-neutral-300 hover:bg-white/[0.08] hover:text-indigo-400" 
+                        : "bg-slate-100 hover:bg-indigo-50 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700"
+                    )}
+                  >
+                    +{formatNum(num)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className={cn(
+              "flex items-center rounded-xl border px-3 py-1.5 transition-all focus-within:ring-2 focus-within:ring-indigo-500/40",
+              darkMode ? "bg-white/[0.03] border-white/10" : "bg-slate-50 border-slate-200"
+            )}>
+              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase mr-2 shrink-0 select-none">
+                {isBn ? 'পৃষ্ঠা সংখ্যা' : 'Pages Read'}
+              </span>
+              <input
+                id="reading_direct_pages"
+                type="number"
+                min="1"
+                placeholder="10"
+                value={directPagesInput}
+                onChange={(e) => setDirectPagesInput(e.target.value)}
+                className="w-full bg-transparent text-xs sm:text-sm font-mono font-bold text-gray-900 dark:text-white focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
+                {isBn ? 'দ্রুত যোগ:' : 'Quick add:'}
+              </span>
+              <div className="flex items-center gap-1">
+                {[5, 10, 15, 20].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => applyQuickPages(num)}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold transition-all cursor-pointer border shadow-2xs active:scale-95",
+                      darkMode 
+                        ? "bg-white/[0.04] border-white/10 text-neutral-300 hover:bg-white/[0.08] hover:text-indigo-400" 
+                        : "bg-slate-100 hover:bg-indigo-50 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700"
+                    )}
+                  >
+                    +{formatNum(num)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Compact Date Row (Clean & Compact on both Mobile & Desktop) */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.05]">
+          <span className="text-[10.5px] font-bold text-neutral-400 dark:text-neutral-500 uppercase flex items-center gap-1.5 select-none shrink-0">
+            <Calendar size={12} className="text-indigo-500" />
+            <span>{isBn ? 'তারিখ' : 'Date'}</span>
+          </span>
+          <div className={cn(
+            "flex items-center px-2 py-1 rounded-lg border text-xs transition-all w-32 sm:w-36 shrink-0",
+            darkMode ? "bg-white/[0.02] border-white/10" : "bg-slate-50 border-slate-200"
+          )}>
+            <input
+              id="reading_date_picker"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full bg-transparent text-[11px] font-mono font-medium text-neutral-700 dark:text-neutral-200 focus:outline-none [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Compact, High-Impact Action Button */}
         <button
           id="submit_reading_log_button"
           type="button"
           onClick={handleLogSession}
           disabled={usePageRange && (fromP <= 0 || toP < fromP)}
           className={cn(
-            "w-full py-1 sm:py-2.5 h-7.5 sm:h-10 rounded-md sm:rounded-xl text-[10.5px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98] text-white",
+            "w-full py-2.5 h-10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.99] text-white",
             savedToast 
-              ? "bg-emerald-600 shadow-emerald-500/25" 
-              : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              ? "bg-emerald-600 shadow-emerald-500/20 ring-2 ring-emerald-400/50" 
+              : "bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-600/25 hover:shadow-indigo-600/35 disabled:opacity-50 disabled:cursor-not-allowed"
           )}
         >
           {savedToast ? (
             <>
-              <Check size={12} strokeWidth={3} />
+              <Check size={15} strokeWidth={3} className="animate-bounce" />
               <span>{isBn ? 'সংরক্ষিত হয়েছে!' : 'Logged Successfully!'}</span>
             </>
           ) : (
             <>
-              <Plus size={12} strokeWidth={2.5} />
-              <span>
-                {isBn 
-                  ? `পড়া লগ করুন (${formatNum(activePagesToday)} পৃষ্ঠা)` 
-                  : `Log Reading (${activePagesToday} pages)`}
-              </span>
+              <Plus size={15} strokeWidth={2.5} />
+              <span>{isBn ? 'লগ পেজ' : 'Log Pages'}</span>
             </>
           )}
         </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. RECENT SESSIONS TIMELINE (Clean, Minimalist List)                       */}
+      {/* 4. RECENT SESSIONS TIMELINE (Clean, Modern, Aesthetic List)                */}
       {/* ========================================================================= */}
       <div className={cn(
-        "p-4 rounded-2xl border space-y-2.5 transition-all",
-        darkMode ? "bg-[#121217] border-white/10 text-white" : "bg-white border-slate-200/80 text-gray-900"
+        "p-4 sm:p-5 rounded-2xl border space-y-3.5 transition-all duration-300 relative overflow-hidden",
+        darkMode 
+          ? "bg-[#18181b]/90 backdrop-blur-xl border-white/[0.08] text-white shadow-[0_12px_36px_rgba(0,0,0,0.35)]" 
+          : "bg-white/95 backdrop-blur-xl border-black/[0.06] text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
       )}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-            <Calendar size={13} className="text-indigo-500" />
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs sm:text-sm font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+              <Calendar size={13} strokeWidth={2.5} />
+            </div>
             <span>{isBn ? 'সাম্প্রতিক ইতিহাস' : 'Recent Sessions'}</span>
           </h3>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -1515,60 +1702,63 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 setShowBookSessionsModal(true);
               }}
               className={cn(
-                "px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-2xs whitespace-nowrap active:scale-95",
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-2xs whitespace-nowrap active:scale-95",
                 darkMode
-                  ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30"
-                  : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
+                  ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/25 hover:bg-indigo-500/25 hover:text-white"
+                  : "bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100"
               )}
               title={isBn ? 'এই বইয়ের সকল পূর্ববর্তী সেশন দেখুন' : 'Show all previous logs of this book'}
             >
-              <BookOpen size={12} />
+              <BookOpen size={12} className="shrink-0" />
               <span>{isBn ? `সেশনসমূহ (${formatNum(records.length)})` : `Sessions (${records.length})`}</span>
             </button>
           </div>
         </div>
 
         {records.length === 0 ? (
-          <div className="py-6 text-center text-xs text-gray-400">
+          <div className="py-8 text-center text-xs text-neutral-400">
             {isBn ? 'এখনো কোনো পড়ার রেকর্ড নেই।' : 'No reading sessions logged yet.'}
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {records.slice(0, 7).map((rec) => (
               <div
                 key={rec.id}
                 className={cn(
-                  "p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all group",
-                  darkMode ? "bg-white/[0.03] border-white/5" : "bg-slate-50/70 border-slate-200/60"
+                  "p-3 rounded-xl border border-l-[3.5px] border-l-indigo-500 flex items-center justify-between gap-2.5 transition-all group",
+                  darkMode 
+                    ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06]" 
+                    : "bg-slate-50/80 hover:bg-slate-100/90 border-slate-200/70"
                 )}
               >
-                <div className="min-w-0 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-                    <BookOpen size={12} />
+                <div className="min-w-0 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                    <BookOpen size={14} />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold truncate">{rec.bookTitle}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-gray-900 dark:text-white truncate">{rec.bookTitle}</span>
                       {rec.fromPage !== undefined && rec.toPage !== undefined && (
                         <span className="text-[10px] font-mono font-semibold opacity-60 shrink-0">
                           (p. {formatNum(rec.fromPage)}–{formatNum(rec.toPage)})
                         </span>
                       )}
                     </div>
-                    <div className="text-[10.5px] text-gray-400 truncate">
-                      {formatHistoryDate(rec.date)} {rec.note ? `• "${rec.note}"` : ''}
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate flex items-center gap-1.5 mt-0.5">
+                      <span className="font-medium">{formatHistoryDate(rec.date)}</span>
+                      {rec.note && <span className="truncate italic text-neutral-400 dark:text-neutral-500">• "{rec.note}"</span>}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    {formatNum(rec.pages)} {isBn ? 'পৃষ্ঠা' : 'pages'}
+                  <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/40 shadow-2xs">
+                    +{formatNum(rec.pages)} {isBn ? 'পৃ' : 'pg'}
                   </span>
                   <button
                     type="button"
                     onClick={() => requestDeleteRecord(rec)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 opacity-70 hover:opacity-100 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 opacity-70 hover:opacity-100 transition-all cursor-pointer"
                     title={isBn ? 'মুছুন' : 'Delete'}
                   >
                     <Trash2 size={13} />

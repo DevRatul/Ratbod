@@ -2244,18 +2244,17 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
 
           {/* Hydration Status Label with padding bottom */}
-          <span className="text-[10.5px] sm:text-xs text-gray-900 dark:text-white mt-1.5 pb-2.5 font-semibold flex items-center gap-1">
-            <Sparkles size={11} className="text-blue-400 animate-pulse" />
+          <span className="text-[10.5px] sm:text-xs text-gray-900 dark:text-white mt-1.5 pb-2.5 font-semibold">
             {lang === 'bn' ? 'দৈনিক হাইড্রেশন গ্লাস' : 'Daily Hydration Glass'}
           </span>
         </div>
 
         {/* Consumed & Remaining Stats Bar */}
-        <div className="w-full grid grid-cols-2 gap-2 text-center">
+        <div className="w-full grid grid-cols-2 gap-2 text-center justify-items-center">
           <div 
-            style={{ height: '41.9257px' }}
+            style={{ height: '47.9257px', width: '260.412px' }}
             className={cn(
-              "p-2 rounded-xl border flex flex-col items-center justify-center",
+              "p-2 rounded-xl border flex flex-col items-center justify-center max-w-full",
               darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50/70 border-blue-100"
             )}
           >
@@ -2274,9 +2273,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
           </div>
 
           <div 
-            style={{ height: '41.9257px' }}
+            style={{ height: '47.9257px', width: '260.412px' }}
             className={cn(
-              "p-2 rounded-xl border flex flex-col items-center justify-center",
+              "p-2 rounded-xl border flex flex-col items-center justify-center max-w-full",
               darkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
             )}
           >
@@ -2472,7 +2471,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 title={lang === 'bn' ? 'পানি পানের ইতিহাস দেখুন' : 'View Water Intake History'}
               >
                 <HistoryIcon size={13} />
-                <span>{lang === 'bn' ? 'ইতিহাস' : 'History'}</span>
+                <span>{lang === 'bn' ? `ইতিহাস (${formatNum(history.length)})` : `History (${history.length})`}</span>
               </button>
             </div>
           </div>
