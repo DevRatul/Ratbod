@@ -266,12 +266,12 @@ function HabitRowItem({
         damping: 32
       }}
       style={{
-        height: '58.4369px',
+        height: '61.4347px',
         borderRadius: '21px',
         boxSizing: 'border-box',
       }}
       className={cn(
-        "group relative h-[58.4369px] max-h-[58.4369px] px-2.5 sm:px-3 py-1.5 rounded-[21px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
+        "group relative h-[61.4347px] max-h-[61.4347px] px-2.5 sm:px-3 py-1.5 rounded-[21px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
         isCompleted
           ? (darkMode 
               ? "bg-[#0c1813] border-emerald-500/30 text-gray-300" 
@@ -356,23 +356,34 @@ function HabitRowItem({
         title={lang === 'bn' ? 'অ্যানালিটিক্স দেখতে ক্লিক করুন' : 'Click to view habit analytics'}
       >
         {habit.emoji ? (
-          <span className="text-xl shrink-0 select-none group-hover/title:scale-110 transition-transform">{habit.emoji}</span>
+          <span 
+            style={{ fontSize: '21px' }}
+            className="text-[21px] shrink-0 select-none group-hover/title:scale-110 transition-transform leading-none"
+          >
+            {habit.emoji}
+          </span>
         ) : null}
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
-            <h3 className={cn(
-              "text-xs sm:text-sm font-bold tracking-tight truncate transition-all",
-              isCompleted ? "line-through opacity-80 text-[#32CD32]" : ""
-            )}>
+            <h3 
+              style={{ fontSize: '14px' }}
+              className={cn(
+                "text-[14px] font-bold tracking-tight truncate transition-all leading-snug",
+                isCompleted ? "line-through opacity-80 text-[#32CD32]" : ""
+              )}
+            >
               {habit.title}
             </h3>
             <BarChart2 size={13} className="text-gray-500 dark:text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity shrink-0" />
           </div>
           {habit.subtitle && (
-            <p className={cn(
-              "text-[10px] sm:text-xs font-medium truncate mt-0.5",
-              isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
-            )}>
+            <p 
+              style={{ fontSize: '12px' }}
+              className={cn(
+                "text-[12px] font-medium truncate mt-0.5",
+                isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
+              )}
+            >
               {habit.subtitle}
             </p>
           )}
@@ -1241,7 +1252,11 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                       type="button"
                       onClick={() => handleDaySelect(d.dateKey)}
                       title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
-                      className="flex flex-col items-center justify-between w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl bg-[#2563EB] text-white shadow-md shadow-blue-500/25 cursor-pointer select-none transition-all"
+                      style={{
+                        borderRadius: '25px',
+                        backgroundColor: '#009427',
+                      }}
+                      className="flex flex-col items-center justify-between w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-[25px] bg-[#009427] text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/80 cursor-pointer select-none transition-all active:scale-95"
                     >
                       <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
                         {dayLabel}
@@ -1255,17 +1270,45 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                   );
                 }
 
+                if (isToday) {
+                  return (
+                    <button
+                      key={d.dateKey}
+                      type="button"
+                      onClick={() => handleDaySelect(d.dateKey)}
+                      title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum} (${lang === 'bn' ? 'আজ' : 'Today'})`}
+                      style={{
+                        borderRadius: '25px',
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-[25px] transition-all cursor-pointer select-none active:scale-95",
+                        darkMode 
+                          ? "bg-emerald-600/30 border border-emerald-500/60 text-emerald-300 hover:bg-emerald-600/40" 
+                          : "bg-emerald-100/90 border border-emerald-400 text-emerald-800 hover:bg-emerald-200"
+                      )}
+                    >
+                      <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase leading-none opacity-90">
+                        {dayLabel}
+                      </span>
+                      <span className="text-base sm:text-lg font-black tracking-tighter mt-1 leading-none">
+                        {d.dateNum}
+                      </span>
+                    </button>
+                  );
+                }
+
                 return (
                   <button
                     key={d.dateKey}
                     type="button"
                     onClick={() => handleDaySelect(d.dateKey)}
                     title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
+                    style={{
+                      borderRadius: '25px',
+                    }}
                     className={cn(
-                      "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-xl transition-all cursor-pointer select-none",
-                      isToday
-                        ? (darkMode ? "bg-white/10 text-white border border-rose-500/40" : "bg-rose-50 text-rose-900 border border-rose-200")
-                        : (darkMode ? "bg-white/5 text-gray-400 hover:bg-white/10" : "bg-gray-100 text-gray-600 hover:bg-gray-200")
+                      "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-[25px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95",
+                      darkMode ? "bg-white/5 text-gray-400" : "bg-gray-100 text-gray-600"
                     )}
                   >
                     <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none">

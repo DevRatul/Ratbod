@@ -2886,7 +2886,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           marginBottom: '4.5px',
           borderWidth: '3px',
           borderStyle: 'solid',
-          borderColor: darkMode ? '#2e2e34' : '#d5d5d5',
+          borderColor: darkMode ? '#2e2e34' : '#e0e0e0',
           backgroundColor: darkMode ? 'rgba(20, 20, 22, 0)' : 'rgba(255, 255, 255, 0)',
           display: 'flex',
           alignItems: 'center',
