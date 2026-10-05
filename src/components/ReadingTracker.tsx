@@ -1222,16 +1222,20 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         {/* Central Display: Realistic 3D Hardcover Book with Percentage Style Progression (No Water Waves) */}
         <div 
           style={{
-            height: '269.088px',
+            height: '287.088px',
             marginTop: '0px',
             marginBottom: '9px',
             paddingBottom: '0px',
           }}
-          className="relative my-0 mb-[9px] pb-0 flex flex-col items-center justify-center w-full h-[269.088px]"
+          className="relative my-0 mb-[9px] pb-0 flex flex-col items-center justify-center w-full h-[287.088px]"
         >
           <div 
-            style={{ paddingTop: '8px' }}
-            className="flex items-center justify-center gap-3 sm:gap-6 w-full pt-2 pb-2"
+            style={{
+              paddingTop: '8px',
+              paddingBottom: '15px',
+              height: '260.991px',
+            }}
+            className="flex items-center justify-center gap-3 sm:gap-6 w-full pt-2 pb-[15px] h-[260.991px]"
           >
             {/* Left Quick Stat Pill: Remaining Pages */}
             {activeBook && selectedBookId !== 'custom' && activeBookStats && (
