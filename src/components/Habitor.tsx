@@ -1185,11 +1185,14 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       {/* Top Current Week View & Sunset Card */}
       <div 
         style={{
-          height: '100.4122px',
+          height: '100.405px',
+          marginBottom: '8px',
+          paddingTop: '8px',
+          marginTop: '0px',
           boxSizing: 'border-box',
         }}
         className={cn(
-          "p-2 sm:p-2.5 rounded-2xl border transition-all h-[100.4122px] max-h-[100.4122px] flex flex-col justify-between overflow-hidden box-border",
+          "px-2 sm:px-2.5 pb-2 sm:pb-2.5 pt-2 rounded-2xl border transition-all h-[100.405px] max-h-[100.405px] mb-2 mt-0 flex flex-col justify-between overflow-hidden box-border",
           darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
         )}
       >
@@ -1245,9 +1248,9 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
               animate="center"
               exit="exit"
               style={{
-                height: '57.9977px',
+                height: '55.9955px',
               }}
-              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full h-[57.9977px]"
+              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full h-[55.9955px]"
             >
               {weekDays.map((d) => {
                 const isSelected = d.dateKey === selectedDateKey;
@@ -1265,7 +1268,7 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                         borderRadius: '25px',
                         backgroundColor: '#009427',
                       }}
-                      className="flex flex-col items-center justify-between w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-[25px] bg-[#009427] text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/80 cursor-pointer select-none transition-all active:scale-95"
+                      className="flex flex-col items-center justify-between w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[25px] bg-[#009427] text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/80 cursor-pointer select-none transition-all active:scale-95"
                     >
                       <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
                         {dayLabel}
@@ -1290,7 +1293,7 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                         borderRadius: '25px',
                       }}
                       className={cn(
-                        "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-[25px] transition-all cursor-pointer select-none active:scale-95",
+                        "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[25px] transition-all cursor-pointer select-none active:scale-95",
                         darkMode 
                           ? "bg-emerald-600/30 border border-emerald-500/60 text-emerald-300 hover:bg-emerald-600/40" 
                           : "bg-emerald-100/90 border border-emerald-400 text-emerald-800 hover:bg-emerald-200"
@@ -1299,7 +1302,7 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                       <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase leading-none opacity-90">
                         {dayLabel}
                       </span>
-                      <span className="text-base sm:text-lg font-black tracking-tighter mt-1 leading-none">
+                      <span className="text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none">
                         {d.dateNum}
                       </span>
                     </button>
@@ -1316,14 +1319,14 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                       borderRadius: '25px',
                     }}
                     className={cn(
-                      "flex flex-col items-center justify-center w-full h-[54px] sm:h-[60px] py-1.5 px-0.5 rounded-[25px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95",
+                      "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[25px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95",
                       darkMode ? "bg-white/5 text-gray-400" : "bg-gray-100 text-gray-600"
                     )}
                   >
                     <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none">
                       {dayLabel}
                     </span>
-                    <span className="text-base sm:text-lg font-black tracking-tighter mt-1 leading-none">
+                    <span className="text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none">
                       {d.dateNum}
                     </span>
                   </button>
