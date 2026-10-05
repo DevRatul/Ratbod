@@ -1296,11 +1296,11 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                   {/* Top: Book Title & Author */}
                   <div 
                     style={{
-                      paddingTop: '13px',
-                      paddingBottom: '13px',
+                      paddingTop: '9px',
+                      paddingBottom: '5px',
                       marginTop: '11px',
                     }}
-                    className="w-full flex flex-col items-center px-1 pt-[13px] pb-[13px] mt-[11px]"
+                    className="w-full flex flex-col items-center px-1 pt-[9px] pb-[5px] mt-[11px]"
                   >
                     <h3 className={cn(
                       "font-extrabold text-xs sm:text-sm leading-tight line-clamp-2 w-full",
@@ -1640,51 +1640,49 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           </div>
         )}
 
-        {/* Compact Date Row (Clean & Compact on both Mobile & Desktop) */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.05]">
-          <span className="text-[10.5px] font-bold text-neutral-400 dark:text-neutral-500 uppercase flex items-center gap-1.5 select-none shrink-0">
-            <Calendar size={12} className="text-indigo-500" />
-            <span>{isBn ? 'তারিখ' : 'Date'}</span>
-          </span>
+        {/* Date on Left, Action Button on Right (Side-by-side 50/50 on mobile view) */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 items-center pt-1.5 border-t border-black/[0.04] dark:border-white/[0.05]">
+          {/* Left Side: Date Input */}
           <div className={cn(
-            "flex items-center px-2 py-1 rounded-lg border text-xs transition-all w-32 sm:w-36 shrink-0",
-            darkMode ? "bg-white/[0.02] border-white/10" : "bg-slate-50 border-slate-200"
+            "flex items-center gap-1.5 px-2 sm:px-3 h-10 rounded-xl border text-xs transition-all w-full",
+            darkMode ? "bg-white/[0.02] border-white/10 hover:border-white/20" : "bg-slate-50 border-slate-200 hover:border-slate-300"
           )}>
+            <Calendar size={13} className="text-indigo-500 shrink-0" />
             <input
               id="reading_date_picker"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono font-medium text-neutral-700 dark:text-neutral-200 focus:outline-none [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
+              className="w-full bg-transparent text-[11px] sm:text-xs font-mono font-medium text-neutral-700 dark:text-neutral-200 focus:outline-none [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
             />
           </div>
-        </div>
 
-        {/* Compact, High-Impact Action Button */}
-        <button
-          id="submit_reading_log_button"
-          type="button"
-          onClick={handleLogSession}
-          disabled={usePageRange && (fromP <= 0 || toP < fromP)}
-          className={cn(
-            "w-full py-2.5 h-10 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.99] text-white",
-            savedToast 
-              ? "bg-emerald-600 shadow-emerald-500/20 ring-2 ring-emerald-400/50" 
-              : "bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-600/25 hover:shadow-indigo-600/35 disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-        >
-          {savedToast ? (
-            <>
-              <Check size={15} strokeWidth={3} className="animate-bounce" />
-              <span>{isBn ? 'সংরক্ষিত হয়েছে!' : 'Logged Successfully!'}</span>
-            </>
-          ) : (
-            <>
-              <Plus size={15} strokeWidth={2.5} />
-              <span>{isBn ? 'লগ পেজ' : 'Log Pages'}</span>
-            </>
-          )}
-        </button>
+          {/* Right Side: Plus Log Pages Button */}
+          <button
+            id="submit_reading_log_button"
+            type="button"
+            onClick={handleLogSession}
+            disabled={usePageRange && (fromP <= 0 || toP < fromP)}
+            className={cn(
+              "w-full h-10 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-[0.98] text-white",
+              savedToast 
+                ? "bg-emerald-600 shadow-emerald-500/20 ring-2 ring-emerald-400/50" 
+                : "bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-600/25 hover:shadow-indigo-600/35 disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            {savedToast ? (
+              <>
+                <Check size={14} strokeWidth={3} className="animate-bounce shrink-0" />
+                <span className="truncate">{isBn ? 'সংরক্ষিত!' : 'Logged!'}</span>
+              </>
+            ) : (
+              <>
+                <Plus size={14} strokeWidth={2.5} className="shrink-0" />
+                <span className="truncate">{isBn ? 'লগ পেজ' : 'Log Pages'}</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ========================================================================= */}
