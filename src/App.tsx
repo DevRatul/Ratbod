@@ -2359,10 +2359,13 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
       </div>
 
       {/* Habitor Tab Content */}
-      <div className={cn(
-        "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12",
-        activeTab === 'results' ? "block" : "hidden"
-      )}>
+      <div 
+        style={{ marginTop: '1.5px' }}
+        className={cn(
+          "max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-2.5 pb-[76px] sm:pb-12 mt-[1.5px]",
+          activeTab === 'results' ? "block" : "hidden"
+        )}
+      >
         <Habitor darkMode={darkMode} lang={lang} weekStartDay={weekStartDay} />
       </div>
 

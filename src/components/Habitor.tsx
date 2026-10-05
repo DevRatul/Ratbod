@@ -267,11 +267,11 @@ function HabitRowItem({
       }}
       style={{
         height: '65.4302px',
-        borderRadius: '21px',
+        borderRadius: '25px',
         boxSizing: 'border-box',
       }}
       className={cn(
-        "group relative h-[65.4302px] max-h-[65.4302px] px-2.5 sm:px-3 py-1.5 rounded-[21px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
+        "group relative h-[65.4302px] max-h-[65.4302px] px-2.5 sm:px-3 py-1.5 rounded-[25px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
         isCompleted
           ? (darkMode 
               ? "bg-[#0c1813] border-emerald-500/30 text-gray-300" 
@@ -292,7 +292,11 @@ function HabitRowItem({
           className="p-2 sm:p-2.5 -my-2 -ml-1.5 rounded-xl cursor-grab active:cursor-grabbing text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 active:bg-rose-500/20 transition-all touch-none flex items-center justify-center select-none"
           title={lang === 'bn' ? 'স্থান পরিবর্তন করতে টেনে আনুন' : 'Drag handle to reorder'}
         >
-          <GripVertical size={17} />
+          <GripVertical 
+            size={22} 
+            style={{ width: '21.9932px', height: '21.9932px' }} 
+            className="w-[21.9932px] h-[21.9932px]" 
+          />
         </div>
         
         <div className="relative">
@@ -302,7 +306,11 @@ function HabitRowItem({
               e.stopPropagation();
               setMenuOpenHabitId(isMenuOpen ? null : habit.id);
             }}
-            className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            style={{
+              width: '24.9955px',
+              height: '24.9955px',
+            }}
+            className="w-[24.9955px] h-[24.9955px] p-0 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <MoreVertical size={15} />
           </button>
@@ -378,9 +386,9 @@ function HabitRowItem({
           </div>
           {habit.subtitle && (
             <p 
-              style={{ fontSize: '13px' }}
+              style={{ fontSize: '12px' }}
               className={cn(
-                "text-[13px] font-medium truncate mt-0.5",
+                "text-[12px] font-medium truncate mt-0.5",
                 isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
               )}
             >
@@ -1265,10 +1273,10 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                       onClick={() => handleDaySelect(d.dateKey)}
                       title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
                       style={{
-                        borderRadius: '25px',
+                        borderRadius: '17px',
                         backgroundColor: '#009427',
                       }}
-                      className="flex flex-col items-center justify-between w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[25px] bg-[#009427] text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/80 cursor-pointer select-none transition-all active:scale-95"
+                      className="flex flex-col items-center justify-between w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[17px] bg-[#009427] text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/80 cursor-pointer select-none transition-all active:scale-95"
                     >
                       <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
                         {dayLabel}
@@ -1290,10 +1298,10 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                       onClick={() => handleDaySelect(d.dateKey)}
                       title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum} (${lang === 'bn' ? 'আজ' : 'Today'})`}
                       style={{
-                        borderRadius: '25px',
+                        borderRadius: '17px',
                       }}
                       className={cn(
-                        "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[25px] transition-all cursor-pointer select-none active:scale-95",
+                        "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[17px] transition-all cursor-pointer select-none active:scale-95",
                         darkMode 
                           ? "bg-emerald-600/30 border border-emerald-500/60 text-emerald-300 hover:bg-emerald-600/40" 
                           : "bg-emerald-100/90 border border-emerald-400 text-emerald-800 hover:bg-emerald-200"
@@ -1316,10 +1324,10 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                     onClick={() => handleDaySelect(d.dateKey)}
                     title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
                     style={{
-                      borderRadius: '25px',
+                      borderRadius: '17px',
                     }}
                     className={cn(
-                      "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[25px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95",
+                      "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[17px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95",
                       darkMode ? "bg-white/5 text-gray-400" : "bg-gray-100 text-gray-600"
                     )}
                   >
