@@ -266,12 +266,12 @@ function HabitRowItem({
         damping: 32
       }}
       style={{
-        height: '61.4347px',
+        height: '65.4302px',
         borderRadius: '21px',
         boxSizing: 'border-box',
       }}
       className={cn(
-        "group relative h-[61.4347px] max-h-[61.4347px] px-2.5 sm:px-3 py-1.5 rounded-[21px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
+        "group relative h-[65.4302px] max-h-[65.4302px] px-2.5 sm:px-3 py-1.5 rounded-[21px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
         isCompleted
           ? (darkMode 
               ? "bg-[#0c1813] border-emerald-500/30 text-gray-300" 
@@ -366,9 +366,9 @@ function HabitRowItem({
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
             <h3 
-              style={{ fontSize: '14px' }}
+              style={{ fontSize: '15px' }}
               className={cn(
-                "text-[14px] font-bold tracking-tight truncate transition-all leading-snug",
+                "text-[15px] font-bold tracking-tight truncate transition-all leading-snug",
                 isCompleted ? "line-through opacity-80 text-[#32CD32]" : ""
               )}
             >
@@ -378,9 +378,9 @@ function HabitRowItem({
           </div>
           {habit.subtitle && (
             <p 
-              style={{ fontSize: '12px' }}
+              style={{ fontSize: '13px' }}
               className={cn(
-                "text-[12px] font-medium truncate mt-0.5",
+                "text-[13px] font-medium truncate mt-0.5",
                 isCompleted ? "opacity-70 text-[#32CD32]" : "text-gray-400 dark:text-gray-400"
               )}
             >
@@ -1183,10 +1183,16 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
   return (
     <div className="space-y-2.5 max-w-2xl mx-auto pb-0 sm:pb-10">
       {/* Top Current Week View & Sunset Card */}
-      <div className={cn(
-        "p-2 sm:p-2.5 rounded-2xl border transition-all",
-        darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
-      )}>
+      <div 
+        style={{
+          height: '100.4122px',
+          boxSizing: 'border-box',
+        }}
+        className={cn(
+          "p-2 sm:p-2.5 rounded-2xl border transition-all h-[100.4122px] max-h-[100.4122px] flex flex-col justify-between overflow-hidden box-border",
+          darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
+        )}
+      >
         {/* Header: Week number on left with subtle step buttons, Sunset info on right */}
         <div className="flex items-center justify-between mb-1.5 px-1">
           <div className="flex items-center gap-1">
@@ -1238,7 +1244,10 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
               initial="enter"
               animate="center"
               exit="exit"
-              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full"
+              style={{
+                height: '57.9977px',
+              }}
+              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full h-[57.9977px]"
             >
               {weekDays.map((d) => {
                 const isSelected = d.dateKey === selectedDateKey;
