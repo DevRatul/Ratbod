@@ -265,8 +265,13 @@ function HabitRowItem({
         stiffness: 450,
         damping: 32
       }}
+      style={{
+        height: '58.4369px',
+        borderRadius: '21px',
+        boxSizing: 'border-box',
+      }}
       className={cn(
-        "group relative p-2.5 sm:p-3 rounded-2xl border transition-colors flex items-center justify-between gap-3 select-none",
+        "group relative h-[58.4369px] max-h-[58.4369px] px-2.5 sm:px-3 py-1.5 rounded-[21px] border transition-colors flex items-center justify-between gap-3 select-none box-border",
         isCompleted
           ? (darkMode 
               ? "bg-[#0c1813] border-emerald-500/30 text-gray-300" 

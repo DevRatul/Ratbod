@@ -1669,7 +1669,7 @@ export default function DashboardModal({
   return (
     <div 
       id="dashboard_modal_overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md transition-opacity"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md transition-opacity"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

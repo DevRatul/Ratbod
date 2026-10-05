@@ -1792,7 +1792,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           const selectedBookTotalPagesRead = selectedBookPreviousLogs.reduce((acc, r) => acc + (r.pages || 0), 0);
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1962,7 +1962,7 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
       {/* ========================================================================= */}
       <AnimatePresence>
         {isLibraryOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}

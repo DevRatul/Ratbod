@@ -92,6 +92,23 @@
   }
 }
 
+/* =========================================================================
+   Hide Mobile Bottom Menu & Floating Subnavs when ANY Popup / Modal is Open
+   ========================================================================= */
+body:has(div.fixed.inset-0:not(.pointer-events-none):not(#dropdown_backdrop):not(#app_root_bg):not(#mobile_bottom_nav)) #mobile_bottom_nav,
+body:has(div.fixed.inset-0:not(.pointer-events-none):not(#dropdown_backdrop):not(#app_root_bg):not(#mobile_bottom_nav)) #logify_mobile_subnav_wrapper,
+body:has([role="dialog"]) #mobile_bottom_nav,
+body:has([role="dialog"]) #logify_mobile_subnav_wrapper,
+body:has([aria-modal="true"]) #mobile_bottom_nav,
+body:has([aria-modal="true"]) #logify_mobile_subnav_wrapper,
+body.has-active-modal #mobile_bottom_nav,
+body.has-active-modal #logify_mobile_subnav_wrapper {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @utility shiny-button {
   @apply relative overflow-hidden transition-all duration-300 active:scale-95;
   &::after {

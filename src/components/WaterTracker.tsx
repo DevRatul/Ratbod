@@ -2646,7 +2646,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       {/* Edit Entry Modal */}
       <AnimatePresence>
         {editingEntry && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -2739,7 +2739,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       {/* Add Yesterday Entry Modal */}
       <AnimatePresence>
         {showAddYesterdayModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -2830,7 +2830,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       {/* Goal Selector Modal */}
       <AnimatePresence>
         {showGoalModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               key="goal-modal"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -3011,7 +3011,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       {/* Hydration Alarm Popup Modal when countdown hits 0 */}
       <AnimatePresence>
         {showAlarmModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
             <motion.div
               key="alarm-modal"
               initial={{ opacity: 0, scale: 0.85 }}
@@ -3084,7 +3084,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
       {/* Daily Water Intake History Modal with Top Corner Back Button */}
       <AnimatePresence>
         {showHistoryModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
             <motion.div
               key="water-history-modal"
               initial={{ opacity: 0, scale: 0.95 }}
