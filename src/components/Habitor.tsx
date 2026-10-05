@@ -1346,10 +1346,18 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       </div>
 
       {/* Progress Counter & Bar Header (Matching Screenshot with reduced margins) */}
-      <div className={cn(
-        "p-2.5 sm:p-3 rounded-2xl border space-y-1.5 transition-all mb-4",
-        darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
-      )}>
+      <div 
+        style={{
+          marginBottom: '15px',
+          marginTop: '0px',
+          paddingTop: '7px',
+          paddingBottom: '7px',
+        }}
+        className={cn(
+          "px-2.5 sm:px-3 py-[7px] mb-[15px] mt-0 rounded-2xl border space-y-1.5 transition-all",
+          darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
+        )}
+      >
         <div className="flex items-center justify-between text-xs font-bold">
           <span className="text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[10px]">Progress</span>
           <span className="text-rose-500 dark:text-rose-400 font-extrabold text-xs">
