@@ -1220,8 +1220,19 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
         </div>
 
         {/* Central Display: Realistic 3D Hardcover Book with Percentage Style Progression (No Water Waves) */}
-        <div className="relative my-2 flex flex-col items-center justify-center w-full">
-          <div className="flex items-center justify-center gap-3 sm:gap-6 w-full py-2">
+        <div 
+          style={{
+            height: '269.088px',
+            marginTop: '0px',
+            marginBottom: '9px',
+            paddingBottom: '0px',
+          }}
+          className="relative my-0 mb-[9px] pb-0 flex flex-col items-center justify-center w-full h-[269.088px]"
+        >
+          <div 
+            style={{ paddingTop: '8px' }}
+            className="flex items-center justify-center gap-3 sm:gap-6 w-full pt-2 pb-2"
+          >
             {/* Left Quick Stat Pill: Remaining Pages */}
             {activeBook && selectedBookId !== 'custom' && activeBookStats && (
               <div className={cn(
@@ -1274,16 +1285,23 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                 )} />
 
                 {/* 4. Book Cover Content & Percentage Progress Style */}
-                <div className="relative z-10 w-full h-full pl-7 sm:pl-8.5 pr-2.5 py-3.5 flex flex-col items-center justify-between text-center">
+                <div 
+                  style={{
+                    paddingBottom: '14px',
+                    marginBottom: '0px',
+                  }}
+                  className="relative z-10 w-full h-full pl-7 sm:pl-8.5 pr-2.5 pt-3.5 pb-[14px] mb-0 flex flex-col items-center justify-between text-center"
+                >
                   
                   {/* Top: Book Title & Author */}
-                  <div className="w-full flex flex-col items-center px-1 pt-1">
-                    <span className={cn(
-                      "text-[8.5px] font-black tracking-widest uppercase mb-0.5",
-                      darkMode ? "text-amber-400/80" : "text-amber-800/80"
-                    )}>
-                      ✦ {isBn ? 'গ্রন্থ' : 'BOOK'} ✦
-                    </span>
+                  <div 
+                    style={{
+                      paddingTop: '13px',
+                      paddingBottom: '13px',
+                      marginTop: '11px',
+                    }}
+                    className="w-full flex flex-col items-center px-1 pt-[13px] pb-[13px] mt-[11px]"
+                  >
                     <h3 className={cn(
                       "font-extrabold text-xs sm:text-sm leading-tight line-clamp-2 w-full",
                       darkMode ? "text-white drop-shadow-md" : "text-stone-900"
@@ -1293,17 +1311,23 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                         : (activeBook?.title || 'Atomic Habits')}
                     </h3>
                     {activeBook?.author && (
-                      <p className={cn(
-                        "text-[9px] sm:text-[10px] font-medium truncate max-w-[130px] sm:max-w-[155px] mt-0.5",
-                        darkMode ? "text-amber-200/90 drop-shadow-sm" : "text-stone-600"
-                      )}>
+                      <p 
+                        style={{ marginTop: '3px' }}
+                        className={cn(
+                          "text-[9px] sm:text-[10px] font-medium truncate max-w-[130px] sm:max-w-[155px] mt-[3px]",
+                          darkMode ? "text-amber-200/90 drop-shadow-sm" : "text-stone-600"
+                        )}
+                      >
                         {activeBook.author}
                       </p>
                     )}
                   </div>
 
                   {/* Middle: Elegant Circular Percentage Progress Gauge (Green in both light and dark mode) */}
-                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center my-auto drop-shadow-sm">
+                  <div 
+                    style={{ width: '99.991px', height: '99.991px' }}
+                    className="relative w-[99.991px] h-[99.991px] flex items-center justify-center my-auto drop-shadow-sm"
+                  >
                     <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
                       {/* Background Track Circle */}
                       <circle
@@ -1337,7 +1361,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                     </svg>
 
                     {/* Percentage Information Inside the Ring */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <div 
+                      style={{ width: '99.991px', height: '99.991px' }}
+                      className="absolute inset-0 w-[99.991px] h-[99.991px] flex flex-col items-center justify-center text-center"
+                    >
                       <span className={cn(
                         "text-xl sm:text-2xl font-black font-mono tracking-tight leading-none",
                         darkMode ? "text-emerald-400 drop-shadow-sm" : "text-emerald-600 font-extrabold"
@@ -1378,17 +1405,6 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
                     )}>
                       {isBn ? 'পৃষ্ঠা পড়া হয়েছে' : 'pages read'}
                     </span>
-
-                    {/* Minimalist book cover bottom hairline bar (Green progress) */}
-                    <div className={cn(
-                      "w-20 sm:w-24 h-1 rounded-full overflow-hidden mt-1.5 shadow-inner",
-                      darkMode ? "bg-white/15" : "bg-stone-300/70"
-                    )}>
-                      <div 
-                        className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-500 via-emerald-400 to-green-400 shadow-sm"
-                        style={{ width: `${activeBookPercent}%` }}
-                      />
-                    </div>
                   </div>
 
                 </div>
@@ -1444,7 +1460,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
         {/* Read intervals/sections tags */}
         {activeBookStats && activeBookStats.intervals.length > 0 && (
-          <div className="flex items-center gap-1.5 pt-2 border-t border-black/[0.05] dark:border-white/[0.06] text-[10.5px] text-neutral-500 dark:text-neutral-400 flex-wrap justify-center sm:justify-start">
+          <div 
+            style={{ paddingTop: '7px' }}
+            className="flex items-center gap-1.5 pt-[7px] border-t border-black/[0.05] dark:border-white/[0.06] text-[10.5px] text-neutral-500 dark:text-neutral-400 flex-wrap justify-center sm:justify-start"
+          >
             <span className="font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
               {isBn ? 'পড়া অংশ:' : 'Sections read:'}
             </span>
@@ -1561,27 +1580,18 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
               </div>
             </div>
 
-            {/* Quick Increment Preset Chips */}
-            <div className="flex items-center justify-between gap-1.5 pt-0.5">
-              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
-                {isBn ? 'দ্রুত যোগ:' : 'Quick add:'}
+            {/* Total Pages Calculated from From → To */}
+            <div className="flex items-center justify-between gap-1.5 pt-0.5 px-0.5">
+              <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
+                {isBn ? 'মোট পৃষ্ঠা:' : 'Total Pages:'}
               </span>
-              <div className="flex items-center gap-1">
-                {[5, 10, 15, 20].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => applyQuickPages(num)}
-                    className={cn(
-                      "px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold transition-all cursor-pointer border shadow-2xs active:scale-95",
-                      darkMode 
-                        ? "bg-white/[0.04] border-white/10 text-neutral-300 hover:bg-white/[0.08] hover:text-indigo-400" 
-                        : "bg-slate-100 hover:bg-indigo-50 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700"
-                    )}
-                  >
-                    +{formatNum(num)}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40">
+                <span className="text-xs sm:text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
+                  {formatNum(rangePagesRead)}
+                </span>
+                <span className="text-[11px] font-bold text-indigo-500/80 dark:text-indigo-300/80">
+                  {isBn ? 'পৃষ্ঠা' : 'pages'}
+                </span>
               </div>
             </div>
           </div>

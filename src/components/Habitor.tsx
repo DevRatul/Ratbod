@@ -1281,7 +1281,13 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                       <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
                         {dayLabel}
                       </span>
-                      <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs">
+                      <div 
+                        style={{
+                          paddingBottom: '0px',
+                          marginBottom: '3px',
+                        }}
+                        className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs pb-0 mb-[3px]"
+                      >
                         <span className="text-xs sm:text-sm font-black text-gray-900 leading-none">
                           {d.dateNum}
                         </span>

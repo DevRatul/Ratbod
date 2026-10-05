@@ -2884,8 +2884,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           borderRadius: '28px',
           paddingLeft: '8px',
           paddingRight: '8px',
+          paddingTop: '5px',
+          paddingBottom: '5px',
           width: '371.315px',
-          height: '57.8559px',
+          height: '60.8491px',
           marginBottom: '4.5px',
           borderWidth: '3px',
           borderStyle: 'solid',
@@ -2897,7 +2899,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           boxSizing: 'border-box',
         }}
         className={cn(
-          "fixed bottom-2 left-0 right-0 mx-auto w-[371.315px] max-w-[calc(100vw-20px)] z-50 md:hidden rounded-[28px] border-solid border-[3px] backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 px-2 mb-[4.5px] bg-transparent flex items-center justify-center",
+          "fixed bottom-2 left-0 right-0 mx-auto w-[371.315px] max-w-[calc(100vw-20px)] z-50 md:hidden rounded-[28px] border-solid border-[3px] backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 px-2 py-[5px] mb-[4.5px] bg-transparent flex items-center justify-center",
           darkMode 
             ? "text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)]" 
             : "text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
