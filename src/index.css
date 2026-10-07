@@ -109,6 +109,15 @@ body.has-active-modal #logify_mobile_subnav_wrapper {
   pointer-events: none !important;
 }
 
+@media (min-width: 768px) {
+  #mobile_bottom_nav {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
 @utility shiny-button {
   @apply relative overflow-hidden transition-all duration-300 active:scale-95;
   &::after {

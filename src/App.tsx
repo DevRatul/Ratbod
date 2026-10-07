@@ -2893,13 +2893,10 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           borderStyle: 'solid',
           borderColor: darkMode ? '#2e2e34' : '#e8e8e8',
           backgroundColor: darkMode ? 'rgba(20, 20, 22, 0)' : 'rgba(255, 255, 255, 0)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           boxSizing: 'border-box',
         }}
         className={cn(
-          "fixed bottom-2 left-0 right-0 mx-auto w-[371.315px] max-w-[calc(100vw-20px)] z-50 md:hidden rounded-[28px] border-solid border-[3px] backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 px-2 py-[5px] mb-[4.5px] bg-transparent flex items-center justify-center",
+          "fixed bottom-2 left-0 right-0 mx-auto w-[371.315px] max-w-[calc(100vw-20px)] z-50 flex md:!hidden md:hidden rounded-[28px] border-solid border-[3px] backdrop-blur-2xl backdrop-saturate-180 transition-colors duration-300 px-2 py-[5px] mb-[4.5px] bg-transparent items-center justify-center",
           darkMode 
             ? "text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)]" 
             : "text-gray-900 shadow-[0_10px_35px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"

@@ -1230,8 +1230,14 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
               <ChevronRight size={13} />
             </button>
           </div>
-          <span className="text-[11px] font-bold text-amber-500 dark:text-amber-400 flex items-center gap-1.5 select-none">
-            <Sunset size={13} className="text-amber-400 shrink-0" />
+          <span 
+            style={{ fontSize: '12px' }}
+            className={cn(
+              "text-[12px] font-bold flex items-center gap-1.5 select-none transition-colors",
+              darkMode ? "text-white" : "text-amber-800"
+            )}
+          >
+            <Sunset size={14} className={cn("shrink-0", darkMode ? "text-amber-400" : "text-amber-600")} />
             {lang === 'bn' ? `সূর্যাস্ত: ${dhakaInfo.sunsetStr}` : `Sunset: ${dhakaInfo.sunsetStr}`}
           </span>
         </div>
