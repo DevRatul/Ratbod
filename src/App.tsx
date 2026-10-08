@@ -416,6 +416,45 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
     }
   };
 
+  // Segmented by Waqt (5 Waqt Salah: Maghrib, Isha, Fajr, Dhuhr, Asr)
+  const [isSegmentedByWaqt, setIsSegmentedByWaqt] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ratool_segmented_by_waqt') || localStorage.getItem('ratbod_segmented_by_waqt');
+      return saved === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleToggleSegmentedByWaqt = (val: boolean) => {
+    setIsSegmentedByWaqt(val);
+    try {
+      localStorage.setItem('ratool_segmented_by_waqt', String(val));
+      localStorage.setItem('ratbod_segmented_by_waqt', String(val));
+      window.dispatchEvent(new CustomEvent('ratbod_waqt_segment_changed', { detail: { isSegmentedByWaqt: val } }));
+    } catch (e) {}
+
+    const user = authUser || auth.currentUser;
+    if (user) {
+      const docRef = doc(db, 'users', user.uid);
+      setDoc(docRef, {
+        isSegmentedByWaqt: val,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    const handleWaqtEvent = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      if (customEvt.detail?.isSegmentedByWaqt !== undefined) {
+        setIsSegmentedByWaqt(Boolean(customEvt.detail.isSegmentedByWaqt));
+      }
+    };
+    window.addEventListener('ratbod_waqt_segment_changed', handleWaqtEvent);
+    return () => window.removeEventListener('ratbod_waqt_segment_changed', handleWaqtEvent);
+  }, []);
+
   const [showSavedNotification, setShowSavedNotification] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -2366,7 +2405,12 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           activeTab === 'results' ? "block" : "hidden"
         )}
       >
-        <Habitor darkMode={darkMode} lang={lang} weekStartDay={weekStartDay} />
+        <Habitor 
+          darkMode={darkMode} 
+          lang={lang} 
+          weekStartDay={weekStartDay} 
+          isSegmentedByWaqt={isSegmentedByWaqt} 
+        />
       </div>
 
       {/* Home Tab Content (Activity Dashboard rendered inline) */}
@@ -2862,6 +2906,8 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         onToggleSunriseSunset={handleToggleSunriseSunset}
         weekStartDay={weekStartDay}
         onSetWeekStartDay={handleSetWeekStartDay}
+        isSegmentedByWaqt={isSegmentedByWaqt}
+        onToggleSegmentedByWaqt={handleToggleSegmentedByWaqt}
       />
 
       <DashboardModal

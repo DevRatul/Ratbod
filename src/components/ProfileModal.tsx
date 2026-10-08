@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User as UserIcon, Key, CheckCircle, AlertCircle, Check, SunMedium, Calendar } from 'lucide-react';
+import { X, User as UserIcon, Key, CheckCircle, AlertCircle, Check, SunMedium, Calendar, Clock } from 'lucide-react';
 import { Gender } from '../utils/calculations';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -40,6 +40,8 @@ interface ProfileModalProps {
   onToggleSunriseSunset?: () => void;
   weekStartDay?: number;
   onSetWeekStartDay?: (day: number) => void;
+  isSegmentedByWaqt?: boolean;
+  onToggleSegmentedByWaqt?: (val: boolean) => void;
   onSaveProfile?: () => void;
 }
 
@@ -51,6 +53,8 @@ export default function ProfileModal({
   onToggleSunriseSunset: propOnToggleSunriseSunset,
   weekStartDay = 6,
   onSetWeekStartDay,
+  isSegmentedByWaqt: propIsSegmentedByWaqt,
+  onToggleSegmentedByWaqt: propOnToggleSegmentedByWaqt,
   onSaveProfile
 }: ProfileModalProps) {
   const user = auth.currentUser;
@@ -64,6 +68,10 @@ export default function ProfileModal({
     if (propIsSunriseToSunset !== undefined) return propIsSunriseToSunset;
     return isSunriseToSunsetEnabled();
   });
+  const [internalSegmentedByWaqt, setInternalSegmentedByWaqt] = useState(() => {
+    if (propIsSegmentedByWaqt !== undefined) return propIsSegmentedByWaqt;
+    return localStorage.getItem('ratbod_segmented_by_waqt') === 'true' || localStorage.getItem('ratool_segmented_by_waqt') === 'true';
+  });
 
   useEffect(() => {
     if (propIsSunriseToSunset !== undefined) {
@@ -73,7 +81,14 @@ export default function ProfileModal({
     }
   }, [isOpen, propIsSunriseToSunset]);
 
+  useEffect(() => {
+    if (propIsSegmentedByWaqt !== undefined) {
+      setInternalSegmentedByWaqt(propIsSegmentedByWaqt);
+    }
+  }, [isOpen, propIsSegmentedByWaqt]);
+
   const isSunriseToSunset = propIsSunriseToSunset !== undefined ? propIsSunriseToSunset : internalSunriseToSunset;
+  const isSegmentedByWaqt = propIsSegmentedByWaqt !== undefined ? propIsSegmentedByWaqt : internalSegmentedByWaqt;
 
   const handleBirthdateChange = (newDate: string) => {
     setBirthdate(newDate);
@@ -114,6 +129,9 @@ export default function ProfileModal({
       }
       localStorage.setItem('ratool_sunrise_sunset', String(Boolean(isSunriseToSunset)));
       localStorage.setItem('ratbod_sunrise_sunset', String(Boolean(isSunriseToSunset)));
+      localStorage.setItem('ratool_segmented_by_waqt', String(Boolean(isSegmentedByWaqt)));
+      localStorage.setItem('ratbod_segmented_by_waqt', String(Boolean(isSegmentedByWaqt)));
+      window.dispatchEvent(new CustomEvent('ratbod_waqt_segment_changed', { detail: { isSegmentedByWaqt: Boolean(isSegmentedByWaqt) } }));
     } catch (e) {}
 
     // 2. If user is signed in to Firebase, sync directly to Firestore
@@ -128,6 +146,7 @@ export default function ProfileModal({
         unit,
         weekStartDay,
         isSunriseToSunset: Boolean(isSunriseToSunset),
+        isSegmentedByWaqt: Boolean(isSegmentedByWaqt),
         updatedAt: serverTimestamp()
       }, { merge: true }).catch((err) => {
         console.error("Failed to sync profile on save:", err);
@@ -322,6 +341,50 @@ export default function ProfileModal({
               <option value={4}>Thursday</option>
               <option value={5}>Friday</option>
             </select>
+          </div>
+
+          {/* Segmented by Waqt Setting */}
+          <div className="mt-4 pt-3 border-t border-white/10 dark:border-white/10 border-gray-100 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Clock size={16} className="text-amber-500 shrink-0" />
+              <div className="flex flex-col">
+                <span className={cn("text-xs font-bold", darkMode ? "text-gray-200" : "text-gray-800")}>
+                  Segmented by Waqt
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-gray-400">
+                  Divide habits across 5 Waqt Salah (Maghrib to Asr)
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="profile_segmented_by_waqt_toggle"
+              role="switch"
+              aria-checked={isSegmentedByWaqt}
+              onClick={() => {
+                const nextVal = !isSegmentedByWaqt;
+                setInternalSegmentedByWaqt(nextVal);
+                if (propOnToggleSegmentedByWaqt) propOnToggleSegmentedByWaqt(nextVal);
+                try {
+                  localStorage.setItem('ratool_segmented_by_waqt', String(nextVal));
+                  localStorage.setItem('ratbod_segmented_by_waqt', String(nextVal));
+                  window.dispatchEvent(new CustomEvent('ratbod_waqt_segment_changed', { detail: { isSegmentedByWaqt: nextVal } }));
+                  window.dispatchEvent(new CustomEvent('ratool_waqt_segment_changed', { detail: { isSegmentedByWaqt: nextVal } }));
+                } catch {}
+              }}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                isSegmentedByWaqt ? "bg-emerald-600" : (darkMode ? "bg-white/20" : "bg-gray-300")
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
+                  isSegmentedByWaqt ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
           </div>
 
 

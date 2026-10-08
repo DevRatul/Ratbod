@@ -12,6 +12,9 @@ import {
   Trash2, 
   Edit2, 
   Sunset, 
+  Moon,
+  Sunrise,
+  Sun,
   Flame, 
   Calendar, 
   Award, 
@@ -23,7 +26,13 @@ import {
   Zap,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  ArrowUpRight,
+  Circle,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -33,54 +42,133 @@ import { recordOfflineChange, clearPendingOfflineChange } from '../utils/offline
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { DailySalahRecord, PrayerStatus, DEFAULT_RECORD, PrayerDetail } from './SalahTracker';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Plays a mechanical click sound on habit check
- */
-function playHabitCheckSound() {
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    
-    // Crisp, sharp "click" sound
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1200, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.015);
+export type WaqtKey = 'maghrib' | 'isha' | 'fajr' | 'dhuhr' | 'asr';
 
-    gain.gain.setValueAtTime(0.6, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.015);
+export const WAQT_ORDER: WaqtKey[] = ['maghrib', 'isha', 'fajr', 'dhuhr', 'asr'];
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.02);
-  } catch (e) {
-    // Audio context fallback
-  }
+export interface WaqtConfig {
+  serial: number;
+  key: WaqtKey;
+  nameEn: string;
+  nameBn: string;
+  arabic: string;
+  icon: React.ElementType;
+  color: string;
+  badgeBg: string;
+  textColor: string;
+  fardRakahs: number;
+  breakdown: Array<{ labelEn: string; labelBn: string; key: string; rakahs: number }>;
 }
+
+export const WAQT_DETAILS: Record<WaqtKey, WaqtConfig> = {
+  maghrib: {
+    serial: 1,
+    key: 'maghrib',
+    nameEn: 'Maghrib',
+    nameBn: 'মাগরিব',
+    arabic: 'المغرب',
+    icon: Sunset,
+    color: '#f97316',
+    badgeBg: 'bg-orange-500/15 border-orange-500/25',
+    textColor: 'text-orange-500 dark:text-orange-400',
+    fardRakahs: 3,
+    breakdown: [
+      { labelEn: '3 Fard', labelBn: '৩ রাকাত ফরজ', key: 'fard', rakahs: 3 },
+      { labelEn: '2 Sunnah Muakkadah', labelBn: '২ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 2 },
+      { labelEn: '2 Nafl', labelBn: '২ রাকাত নফল', key: 'nafl', rakahs: 2 },
+    ],
+  },
+  isha: {
+    serial: 2,
+    key: 'isha',
+    nameEn: 'Isha',
+    nameBn: 'এশা',
+    arabic: 'العشاء',
+    icon: Moon,
+    color: '#6366f1',
+    badgeBg: 'bg-indigo-500/15 border-indigo-500/25',
+    textColor: 'text-indigo-500 dark:text-indigo-400',
+    fardRakahs: 4,
+    breakdown: [
+      { labelEn: '4 Sunnah', labelBn: '৪ রাকাত পূর্ববর্তী সুন্নত', key: 'sunnahGhairMuakkadah', rakahs: 4 },
+      { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 },
+      { labelEn: '2 Sunnah Muakkadah', labelBn: '২ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 2 },
+      { labelEn: '3 Witr Wajib', labelBn: '৩ রাকাত বিতর ওয়াজিব', key: 'witr', rakahs: 3 },
+      { labelEn: '2 Nafl', labelBn: '২ রাকাত নফল', key: 'nafl', rakahs: 2 },
+    ],
+  },
+  fajr: {
+    serial: 3,
+    key: 'fajr',
+    nameEn: 'Fajr',
+    nameBn: 'ফজর',
+    arabic: 'الفجر',
+    icon: Sunrise,
+    color: '#06b6d4',
+    badgeBg: 'bg-cyan-500/15 border-cyan-500/25',
+    textColor: 'text-cyan-500 dark:text-cyan-400',
+    fardRakahs: 2,
+    breakdown: [
+      { labelEn: '2 Sunnah Muakkadah', labelBn: '২ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 2 },
+      { labelEn: '2 Fard', labelBn: '২ রাকাত ফরজ', key: 'fard', rakahs: 2 },
+    ],
+  },
+  dhuhr: {
+    serial: 4,
+    key: 'dhuhr',
+    nameEn: 'Dhuhr',
+    nameBn: 'যোহর',
+    arabic: 'الظهر',
+    icon: Sun,
+    color: '#eab308',
+    badgeBg: 'bg-amber-500/15 border-amber-500/25',
+    textColor: 'text-amber-500 dark:text-amber-400',
+    fardRakahs: 4,
+    breakdown: [
+      { labelEn: '4 Sunnah Muakkadah', labelBn: '৪ রাকাত সুন্নত (মুয়াক্কাদাহ)', key: 'sunnahMuakkadah', rakahs: 4 },
+      { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 },
+      { labelEn: '2 Sunnah Ba\'diyyah', labelBn: '২ রাকাত পরবর্তী সুন্নত', key: 'nafl', rakahs: 2 },
+    ],
+  },
+  asr: {
+    serial: 5,
+    key: 'asr',
+    nameEn: 'Asr',
+    nameBn: 'আসর',
+    arabic: 'العصر',
+    icon: Sun,
+    color: '#10b981',
+    badgeBg: 'bg-emerald-500/15 border-emerald-500/25',
+    textColor: 'text-emerald-500 dark:text-emerald-400',
+    fardRakahs: 4,
+    breakdown: [
+      { labelEn: '4 Sunnah (Ghair Muakkadah)', labelBn: '৪ রাকাত সুন্নত (গায়রে মুয়াক্কাদাহ)', key: 'sunnahGhairMuakkadah', rakahs: 4 },
+      { labelEn: '4 Fard', labelBn: '৪ রাকাত ফরজ', key: 'fard', rakahs: 4 },
+    ],
+  },
+};
 
 export interface HabitItem {
   id: string;
+  emoji?: string;
   title: string;
   subtitle?: string;
-  emoji?: string;
-  createdAt: string;
   order?: number;
+  waqt?: WaqtKey;
+  createdAt?: string;
 }
 
 export interface HabitorProps {
   darkMode: boolean;
   lang: 'en' | 'bn';
-  weekStartDay?: number; // 0=Sun, 1=Mon, ..., 6=Sat. Default: 6 (Saturday)
+  weekStartDay?: number;
+  isSegmentedByWaqt?: boolean;
 }
 
 export const DEFAULT_HABIT_ORDER_MAP: Record<string, number> = {
@@ -101,24 +189,82 @@ export const DEFAULT_HABIT_ORDER_MAP: Record<string, number> = {
   h15: 15,
 };
 
-// Default initial habits matching screenshot
-const DEFAULT_HABITS: HabitItem[] = [
-  { id: 'h1', order: 1, title: 'Post-Maghrib Dinner', subtitle: 'Within 6-7 Pm', emoji: '🥗', createdAt: new Date().toISOString() },
-  { id: 'h2', order: 2, title: 'Esa Jamat', subtitle: 'With Witr / Tarawee', emoji: '🤲', createdAt: new Date().toISOString() },
-  { id: 'h3', order: 3, title: 'Drink Mineral Water', subtitle: '13 Glass ( 3-4 Ltr ) Detox, Alkaline', emoji: '💧', createdAt: new Date().toISOString() },
-  { id: 'h4', order: 4, title: 'PlanNextDay', subtitle: 'Before Sleep', emoji: '📝', createdAt: new Date().toISOString() },
-  { id: 'h5', order: 5, title: 'Read a Book', subtitle: '10 Pages', emoji: '📗', createdAt: new Date().toISOString() },
-  { id: 'h6', order: 6, title: 'Avoid Hjobs', subtitle: '', emoji: '🍌', createdAt: new Date().toISOString() },
-  { id: 'h7', order: 7, title: 'Sleep Early', subtitle: '@ 9pm | Do Sleep Ritual |', emoji: '🛌', createdAt: new Date().toISOString() },
-  { id: 'h8', order: 8, title: 'Tahajjud/ Suhur', subtitle: '', emoji: '🧎', createdAt: new Date().toISOString() },
-  { id: 'h9', order: 9, title: 'Fazr Jamat', subtitle: '', emoji: '🤲', createdAt: new Date().toISOString() },
-  { id: 'h10', order: 10, title: 'Quran Recitation', subtitle: '30 Min', emoji: '📖', createdAt: new Date().toISOString() },
-  { id: 'h11', order: 11, title: 'Zikr Adhkar', subtitle: 'Before Sunrise & Sunset', emoji: '📿', createdAt: new Date().toISOString() },
-  { id: 'h12', order: 12, title: 'Deep Work', subtitle: '4 Focused Hrs ( 8-13 Pm )', emoji: '👨‍💻', createdAt: new Date().toISOString() },
-  { id: 'h13', order: 13, title: 'Dhikr - Walk', subtitle: '10,000 Steps (Sun & Grass)', emoji: '🚶', createdAt: new Date().toISOString() },
-  { id: 'h14', order: 14, title: 'Strength Exercise', subtitle: 'Resistance / Dumbbell Strength Full Body', emoji: '🏋️', createdAt: new Date().toISOString() },
-  { id: 'h15', order: 15, title: 'Breathing With Dhikr', subtitle: 'Wim Hoff, 4:7:8, Humming', emoji: '🫁', createdAt: new Date().toISOString() },
+export const DEFAULT_HABITS: HabitItem[] = [
+  { id: 'h1', emoji: '🌅', title: 'Maghrib Prayer & Reflection', subtitle: 'At Sunset', order: 1, waqt: 'maghrib' },
+  { id: 'h2', emoji: '🌙', title: 'Isha Prayer in Congregation', subtitle: 'Night Routine', order: 2, waqt: 'isha' },
+  { id: 'h3', emoji: '💧', title: 'Drink Mineral Water', subtitle: 'Stay hydrated', order: 3, waqt: 'isha' },
+  { id: 'h4', emoji: '📝', title: 'Evening Review & Gratitude', subtitle: 'Reflect on day', order: 4, waqt: 'isha' },
+  { id: 'h5', emoji: '📖', title: 'Read a Book', subtitle: '15-20 pages', order: 5, waqt: 'isha' },
+  { id: 'h6', emoji: '🛏️', title: 'Early Sleep Routine', subtitle: '', order: 6, waqt: 'isha' },
+  { id: 'h7', emoji: '✨', title: 'Night Sunnah & Witr', subtitle: 'Before sleep', order: 7, waqt: 'isha' },
+  { id: 'h8', emoji: '🕌', title: 'Fajr Prayer & Adhkar', subtitle: '', order: 8, waqt: 'fajr' },
+  { id: 'h9', emoji: '📜', title: 'Quran Recitation & Tadabbur', subtitle: '', order: 9, waqt: 'fajr' },
+  { id: 'h10', emoji: '☀️', title: 'Morning Masnoon Adhkar', subtitle: 'Protection', order: 10, waqt: 'fajr' },
+  { id: 'h11', emoji: '🏃', title: 'Morning Light Exercise / Walk', subtitle: '20 mins', order: 11, waqt: 'fajr' },
+  { id: 'h12', emoji: '💼', title: 'Dhuhr Prayer & Deep Work', subtitle: 'Midday focus', order: 12, waqt: 'dhuhr' },
+  { id: 'h13', emoji: '🌤️', title: 'Asr Prayer in Congregation', subtitle: 'Late afternoon', order: 13, waqt: 'asr' },
+  { id: 'h14', emoji: '🚶', title: 'Outdoor Walk & Active Move', subtitle: 'Fresh air', order: 14, waqt: 'asr' },
+  { id: 'h15', emoji: '🫁', title: 'Breathing & Evening Calm', subtitle: 'Relax & reset', order: 15, waqt: 'asr' },
 ];
+
+export function playHabitCheckSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+    gain.setValueAtTime(0.12, now);
+    gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.16);
+  } catch (e) {}
+}
+
+export function getHabitWaqt(habit: HabitItem): WaqtKey {
+  if (habit.waqt && (['maghrib', 'isha', 'fajr', 'dhuhr', 'asr'] as string[]).includes(habit.waqt)) {
+    return habit.waqt;
+  }
+  const defaultWaqtMap: Record<string, WaqtKey> = {
+    h1: 'maghrib',
+    h2: 'isha',
+    h3: 'isha',
+    h4: 'isha',
+    h5: 'isha',
+    h6: 'isha',
+    h7: 'isha',
+    h8: 'fajr',
+    h9: 'fajr',
+    h10: 'fajr',
+    h11: 'fajr',
+    h12: 'dhuhr',
+    h13: 'asr',
+    h14: 'asr',
+    h15: 'asr',
+  };
+  if (habit.id && defaultWaqtMap[habit.id]) {
+    return defaultWaqtMap[habit.id];
+  }
+  const text = `${habit.title || ''} ${habit.subtitle || ''}`.toLowerCase();
+  if (/maghrib|dinner|সন্ধ্যা/i.test(text)) return 'maghrib';
+  if (/isha|esa|sleep|bed|night|রাত্রি|বই|hjob/i.test(text)) return 'isha';
+  if (/fajr|fazr|tahajjud|quran|suhur|morning|সকাল|ফজর/i.test(text)) return 'fajr';
+  if (/dhuhr|zohr|johar|deep work|noon|lunch|দুপুর/i.test(text)) return 'dhuhr';
+  if (/asr|walk|exercise|breathing|বিকাল|আসর/i.test(text)) return 'asr';
+
+  const ord = habit.order || 1;
+  if (ord <= 1) return 'maghrib';
+  if (ord <= 7) return 'isha';
+  if (ord <= 11) return 'fajr';
+  if (ord <= 12) return 'dhuhr';
+  return 'asr';
+}
 
 import { getDhakaSunsetTime, getDhakaLogicalDateKey } from '../utils/sunsetDate';
 export { getDhakaSunsetTime, getDhakaLogicalDateKey };
@@ -226,6 +372,9 @@ interface HabitRowItemProps {
   toggleHabit: (id: string, dateKey?: string) => void;
   darkMode: boolean;
   lang: 'en' | 'bn';
+  isSegmentedByWaqt?: boolean;
+  currentWaqt?: WaqtKey;
+  onMoveToWaqt?: (habitId: string, targetWaqt: WaqtKey) => void;
 }
 
 function HabitRowItem({
@@ -239,6 +388,9 @@ function HabitRowItem({
   toggleHabit,
   darkMode,
   lang,
+  isSegmentedByWaqt,
+  currentWaqt,
+  onMoveToWaqt,
 }: HabitRowItemProps) {
   const dragControls = useDragControls();
 
@@ -283,14 +435,18 @@ function HabitRowItem({
     >
       {/* Left Grip Handle & Menu Dots */}
       <div className="flex items-center gap-0.5 shrink-0 text-gray-500 dark:text-gray-400">
-        {/* Dedicated Drag Grip Button with ample touch area */}
+        {/* Dedicated Drag Grip Button with ample touch area and HTML5 drag transfer */}
         <div 
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/plain', habit.id);
+          }}
           onPointerDown={(e) => {
             e.preventDefault();
             dragControls.start(e);
           }}
           className="p-2 sm:p-2.5 -my-2 -ml-1.5 rounded-xl cursor-grab active:cursor-grabbing text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 active:bg-rose-500/20 transition-all touch-none flex items-center justify-center select-none"
-          title={lang === 'bn' ? 'স্থান পরিবর্তন করতে টেনে আনুন' : 'Drag handle to reorder'}
+          title={lang === 'bn' ? 'টেনে স্থানান্তর বা রিঅর্ডার করুন' : 'Drag handle to move or reorder'}
         >
           <GripVertical 
             size={22} 
@@ -323,7 +479,7 @@ function HabitRowItem({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 5 }}
                 className={cn(
-                  "absolute left-0 top-7 z-30 min-w-[120px] rounded-xl border p-1 shadow-xl backdrop-blur-md",
+                  "absolute left-0 top-7 z-30 min-w-[130px] rounded-xl border p-1 shadow-xl backdrop-blur-md",
                   darkMode ? "bg-[#181820] border-white/10 text-white" : "bg-white border-black/10 text-gray-800"
                 )}
               >
@@ -351,6 +507,34 @@ function HabitRowItem({
                   <Trash2 size={13} />
                   {lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
                 </button>
+
+                {/* Move to another Waqt options in Waqt mode */}
+                {isSegmentedByWaqt && onMoveToWaqt && (
+                  <div className="pt-1 mt-1 border-t border-black/5 dark:border-white/10">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-400 px-2 py-0.5 block">
+                      {lang === 'bn' ? 'ওয়াক্তে সরান' : 'Move to Waqt'}
+                    </span>
+                    {WAQT_ORDER.filter(w => w !== currentWaqt).map(w => {
+                      const wInfo = WAQT_DETAILS[w];
+                      const WaqtIcon = wInfo.icon;
+                      return (
+                        <button
+                          key={w}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveToWaqt(habit.id, w);
+                            setMenuOpenHabitId(null);
+                          }}
+                          className="w-full px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1.5 hover:bg-rose-500/10 hover:text-rose-500 transition-colors text-left"
+                        >
+                          <WaqtIcon size={12} className="shrink-0 text-amber-500" />
+                          <span>{lang === 'bn' ? wInfo.nameBn : wInfo.nameEn}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -420,7 +604,7 @@ function HabitRowItem({
   );
 }
 
-export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorProps) {
+export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedByWaqt: propIsSegmentedByWaqt }: HabitorProps) {
   const [habits, setHabits] = useState<HabitItem[]>(() => {
     const saved = localStorage.getItem('ratool_habits_v1') || localStorage.getItem('ratbod_habits_v1');
     if (saved) {
@@ -472,6 +656,132 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
 
   const [dhakaInfo, setDhakaInfo] = useState(() => getDhakaLogicalDateKey());
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => getDhakaLogicalDateKey().dateKey);
+
+  // Segmented by Waqt state & real-time sync with Profile settings
+  const [isSegmentedByWaqt, setIsSegmentedByWaqt] = useState<boolean>(() => {
+    if (propIsSegmentedByWaqt !== undefined) return propIsSegmentedByWaqt;
+    try {
+      const saved = localStorage.getItem('ratbod_segmented_by_waqt') || localStorage.getItem('ratool_segmented_by_waqt');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (propIsSegmentedByWaqt !== undefined) {
+      setIsSegmentedByWaqt(propIsSegmentedByWaqt);
+    }
+  }, [propIsSegmentedByWaqt]);
+
+  useEffect(() => {
+    const handleWaqtSegmentChange = (e: any) => {
+      if (e.detail?.isSegmentedByWaqt !== undefined) {
+        setIsSegmentedByWaqt(Boolean(e.detail.isSegmentedByWaqt));
+      }
+    };
+    window.addEventListener('ratbod_waqt_segment_changed', handleWaqtSegmentChange);
+    window.addEventListener('ratool_waqt_segment_changed', handleWaqtSegmentChange);
+    return () => {
+      window.removeEventListener('ratbod_waqt_segment_changed', handleWaqtSegmentChange);
+      window.removeEventListener('ratool_waqt_segment_changed', handleWaqtSegmentChange);
+    };
+  }, []);
+
+  // Accordion state for 5 Waqt sections in Waqt mode (all open by default)
+  const [openWaqts, setOpenWaqts] = useState<Record<WaqtKey, boolean>>({
+    maghrib: true,
+    isha: true,
+    fajr: true,
+    dhuhr: true,
+    asr: true
+  });
+
+  const toggleWaqtAccordion = (wKey: WaqtKey) => {
+    setOpenWaqts(prev => ({ ...prev, [wKey]: !prev[wKey] }));
+  };
+
+  // Salah Tracker sync & modal state for Waqt prayer pop-up
+  const [salahRecordsMap, setSalahRecordsMap] = useState<Record<string, DailySalahRecord>>(() => {
+    try {
+      const raw = localStorage.getItem('ratbod_salah_records_map');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    const handleSalahSync = () => {
+      try {
+        const raw = localStorage.getItem('ratbod_salah_records_map');
+        if (raw) setSalahRecordsMap(JSON.parse(raw));
+      } catch {}
+    };
+    window.addEventListener('ratbod_salah_sync', handleSalahSync);
+    return () => window.removeEventListener('ratbod_salah_sync', handleSalahSync);
+  }, []);
+
+  const [selectedWaqtForSalahModal, setSelectedWaqtForSalahModal] = useState<WaqtKey | null>(null);
+
+  const handleSavePrayerRecord = (targetWaqt: WaqtKey, updatedDetail: PrayerDetail) => {
+    const current = salahRecordsMap[selectedDateKey] || DEFAULT_RECORD(selectedDateKey);
+    const nextRecord: DailySalahRecord = {
+      ...current,
+      date: selectedDateKey,
+      prayers: {
+        ...current.prayers,
+        [targetWaqt]: updatedDetail
+      },
+      updatedAt: Date.now()
+    };
+    
+    const nextMap = { ...salahRecordsMap, [selectedDateKey]: nextRecord };
+    setSalahRecordsMap(nextMap);
+    try {
+      localStorage.setItem('ratbod_salah_records_map', JSON.stringify(nextMap));
+    } catch {}
+
+    recordOfflineChange('salahTracker', {
+      recordsMap: nextMap,
+      updatedAt: Date.now()
+    });
+
+    const user = auth.currentUser;
+    if (user) {
+      setDoc(doc(db, 'users', user.uid, 'appData', 'salahTracker'), {
+        recordsMap: nextMap,
+        updatedAt: Date.now()
+      }, { merge: true }).catch(() => {});
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ratbod_salah_sync', { detail: { date: selectedDateKey, record: nextRecord } }));
+    }
+  };
+
+  const handleMoveToWaqt = (habitId: string, targetWaqt: WaqtKey) => {
+    const updated = habits.map(h => {
+      if (h.id === habitId) {
+        return { ...h, waqt: targetWaqt };
+      }
+      return h;
+    });
+    setHabits(updated);
+    persistHabitsOrder(updated);
+  };
+
+  const handleReorderWaqt = (targetWaqt: WaqtKey, newOrderForWaqt: HabitItem[]) => {
+    const updated = [...habits];
+    newOrderForWaqt.forEach((item, idx) => {
+      const foundIdx = updated.findIndex(h => h.id === item.id);
+      if (foundIdx !== -1) {
+        updated[foundIdx] = { ...updated[foundIdx], order: idx + 1, waqt: targetWaqt };
+      }
+    });
+    setHabits(updated);
+    persistHabitsOrder(updated);
+  };
 
   // Keep Habitor date synchronized when sunset passes in real-time
   useEffect(() => {
@@ -975,7 +1285,11 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
   // Completed or ticked habits placed on top according to their position one after one.
   // Incomplete/unticked habits remain below in their original positions.
   // When an unticked habit is unticked, it repositions right back to its original slot!
+  // In Waqt mode: completed habits do NOT move to top, they maintain position and are marked ticked.
   const orderedHabits = useMemo(() => {
+    if (isSegmentedByWaqt) {
+      return baseHabits;
+    }
     const completed: HabitItem[] = [];
     const incomplete: HabitItem[] = [];
     for (const habit of baseHabits) {
@@ -986,7 +1300,23 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
       }
     }
     return [...completed, ...incomplete];
-  }, [baseHabits, completedTodaySet]);
+  }, [baseHabits, completedTodaySet, isSegmentedByWaqt]);
+
+  // Grouped habits by the 5 Waqt Salah (Maghrib, Isha, Fajr, Dhuhr, Asr)
+  const waqtGroupedHabits = useMemo(() => {
+    const grouped: Record<WaqtKey, HabitItem[]> = {
+      maghrib: [],
+      isha: [],
+      fajr: [],
+      dhuhr: [],
+      asr: []
+    };
+    baseHabits.forEach(habit => {
+      const waqt = getHabitWaqt(habit);
+      grouped[waqt].push(habit);
+    });
+    return grouped;
+  }, [baseHabits]);
 
   // Real-time reorder handler: preserves exact custom positions across devices
   const handleReorder = (newVisualOrder: HabitItem[]) => {
@@ -1388,41 +1718,244 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
         </div>
       </div>
 
-      {/* Habit Items List (Smooth Buttery Reorder with Motion Spring Physics) */}
-      <div className="space-y-2">
-        <Reorder.Group
-          axis="y"
-          values={orderedHabits}
-          onReorder={handleReorder}
-          className="space-y-2 list-none p-0 m-0"
-        >
-          <AnimatePresence initial={false}>
-            {orderedHabits.map((habit) => (
-              <HabitRowItem
-                key={habit.id}
-                habit={habit}
-                isCompleted={completedTodaySet.has(habit.id)}
-                isMenuOpen={menuOpenHabitId === habit.id}
-                setMenuOpenHabitId={setMenuOpenHabitId}
-                setEditingHabit={setEditingHabit}
-                setDeletingHabit={setDeletingHabit}
-                setAnalyticsHabit={setAnalyticsHabit}
-                toggleHabit={toggleHabit}
-                darkMode={darkMode}
-                lang={lang}
-              />
-            ))}
-          </AnimatePresence>
-        </Reorder.Group>
+      {/* Habit Items List: Segmented by 5 Waqt Salah or Standard Single Reorder List */}
+      {isSegmentedByWaqt ? (
+        <div className="space-y-3.5">
+          {WAQT_ORDER.map((waqtKey) => {
+            const waqtInfo = WAQT_DETAILS[waqtKey];
+            const WaqtIcon = waqtInfo.icon;
+            const waqtHabits = waqtGroupedHabits[waqtKey] || [];
+            const completedInWaqt = waqtHabits.filter(h => completedTodaySet.has(h.id)).length;
+            const isOpen = openWaqts[waqtKey];
 
-        {habits.length === 0 && (
-          <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-gray-700/50">
-            <p className="text-xs text-gray-500 font-medium">
-              {lang === 'bn' ? 'কোনো হ্যাবিট নেই। নতুন হ্যাবিট যোগ করুন!' : 'No habits created yet. Tap + to add one!'}
-            </p>
-          </div>
-        )}
-      </div>
+            // Prayer status for this waqt on selected date
+            const prayerDetail = (salahRecordsMap[selectedDateKey] || DEFAULT_RECORD(selectedDateKey)).prayers?.[waqtKey];
+            const prayerStatus = prayerDetail?.status || 'not_prayed';
+
+            return (
+              <div 
+                key={waqtKey}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const habitId = e.dataTransfer.getData('text/plain');
+                  if (habitId) {
+                    handleMoveToWaqt(habitId, waqtKey);
+                  }
+                }}
+                className={cn(
+                  "rounded-2xl border transition-all overflow-hidden",
+                  darkMode 
+                    ? "bg-[#141418]/90 border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.3)]" 
+                    : "bg-white border-black/[0.07] shadow-xs"
+                )}
+              >
+                {/* Accordion Header */}
+                <div 
+                  onClick={() => toggleWaqtAccordion(waqtKey)}
+                  className={cn(
+                    "p-3 sm:p-3.5 flex items-center justify-between gap-2.5 cursor-pointer select-none transition-colors",
+                    darkMode ? "hover:bg-white/[0.03]" : "hover:bg-black/[0.02]"
+                  )}
+                >
+                  {/* Left: Waqt Icon + Name + Arabic + Progress Badge */}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div 
+                      style={{ backgroundColor: `${waqtInfo.color}20`, borderColor: `${waqtInfo.color}35` }}
+                      className="w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 shadow-xs"
+                    >
+                      <WaqtIcon size={16} style={{ color: waqtInfo.color }} />
+                    </div>
+
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className={cn(
+                        "font-black text-sm tracking-tight truncate",
+                        darkMode ? "text-white" : "text-gray-900"
+                      )}>
+                        {lang === 'bn' ? waqtInfo.nameBn : waqtInfo.nameEn}
+                      </span>
+                      <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 hidden xs:inline">
+                        {waqtInfo.arabic}
+                      </span>
+                    </div>
+
+                    {/* Progress Count Badge */}
+                    <span className={cn(
+                      "text-[10px] sm:text-[10.5px] font-bold px-2 py-0.5 rounded-full border shrink-0",
+                      completedInWaqt === waqtHabits.length && waqtHabits.length > 0
+                        ? (darkMode ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700")
+                        : (darkMode ? "bg-white/5 border-white/10 text-neutral-400" : "bg-gray-100 border-gray-200 text-gray-600")
+                    )}>
+                      {completedInWaqt}/{waqtHabits.length} {lang === 'bn' ? 'সম্পন্ন' : 'done'}
+                    </span>
+
+                    {/* Prayer Status Badge */}
+                    {prayerStatus !== 'not_prayed' && (
+                      <span className={cn(
+                        "text-[9.5px] font-black px-1.5 py-0.5 rounded-md border shrink-0 hidden sm:inline-flex items-center gap-1",
+                        prayerStatus === 'prayed_jamaat'
+                          ? (darkMode ? "bg-teal-500/15 border-teal-500/30 text-teal-300" : "bg-teal-50 border-teal-200 text-teal-800")
+                          : prayerStatus === 'prayed_on_time'
+                          ? (darkMode ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300" : "bg-emerald-50 border-emerald-200 text-emerald-800")
+                          : (darkMode ? "bg-amber-500/15 border-amber-500/30 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-800")
+                      )}>
+                        {prayerStatus === 'prayed_jamaat' 
+                          ? (lang === 'bn' ? '✓ জামাত' : '✓ Jamaat')
+                          : prayerStatus === 'prayed_on_time'
+                          ? (lang === 'bn' ? '✓ ওয়াক্তে' : '✓ Prayed')
+                          : (lang === 'bn' ? 'কাজা' : 'Qaza')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right: Arrow Button (Opens Salah options pop up) + Chevron Accordion Toggle */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedWaqtForSalahModal(waqtKey);
+                      }}
+                      className={cn(
+                        "h-7 px-2 sm:px-2.5 rounded-lg border flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer shadow-xs active:scale-95",
+                        prayerStatus !== 'not_prayed'
+                          ? (darkMode ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30" : "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100")
+                          : (darkMode ? "bg-white/5 border-white/10 text-neutral-300 hover:text-white hover:bg-white/10" : "bg-gray-50 border-gray-200 text-gray-700 hover:text-gray-900 hover:bg-gray-100")
+                      )}
+                      title={lang === 'bn' ? `${waqtInfo.nameBn} সালাত রেকর্ড করুন` : `Log ${waqtInfo.nameEn} Salah`}
+                    >
+                      <span className="hidden xs:inline">
+                        {lang === 'bn' ? 'সালাত' : 'Salah'}
+                      </span>
+                      <ArrowUpRight size={13} className="stroke-[2.5]" />
+                    </button>
+
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-neutral-400 hover:text-neutral-200",
+                        darkMode ? "hover:bg-white/5" : "hover:bg-black/5"
+                      )}
+                      aria-label={isOpen ? "Collapse segment" : "Expand segment"}
+                    >
+                      {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Accordion Body */}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-2 sm:p-2.5 pt-0 space-y-2">
+                        <Reorder.Group
+                          axis="y"
+                          values={waqtHabits}
+                          onReorder={(newOrder) => handleReorderWaqt(waqtKey, newOrder)}
+                          className="space-y-2 list-none p-0 m-0"
+                        >
+                          <AnimatePresence initial={false}>
+                            {waqtHabits.map((habit) => (
+                              <HabitRowItem
+                                key={habit.id}
+                                habit={habit}
+                                isCompleted={completedTodaySet.has(habit.id)}
+                                isMenuOpen={menuOpenHabitId === habit.id}
+                                setMenuOpenHabitId={setMenuOpenHabitId}
+                                setEditingHabit={setEditingHabit}
+                                setDeletingHabit={setDeletingHabit}
+                                setAnalyticsHabit={setAnalyticsHabit}
+                                toggleHabit={toggleHabit}
+                                darkMode={darkMode}
+                                lang={lang}
+                                isSegmentedByWaqt={true}
+                                currentWaqt={waqtKey}
+                                onMoveToWaqt={handleMoveToWaqt}
+                              />
+                            ))}
+                          </AnimatePresence>
+                        </Reorder.Group>
+
+                        {waqtHabits.length === 0 && (
+                          <div 
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const habitId = e.dataTransfer.getData('text/plain');
+                              if (habitId) {
+                                handleMoveToWaqt(habitId, waqtKey);
+                              }
+                            }}
+                            className={cn(
+                              "text-center py-5 px-3 rounded-xl border border-dashed text-xs transition-colors",
+                              darkMode ? "border-white/10 text-neutral-500 bg-white/[0.01]" : "border-gray-200 text-gray-400 bg-gray-50/50"
+                            )}
+                          >
+                            <span>
+                              {lang === 'bn' 
+                                ? `${waqtInfo.nameBn}-এ কোনো হ্যাবিট নেই (এখানে টেনে আনুন বা ৩-ডট মেনু ব্যবহার করুন)` 
+                                : `No habits in ${waqtInfo.nameEn} (Drag here or use 3-dots to move)`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Unsegmented single list mode (as before) */
+        <div className="space-y-2">
+          <Reorder.Group
+            axis="y"
+            values={orderedHabits}
+            onReorder={handleReorder}
+            className="space-y-2 list-none p-0 m-0"
+          >
+            <AnimatePresence initial={false}>
+              {orderedHabits.map((habit) => (
+                <HabitRowItem
+                  key={habit.id}
+                  habit={habit}
+                  isCompleted={completedTodaySet.has(habit.id)}
+                  isMenuOpen={menuOpenHabitId === habit.id}
+                  setMenuOpenHabitId={setMenuOpenHabitId}
+                  setEditingHabit={setEditingHabit}
+                  setDeletingHabit={setDeletingHabit}
+                  setAnalyticsHabit={setAnalyticsHabit}
+                  toggleHabit={toggleHabit}
+                  darkMode={darkMode}
+                  lang={lang}
+                  isSegmentedByWaqt={false}
+                />
+              ))}
+            </AnimatePresence>
+          </Reorder.Group>
+
+          {habits.length === 0 && (
+            <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-gray-700/50">
+              <p className="text-xs text-gray-500 font-medium">
+                {lang === 'bn' ? 'কোনো হ্যাবিট নেই। নতুন হ্যাবিট যোগ করুন!' : 'No habits created yet. Tap + to add one!'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Floating Plus Button for Adding Custom Habit */}
       <div className="flex justify-center pt-2">
@@ -1953,6 +2486,189 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6 }: HabitorPro
                   className="flex-1 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer shadow-md shadow-red-500/30"
                 >
                   {lang === 'bn' ? 'হ্যাঁ, মুছুন' : 'Yes, Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Pop-up Modal: Waqt Salah Logging (Prayer Status & Rakah Checklist) */}
+      <AnimatePresence>
+        {selectedWaqtForSalahModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className={cn(
+                "w-full max-w-md p-4 sm:p-5 rounded-2xl border shadow-2xl space-y-4 relative max-h-[90vh] overflow-y-auto",
+                darkMode ? "bg-[#16161c] border-white/10 text-white" : "bg-white border-black/10 text-gray-900"
+              )}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b pb-3 border-gray-200/20">
+                <div className="flex items-center gap-2.5">
+                  <div 
+                    style={{ 
+                      backgroundColor: `${WAQT_DETAILS[selectedWaqtForSalahModal].color}25`,
+                      borderColor: `${WAQT_DETAILS[selectedWaqtForSalahModal].color}40`
+                    }}
+                    className="w-9 h-9 rounded-xl border flex items-center justify-center shadow-xs"
+                  >
+                    {(() => {
+                      const WaqtIcon = WAQT_DETAILS[selectedWaqtForSalahModal].icon;
+                      return <WaqtIcon size={18} style={{ color: WAQT_DETAILS[selectedWaqtForSalahModal].color }} />;
+                    })()}
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black flex items-center gap-1.5">
+                      <span>{lang === 'bn' ? WAQT_DETAILS[selectedWaqtForSalahModal].nameBn : WAQT_DETAILS[selectedWaqtForSalahModal].nameEn}</span>
+                      <span className="text-neutral-400 font-normal text-xs">({WAQT_DETAILS[selectedWaqtForSalahModal].arabic})</span>
+                    </h3>
+                    <p className="text-[11px] text-neutral-400">
+                      {lang === 'bn' ? 'সালাত আদায় ও ওয়াক্তের স্ট্যাটাস' : 'Salah Performance & Waqt Status'} • {selectedDateKey}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedWaqtForSalahModal(null)}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Prayer Status 4-Card Selector */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-2">
+                  {lang === 'bn' ? 'সালাতের অবস্থা' : 'Prayer Status'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      id: 'prayed_on_time' as PrayerStatus,
+                      labelEn: 'Prayed on Time',
+                      labelBn: 'ওয়াক্তমতো আদায়',
+                      borderActive: 'border-emerald-500 bg-emerald-500/15 text-emerald-300',
+                      lightActive: 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                    },
+                    {
+                      id: 'prayed_jamaat' as PrayerStatus,
+                      labelEn: 'In Congregation',
+                      labelBn: 'জামাতে আদায়',
+                      borderActive: 'border-teal-500 bg-teal-500/15 text-teal-300',
+                      lightActive: 'border-teal-500 bg-teal-50 text-teal-800'
+                    },
+                    {
+                      id: 'qaza' as PrayerStatus,
+                      labelEn: 'Qaza',
+                      labelBn: 'কাজা',
+                      borderActive: 'border-amber-500 bg-amber-500/15 text-amber-300',
+                      lightActive: 'border-amber-500 bg-amber-50 text-amber-800'
+                    },
+                    {
+                      id: 'not_prayed' as PrayerStatus,
+                      labelEn: 'Not Prayed',
+                      labelBn: 'আদায় করা হয়নি',
+                      borderActive: 'border-neutral-500 bg-neutral-500/15 text-neutral-300',
+                      lightActive: 'border-neutral-400 bg-neutral-100 text-neutral-800'
+                    }
+                  ].map(st => {
+                    const currentRecord = salahRecordsMap[selectedDateKey] || DEFAULT_RECORD(selectedDateKey);
+                    const pDetail = currentRecord.prayers[selectedWaqtForSalahModal];
+                    const isSelected = (pDetail?.status || 'not_prayed') === st.id;
+
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => {
+                          const nextDetail = { ...(pDetail || { fard: false, status: 'not_prayed' }) };
+                          nextDetail.status = st.id;
+                          if (st.id === 'prayed_on_time' || st.id === 'prayed_jamaat') {
+                            nextDetail.fard = true;
+                            if (nextDetail.sunnahMuakkadah !== undefined) nextDetail.sunnahMuakkadah = true;
+                          } else if (st.id === 'not_prayed') {
+                            nextDetail.fard = false;
+                            if (nextDetail.sunnahMuakkadah !== undefined) nextDetail.sunnahMuakkadah = false;
+                            if (nextDetail.nafl !== undefined) nextDetail.nafl = false;
+                            if (nextDetail.witr !== undefined) nextDetail.witr = false;
+                            if (nextDetail.sunnahGhairMuakkadah !== undefined) nextDetail.sunnahGhairMuakkadah = false;
+                          }
+                          handleSavePrayerRecord(selectedWaqtForSalahModal, nextDetail);
+                          playHabitCheckSound();
+                        }}
+                        className={cn(
+                          "p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-xs",
+                          isSelected
+                            ? (darkMode ? st.borderActive : st.lightActive)
+                            : (darkMode ? "bg-white/[0.03] border-white/10 text-neutral-400 hover:bg-white/5" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100")
+                        )}
+                      >
+                        <span className="truncate">{lang === 'bn' ? st.labelBn : st.labelEn}</span>
+                        {isSelected && <Check size={14} className="stroke-[3] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Rakah Breakdown Checklist */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-2">
+                  {lang === 'bn' ? 'রাকাত বিবরণ' : 'Rakah Breakdown'}
+                </label>
+                <div className="space-y-1.5">
+                  {WAQT_DETAILS[selectedWaqtForSalahModal].breakdown.map((item) => {
+                    const currentRecord = salahRecordsMap[selectedDateKey] || DEFAULT_RECORD(selectedDateKey);
+                    const pDetail = currentRecord.prayers[selectedWaqtForSalahModal];
+                    const isChecked = Boolean((pDetail as any)?.[item.key]);
+
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          const nextDetail = { ...(pDetail || { fard: false, status: 'not_prayed' }) };
+                          (nextDetail as any)[item.key] = !isChecked;
+                          if (!isChecked && item.key === 'fard' && nextDetail.status === 'not_prayed') {
+                            nextDetail.status = 'prayed_on_time';
+                          }
+                          handleSavePrayerRecord(selectedWaqtForSalahModal, nextDetail);
+                          playHabitCheckSound();
+                        }}
+                        className={cn(
+                          "w-full p-2.5 rounded-xl border flex items-center justify-between text-xs font-medium transition-all cursor-pointer",
+                          isChecked
+                            ? (darkMode ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300" : "bg-emerald-50 border-emerald-200 text-emerald-900")
+                            : (darkMode ? "bg-white/[0.02] border-white/5 text-neutral-400 hover:bg-white/5" : "bg-gray-50/80 border-gray-200 text-gray-700 hover:bg-gray-100")
+                        )}
+                      >
+                        <span className="truncate">{lang === 'bn' ? item.labelBn : item.labelEn}</span>
+                        <div className={cn(
+                          "w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors",
+                          isChecked
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : (darkMode ? "border-neutral-600 bg-white/5" : "border-gray-300 bg-white")
+                        )}>
+                          {isChecked && <Check size={12} className="stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Modal Done Footer */}
+              <div className="pt-2 border-t border-gray-200/15 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedWaqtForSalahModal(null)}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#FF5A5A] hover:bg-rose-600 text-white transition-colors shadow-md shadow-rose-500/30 cursor-pointer"
+                >
+                  {lang === 'bn' ? 'সম্পন্ন' : 'Done'}
                 </button>
               </div>
             </motion.div>

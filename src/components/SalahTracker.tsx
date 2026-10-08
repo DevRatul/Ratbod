@@ -600,7 +600,7 @@ const DHIKR_PRESETS: DhikrPreset[] = [
   }
 ];
 
-const DEFAULT_RECORD = (dateStr: string): DailySalahRecord => ({
+export const DEFAULT_RECORD = (dateStr: string): DailySalahRecord => ({
   date: dateStr,
   prayers: {
     fajr: { fard: false, sunnahMuakkadah: false, status: 'not_prayed' },
