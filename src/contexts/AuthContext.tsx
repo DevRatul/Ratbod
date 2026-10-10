@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, getRedirectResult, signOut as fbSignOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
+import { clearAllOfflineQueues } from '../utils/offlineSync';
 
 interface AuthContextType {
   user: User | null;
@@ -118,8 +119,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      clearAllOfflineQueues();
       await fbSignOut(auth);
       setUser(null);
+      window.dispatchEvent(new CustomEvent('ratbod_force_cloud_sync'));
     } catch (e: any) {
       console.error('Error signing out:', e);
     }

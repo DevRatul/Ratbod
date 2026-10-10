@@ -623,8 +623,10 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
           localStorage.setItem('ratool_reading_selected_book', chosenBookId);
         } catch (e) {}
 
-        // Persist clean merged truth
-        persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId, mergedDeleted);
+        // If remote data did not exist in Firestore, save initial defaults
+        if (!docSnap.exists() && mergedRecs.length > 0) {
+          persistData(chosenGoal, mergedRecs, syncedBooks, chosenBookId, mergedDeleted);
+        }
 
         // Set up real-time listener for multi-tab or cross-device updates
         unsubscribeSnapshot = onSnapshot(trackerDocRef, (docSnap) => {
@@ -686,9 +688,22 @@ export default function ReadingTracker({ darkMode, lang = 'en' }: ReadingTracker
 
     setupSync();
     const unsubAuth = onAuthStateChanged(auth, (u) => { setupSync(u); });
+
+    const handleForceSync = () => {
+      if (auth.currentUser) setupSync(auth.currentUser);
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) setupSync(auth.currentUser);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       unsubAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 

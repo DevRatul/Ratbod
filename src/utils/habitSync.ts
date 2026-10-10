@@ -439,19 +439,6 @@ export function syncHabitsWithTrackers(currentLogs?: Record<string, string[]>): 
       }
     });
 
-    // Remove reading habit from dates that DO NOT have any reading records logged
-    // (Prevents auto-ticking on date change or rollover when no reading has taken place yet)
-    Object.keys(logs).forEach((dKey) => {
-      if (!datesWithReading.has(dKey)) {
-        const currentList = logs[dKey] || [];
-        const filtered = currentList.filter(id => !readingHabitIds.includes(id));
-        if (filtered.length !== currentList.length) {
-          logs[dKey] = filtered;
-          changed = true;
-        }
-      }
-    });
-
     // 5. Persist if changes occurred
     if (changed) {
       try {

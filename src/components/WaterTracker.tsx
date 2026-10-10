@@ -622,12 +622,9 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
               const localRaw = localStorage.getItem('ratbod_water_tracker_data');
               let localData: any = null;
               try { if (localRaw) localData = JSON.parse(localRaw); } catch {}
-              const localUpdatedAt = Number(localData?.updatedAt) || 0;
-              const remoteUpdatedAt = Number(remoteData?.updatedAt) || 0;
 
-              // If this local client has pending writes in flight, or local state has newer or equal updatedAt:
-              // keep local entries authoritative so undos and deletes are never undone!
-              if (docSnap.metadata.hasPendingWrites || localUpdatedAt >= remoteUpdatedAt) {
+              // Only prioritize local entries if THIS browser tab has pending writes in flight
+              if (docSnap.metadata.hasPendingWrites) {
                 const activeEntries = (localData?.todayEntries || entriesRef.current).filter(
                   (e: any) => e && e.id && !deletedEntryIdsRef.current.has(String(e.id))
                 );
@@ -640,6 +637,7 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
                 return;
               }
 
+              // Server snapshot from cloud (authoritative across devices)
               const mergedHist = applyParsedData(remoteData);
               try {
                 localStorage.setItem('ratbod_water_tracker_data', JSON.stringify({ ...remoteData, history: mergedHist }));
@@ -677,14 +675,30 @@ export default function WaterTracker({ darkMode, lang }: WaterTrackerProps) {
     };
     window.addEventListener('ratbod_water_sync', handleWaterSyncEvent);
 
-    // Listen to Firebase Auth state updates
+    // Listen to Firebase Auth state updates & cross-device force sync
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setupSync(user);
     });
 
+    const handleForceSync = () => {
+      if (auth.currentUser) {
+        setupSync(auth.currentUser);
+      }
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) {
+        setupSync(auth.currentUser);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
       window.removeEventListener('ratbod_water_sync', handleWaterSyncEvent);
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubscribeAuth();
     };
   }, []);

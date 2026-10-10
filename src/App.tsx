@@ -630,6 +630,16 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
           } catch (e) {}
         }
 
+        // Real-time synchronization of Segmented by Waqt setting across devices
+        if (data.isSegmentedByWaqt !== undefined) {
+          const remoteWaqt = Boolean(data.isSegmentedByWaqt);
+          setIsSegmentedByWaqt(remoteWaqt);
+          try {
+            localStorage.setItem('ratool_segmented_by_waqt', String(remoteWaqt));
+            localStorage.setItem('ratbod_segmented_by_waqt', String(remoteWaqt));
+          } catch (e) {}
+        }
+
         // Real-time synchronization of profile settings & preferences across devices
         if (data.name !== undefined && data.name !== name) {
           setName(data.name);
@@ -809,6 +819,18 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
                 localStorage.setItem('ratbod_week_start_day', String(data.weekStartDay));
               } catch (e) {}
             }
+
+            if (data.isSegmentedByWaqt !== undefined) {
+              const remoteWaqt = Boolean(data.isSegmentedByWaqt);
+              setIsSegmentedByWaqt(remoteWaqt);
+              try {
+                localStorage.setItem('ratool_segmented_by_waqt', String(remoteWaqt));
+                localStorage.setItem('ratbod_segmented_by_waqt', String(remoteWaqt));
+              } catch (e) {}
+            }
+
+            // Broadcast global cloud refresh for all child trackers
+            window.dispatchEvent(new CustomEvent('ratbod_force_cloud_sync'));
           }
         } catch (e) {}
       }
@@ -913,6 +935,15 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
               try {
                 localStorage.setItem('ratool_week_start_day', String(data.weekStartDay));
                 localStorage.setItem('ratbod_week_start_day', String(data.weekStartDay));
+              } catch (e) {}
+            }
+
+            if (data.isSegmentedByWaqt !== undefined) {
+              const remoteWaqt = Boolean(data.isSegmentedByWaqt);
+              setIsSegmentedByWaqt(remoteWaqt);
+              try {
+                localStorage.setItem('ratool_segmented_by_waqt', String(remoteWaqt));
+                localStorage.setItem('ratbod_segmented_by_waqt', String(remoteWaqt));
               } catch (e) {}
             }
 
@@ -1052,6 +1083,7 @@ export default function App({ darkMode: propDarkMode, setDarkMode: propSetDarkMo
         if (savedUnit) setUnit(savedUnit);
       }
       setIsLoaded(true);
+      window.dispatchEvent(new CustomEvent('ratbod_force_cloud_sync'));
     });
 
     return () => unsubscribe();

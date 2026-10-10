@@ -123,8 +123,20 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
       setupGoalSync(u || undefined);
     });
 
+    const handleForceSync = () => {
+      if (auth.currentUser) setupGoalSync(auth.currentUser);
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) setupGoalSync(auth.currentUser);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       if (unsubGoal) unsubGoal();
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubAuth();
     };
   }, [unit]);
@@ -319,10 +331,15 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-3 sm:gap-6">
             {/* Weight Goal Card */}
-            <div className={cn(
-              "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-              darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
-            )}>
+            <div 
+              style={{
+                width: '164.475px',
+              }}
+              className={cn(
+                "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
+                darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
+              )}
+            >
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'ওজন লক্ষ্য' : 'Weight Goal'}</span>
               <Trophy className="text-yellow-500" size={16} />
@@ -359,10 +376,17 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           </div>
 
           {/* Body Fat Goal Card */}
-          <div className={cn(
-            "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
-          )}>
+          <div 
+            style={{
+              width: '119.48599999999999px',
+              paddingLeft: '16px',
+              marginLeft: '22px',
+            }}
+            className={cn(
+              "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
+              darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
+            )}
+          >
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'চর্বির লক্ষ্য' : 'Body Fat Goal'}</span>
               <Target className="text-primary" size={16} />
@@ -395,10 +419,15 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           </div>
 
           {/* Calories Goal Card */}
-          <div className={cn(
-            "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
-          )}>
+          <div 
+            style={{
+              width: '119.468px',
+            }}
+            className={cn(
+              "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
+              darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
+            )}
+          >
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'দৈনিক ক্যালরি' : 'Daily Calorie'}</span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl sm:text-4xl font-black tracking-tight text-primary">{formatNum(goal.dailyCalorieGoal || 0)}</span>
@@ -408,10 +437,17 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
           </div>
 
           {/* Timeframe Card */}
-          <div className={cn(
-            "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
-            darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
-          )}>
+          <div 
+            style={{
+              width: '164.486px',
+              marginRight: '0px',
+              marginLeft: '-22px',
+            }}
+            className={cn(
+              "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 sm:space-y-4",
+              darkMode ? "bg-[#0F0F0F] border-white/5 shadow-md shadow-black/20" : "bg-white border border-gray-200 shadow-md shadow-gray-200/50"
+            )}
+          >
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">{lang === 'bn' ? 'শেষ তারিখ' : 'Target Date'}</span>
               <Calendar className="text-gray-500 dark:text-gray-400" size={16} />
@@ -421,7 +457,16 @@ export default function Goals({ darkMode, unit, currentWeight, currentBodyFat, o
                 {goal.targetDate ? formatNum(new Date(goal.targetDate).toLocaleDateString(lang === 'bn' ? 'bn-BD' : undefined, { month: 'short', day: 'numeric', year: 'numeric' })) : '--'}
               </span>
             </div>
-            <p className="text-[10px] sm:text-xs text-gray-500 font-semibold">
+            <p 
+              style={{
+                fontSize: '11px',
+                color: '#00ff00',
+                width: '111.045px',
+                height: '12.6622px',
+                fontWeight: 'bold',
+              }}
+              className="text-[10px] sm:text-xs text-gray-500 font-semibold"
+            >
               {(() => {
                 const days = getLogicalDaysRemaining(goal.targetDate);
                 if (days === null) return '--';

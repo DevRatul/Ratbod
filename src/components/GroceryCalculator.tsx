@@ -82,8 +82,20 @@ export default function GroceryCalculator({ darkMode, lang = 'en' }: GroceryCalc
       setupGrocerySync(u || undefined);
     });
 
+    const handleForceSync = () => {
+      if (auth.currentUser) setupGrocerySync(auth.currentUser);
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) setupGrocerySync(auth.currentUser);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       if (unsubSnapshot) unsubSnapshot();
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubAuth();
     };
   }, []);

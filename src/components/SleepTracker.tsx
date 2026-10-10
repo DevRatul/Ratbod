@@ -182,6 +182,20 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
       setupSleepSync(user || undefined);
     });
 
+    const handleForceSync = () => {
+      if (auth.currentUser) {
+        setupSleepSync(auth.currentUser);
+      }
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) {
+        setupSleepSync(auth.currentUser);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     const handleSleepSync = (e: Event) => {
       if (isDraggingRef.current || Date.now() - lastLocalWriteRef.current < 2500) return;
       const detail = (e as CustomEvent).detail;
@@ -194,6 +208,8 @@ export default function SleepTracker({ darkMode, lang = 'en' }: SleepTrackerProp
     return () => {
       if (unsubSnapshot) unsubSnapshot();
       window.removeEventListener('ratbod_sleep_sync', handleSleepSync);
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubAuth();
       if (dialSaveTimeoutRef.current) clearTimeout(dialSaveTimeoutRef.current);
     };

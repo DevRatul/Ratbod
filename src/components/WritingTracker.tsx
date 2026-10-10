@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDhakaLogicalDateKey } from '../utils/sunsetDate';
 
@@ -134,51 +134,72 @@ export default function WritingTracker({ darkMode, lang = 'en' }: WritingTracker
     .filter(r => r.date === todayStr)
     .reduce((acc, r) => acc + (r.words || 0), 0);
 
-  // Load from Firestore with smart merging
+  // Load from Firestore with real-time onSnapshot sync across all devices
   useEffect(() => {
-    const load = async (user = auth.currentUser) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const load = (user = auth.currentUser) => {
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
       if (!user) return;
+
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid, 'appData', 'writingTracker'));
-        let localRecs: WritingRecord[] = [];
-        try {
-          const raw = localStorage.getItem('ratbod_writing_records') || localStorage.getItem('ratool_writing_records');
-          if (raw) localRecs = JSON.parse(raw);
-        } catch (e) {}
+        const docRef = doc(db, 'users', user.uid, 'appData', 'writingTracker');
+        unsubSnapshot = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            const remoteRecs: WritingRecord[] = Array.isArray(data.records) ? data.records : [];
+            const chosenGoal = data.wordGoal ? Number(data.wordGoal) : (wordGoal || 500);
 
-        if (snap.exists()) {
-          const data = snap.data();
-          const remoteRecs: WritingRecord[] = Array.isArray(data.records) ? data.records : [];
-          
-          const recordMap = new Map<string, WritingRecord>();
-          localRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
-          remoteRecs.forEach(r => { if (r && r.id) recordMap.set(String(r.id), r); });
-          const mergedRecs = Array.from(recordMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            setWordGoal(chosenGoal);
+            setRecords(remoteRecs);
 
-          const chosenGoal = data.wordGoal ? Number(data.wordGoal) : (wordGoal || 500);
-          setWordGoal(chosenGoal);
-          setRecords(mergedRecs);
-
-          try {
-            localStorage.setItem('ratbod_writing_records', JSON.stringify(mergedRecs));
-            localStorage.setItem('ratool_writing_records', JSON.stringify(mergedRecs));
-            localStorage.setItem('ratbod_writing_goal', String(chosenGoal));
-            localStorage.setItem('ratool_writing_goal', String(chosenGoal));
-          } catch (e) {}
-
-          if (localRecs.length > remoteRecs.length) {
-            persistData(chosenGoal, mergedRecs);
+            try {
+              localStorage.setItem('ratbod_writing_records', JSON.stringify(remoteRecs));
+              localStorage.setItem('ratool_writing_records', JSON.stringify(remoteRecs));
+              localStorage.setItem('ratbod_writing_goal', String(chosenGoal));
+              localStorage.setItem('ratool_writing_goal', String(chosenGoal));
+            } catch (e) {}
+          } else {
+            // First time setup: if local records exist, persist them
+            let localRecs: WritingRecord[] = [];
+            try {
+              const raw = localStorage.getItem('ratbod_writing_records') || localStorage.getItem('ratool_writing_records');
+              if (raw) localRecs = JSON.parse(raw);
+            } catch (e) {}
+            if (localRecs.length > 0) {
+              persistData(wordGoal, localRecs);
+            }
           }
-        } else if (localRecs.length > 0) {
-          persistData(wordGoal, localRecs);
-        }
+        }, (err) => {
+          console.warn('[WritingTracker] Snapshot notice:', err);
+        });
       } catch (e) {
-        console.error('[WritingTracker] Error loading from Firestore:', e);
+        console.error('[WritingTracker] Error setting up snapshot:', e);
       }
     };
+
     load();
-    const unsub = onAuthStateChanged(auth, (u) => { if (u) load(u); });
-    return () => unsub();
+    const unsub = onAuthStateChanged(auth, (u) => { load(u || undefined); });
+
+    const handleForceSync = () => {
+      if (auth.currentUser) load(auth.currentUser);
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) load(auth.currentUser);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      if (unsubSnapshot) unsubSnapshot();
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsub();
+    };
   }, []);
 
   const persistData = (goal: number, updatedRecords: WritingRecord[]) => {

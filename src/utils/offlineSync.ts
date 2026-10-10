@@ -110,6 +110,7 @@ export function hasPendingOfflineChange(key: SyncCollectionKey): boolean {
 export function recordOfflineChange(key: SyncCollectionKey, data: any): void {
   const isCurrentlyOnline = isOnline();
   const createdOffline = !isCurrentlyOnline;
+  const currentUid = auth.currentUser?.uid || null;
 
   try {
     const keys = new Set(getPendingOfflineKeys());
@@ -118,7 +119,8 @@ export function recordOfflineChange(key: SyncCollectionKey, data: any): void {
     localStorage.setItem(`${PENDING_PREFIX}${key}`, JSON.stringify({
       data,
       timestamp: Date.now(),
-      createdOffline
+      createdOffline,
+      userId: currentUid
     }));
 
     if (createdOffline) {
@@ -137,6 +139,21 @@ export function recordOfflineChange(key: SyncCollectionKey, data: any): void {
       console.warn(`[OfflineSync] Background push for ${key} deferred:`, err);
     });
   }
+}
+
+/**
+ * Clears all pending offline queues across all sections.
+ * Used when switching users or signing out so stale guest queues never bleed across devices.
+ */
+export function clearAllOfflineQueues(): void {
+  try {
+    const keys = getPendingOfflineKeys();
+    keys.forEach((key) => {
+      localStorage.removeItem(`${PENDING_PREFIX}${key}`);
+    });
+    localStorage.removeItem(PENDING_KEYS_STORAGE_KEY);
+    clearHasUnsyncedOfflineData();
+  } catch (e) {}
 }
 
 /**
@@ -282,7 +299,26 @@ export async function syncPendingOfflineData(isOnlineReconnect: boolean = false)
         continue;
       }
 
+      // If pending data was explicitly saved for a different user, discard it
+      if (parsedPayload?.userId && parsedPayload.userId !== user.uid) {
+        clearPendingOfflineChange(key);
+        continue;
+      }
+
       const docRef = doc(db, 'users', user.uid, 'appData', key);
+
+      // If pending data was created anonymously as guest (before user signed in)
+      // and this user already has an established cloud document, do not let guest data overwrite cloud!
+      if (!parsedPayload?.userId) {
+        try {
+          const checkSnap = await getDoc(docRef);
+          if (checkSnap.exists()) {
+            // User already has cloud data, discard anonymous guest pending write
+            clearPendingOfflineChange(key);
+            continue;
+          }
+        } catch {}
+      }
 
       // SECTION-SPECIFIC MERGE & PUSH LOGIC
       if (key === 'waterTracker') {

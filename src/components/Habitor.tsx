@@ -1523,19 +1523,20 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedB
       {/* Top Current Week View & Sunset Card */}
       <div 
         style={{
-          height: '100.405px',
+          minHeight: '100px',
           marginBottom: '8px',
-          paddingTop: '8px',
+          paddingTop: '7px',
+          paddingBottom: '7px',
           marginTop: '0px',
           boxSizing: 'border-box',
         }}
         className={cn(
-          "px-2 sm:px-2.5 pb-2 sm:pb-2.5 pt-2 rounded-2xl border transition-all h-[100.405px] max-h-[100.405px] mb-2 mt-0 flex flex-col justify-between overflow-hidden box-border",
+          "px-1.5 sm:px-2.5 rounded-2xl border transition-all mb-2 mt-0 flex flex-col justify-between overflow-hidden box-border",
           darkMode ? "bg-[#111116] border-white/10" : "bg-white border-black/5 shadow-xs"
         )}
       >
         {/* Header: Week number on left with subtle step buttons, Sunset info on right */}
-        <div className="flex items-center justify-between mb-1.5 px-1">
+        <div className="flex items-center justify-between mb-1 px-1">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -1561,20 +1562,20 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedB
             </button>
           </div>
           <span 
-            style={{ fontSize: '12px' }}
+            style={{ fontSize: '12px', paddingRight: '11px' }}
             className={cn(
               "text-[12px] font-bold flex items-center gap-1.5 select-none transition-colors",
               darkMode ? "text-white" : "text-amber-800"
             )}
           >
             <Sunset size={14} className={cn("shrink-0", darkMode ? "text-amber-400" : "text-amber-600")} />
-            {lang === 'bn' ? `সূর্যাস্ত: ${dhakaInfo.sunsetStr}` : `Sunset: ${dhakaInfo.sunsetStr}`}
+            {dhakaInfo.sunsetStr}
           </span>
         </div>
 
         {/* 7 Days Grid: Continuous week by week slide with touch, drag, wheel */}
         <div 
-          className="relative overflow-hidden touch-pan-y select-none"
+          className="relative overflow-hidden touch-pan-y select-none px-0.5"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -1592,9 +1593,9 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedB
               animate="center"
               exit="exit"
               style={{
-                height: '55.9955px',
+                minHeight: '53px',
               }}
-              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full h-[55.9955px]"
+              className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center w-full px-0.5 py-0.5 box-border"
             >
               {weekDays.map((d) => {
                 const isSelected = d.dateKey === selectedDateKey;
@@ -1609,22 +1610,22 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedB
                       onClick={() => handleDaySelect(d.dateKey)}
                       title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
                       style={{
-                        borderRadius: '17px',
-                        backgroundColor: '#009427',
+                        borderRadius: '16px',
+                        backgroundColor: '#FF5A5A',
                       }}
-                      className="flex flex-col items-center justify-between w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[17px] bg-[#009427] text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/80 cursor-pointer select-none transition-all active:scale-95"
+                      className="flex flex-col items-center justify-between w-full h-[51px] sm:h-[54px] py-1 px-0.5 rounded-[16px] bg-[#FF5A5A] text-white shadow-sm shadow-rose-950/20 ring-2 ring-inset ring-white cursor-pointer select-none transition-all active:scale-95 box-border"
                     >
-                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5">
+                      <span className="text-[9px] xs:text-[9.5px] sm:text-[11px] font-bold uppercase tracking-tight leading-none text-white pt-0.5 truncate max-w-full px-0.5">
                         {dayLabel}
                       </span>
                       <div 
                         style={{
                           paddingBottom: '0px',
-                          marginBottom: '3px',
+                          marginBottom: '2px',
                         }}
-                        className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs pb-0 mb-[3px]"
+                        className="w-6 h-6 xs:w-6.5 xs:h-6.5 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs pb-0 mb-[2px] shrink-0"
                       >
-                        <span className="text-xs sm:text-sm font-black text-gray-900 leading-none">
+                        <span className="text-xs xs:text-xs sm:text-sm font-black text-gray-900 leading-none">
                           {d.dateNum}
                         </span>
                       </div>
@@ -1640,21 +1641,22 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedB
                       onClick={() => handleDaySelect(d.dateKey)}
                       title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum} (${lang === 'bn' ? 'আজ' : 'Today'})`}
                       style={{
-                        borderRadius: '17px',
+                        borderRadius: '16px',
                       }}
                       className={cn(
-                        "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[17px] transition-all cursor-pointer select-none active:scale-95",
+                        "flex flex-col items-center justify-center w-full h-[51px] sm:h-[54px] py-1 px-0.5 rounded-[16px] transition-all cursor-pointer select-none active:scale-95 box-border",
                         darkMode 
-                          ? "bg-emerald-600/30 border border-emerald-500/60 text-emerald-300 hover:bg-emerald-600/40" 
-                          : "bg-emerald-100/90 border border-emerald-400 text-emerald-800 hover:bg-emerald-200"
+                          ? "bg-emerald-600/25 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-600/35" 
+                          : "bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
                       )}
                     >
-                      <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase leading-none opacity-90">
+                      <span className="text-[9px] xs:text-[9.5px] sm:text-[11px] font-bold tracking-tight uppercase leading-none opacity-90 truncate max-w-full px-0.5">
                         {dayLabel}
                       </span>
-                      <span className="text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none">
+                      <span className="text-sm xs:text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none">
                         {d.dateNum}
                       </span>
+                      <div className="w-1 h-1 rounded-full bg-emerald-500 dark:bg-emerald-400 mt-0.5 shrink-0" />
                     </button>
                   );
                 }
@@ -1666,17 +1668,17 @@ export default function Habitor({ darkMode, lang, weekStartDay = 6, isSegmentedB
                     onClick={() => handleDaySelect(d.dateKey)}
                     title={`${lang === 'bn' ? d.fullNameBn : d.fullName}, ${d.dateNum}`}
                     style={{
-                      borderRadius: '17px',
+                      borderRadius: '16px',
                     }}
                     className={cn(
-                      "flex flex-col items-center justify-center w-full h-[52px] sm:h-[55px] py-1 px-0.5 rounded-[17px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95",
-                      darkMode ? "bg-white/5 text-gray-400" : "bg-gray-100 text-gray-600"
+                      "flex flex-col items-center justify-center w-full h-[51px] sm:h-[54px] py-1 px-0.5 rounded-[16px] transition-all cursor-pointer select-none hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 box-border",
+                      darkMode ? "bg-white/5 text-gray-400 border border-transparent" : "bg-gray-100 text-gray-600 border border-transparent"
                     )}
                   >
-                    <span className="text-[10px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none">
+                    <span className="text-[9px] xs:text-[9.5px] sm:text-[11px] font-bold tracking-tight uppercase opacity-70 leading-none truncate max-w-full px-0.5">
                       {dayLabel}
                     </span>
-                    <span className="text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none">
+                    <span className="text-sm xs:text-base sm:text-lg font-black tracking-tighter mt-0.5 leading-none">
                       {d.dateNum}
                     </span>
                   </button>

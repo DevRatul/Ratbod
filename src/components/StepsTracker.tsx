@@ -161,6 +161,21 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
 
     setupStepsSync();
     const unsub = onAuthStateChanged(auth, (u) => { setupStepsSync(u || undefined); });
+
+    const handleForceSync = () => {
+      if (auth.currentUser) {
+        setupStepsSync(auth.currentUser);
+      }
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) {
+        setupStepsSync(auth.currentUser);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     const handleStepsSync = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (typeof detail?.todaySteps === 'number') setTodaySteps(detail.todaySteps);
@@ -172,6 +187,8 @@ export default function StepsTracker({ darkMode, lang = 'en' }: StepsTrackerProp
     return () => {
       if (unsubSnapshot) unsubSnapshot();
       window.removeEventListener('ratbod_steps_sync', handleStepsSync);
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsub();
     };
   }, []);

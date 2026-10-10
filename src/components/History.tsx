@@ -134,9 +134,21 @@ export default function History({ darkMode, unit, refreshTrigger, isLoggedIn, la
       setupHistorySync(u || undefined);
     });
 
+    const handleForceSync = () => {
+      if (auth.currentUser) setupHistorySync(auth.currentUser);
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) setupHistorySync(auth.currentUser);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       if (unsubHist) unsubHist();
       if (unsubSteps) unsubSteps();
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubAuth();
     };
   }, [refreshTrigger, isLoggedIn]);

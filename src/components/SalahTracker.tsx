@@ -1208,6 +1208,20 @@ export default function SalahTracker({
       setupSalahSync(user || undefined);
     });
 
+    const handleForceSync = () => {
+      if (auth.currentUser) {
+        setupSalahSync(auth.currentUser);
+      }
+    };
+    window.addEventListener('ratbod_force_cloud_sync', handleForceSync);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser) {
+        setupSalahSync(auth.currentUser);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     const handleSalahSync = (e: Event) => {
       const customEvt = e as CustomEvent;
       if (customEvt.detail?.recordsMap) {
@@ -1223,6 +1237,8 @@ export default function SalahTracker({
       if (unsubSnapshot) unsubSnapshot();
       if (unsubUserDoc) unsubUserDoc();
       window.removeEventListener('ratbod_salah_sync', handleSalahSync);
+      window.removeEventListener('ratbod_force_cloud_sync', handleForceSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsub();
     };
   }, []);
